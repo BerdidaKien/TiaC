@@ -99,6 +99,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 // 認証OK
                 await this._signInManager.SignInAsync(user);
                 this._session.SetString("UserName", user.Name);
+                this._session.SetString("UserId", user.UserId);   // needed by ChangePassword
                 return RedirectToAction("Index", "Home");
             }
             else
@@ -136,11 +137,11 @@ namespace ASI.Basecode.WebApp.Controllers
                 _userService.AddUser(model);
                 return RedirectToAction("Login", "Account");
             }
-            catch(InvalidDataException ex)
+            catch (InvalidDataException ex)
             {
                 TempData["ErrorMessage"] = ex.Message;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 TempData["ErrorMessage"] = Resources.Messages.Errors.ServerError;
             }
@@ -156,6 +157,56 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             await this._signInManager.SignOutAsync();
             return RedirectToAction("Login", "Account");
+        }
+
+
+
+
+
+        [HttpGet]
+        public IActionResult Profile()
+        {
+            return View();
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Profile(string FullName, string ContactNumber, string StudentId,
+                             string Department, string Email, IFormFile photo)
+        {
+            // TODO: save to your database
+            return RedirectToAction(nameof(Profile));
+        }
+
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ChangePassword(string CurrentPassword, string NewPassword, string ConfirmPassword)
+        {
+            if (string.IsNullOrWhiteSpace(NewPassword) || NewPassword != ConfirmPassword)
+            {
+                TempData["ErrorMessage"] = "New password and confirmation do not match.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            var userId = this._session.GetString("UserId");
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (_userService.ChangePassword(userId, CurrentPassword, NewPassword))
+            {
+                TempData["SuccessMessage"] = "Your password has been updated.";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Current password is incorrect.";
+            }
+
+            return RedirectToAction(nameof(Profile));
         }
     }
 }

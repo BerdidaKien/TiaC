@@ -11,7 +11,7 @@ namespace ASI.Basecode.Data.Repositories
 {
     public class UserRepository : BaseRepository, IUserRepository
     {
-        public UserRepository(IUnitOfWork unitOfWork) : base(unitOfWork) 
+        public UserRepository(IUnitOfWork unitOfWork) : base(unitOfWork)
         {
 
         }
@@ -29,6 +29,12 @@ namespace ASI.Basecode.Data.Repositories
         public void AddUser(User user)
         {
             this.GetDbSet<User>().Add(user);
+            UnitOfWork.SaveChanges();
+        }
+
+        public void UpdateUser(User user)
+        {
+            this.GetDbSet<User>().Update(user);
             UnitOfWork.SaveChanges();
         }
 

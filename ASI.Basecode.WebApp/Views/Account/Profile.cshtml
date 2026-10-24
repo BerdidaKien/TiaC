@@ -1,0 +1,320 @@
+﻿@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+@section styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/dashboard.css" />
+    <link rel="stylesheet" href="~/css/profile.css" />
+}
+@{
+    ViewData["Title"] = "Profile";
+
+    var userName = HttpContextAccessor.HttpContext.Session.GetString("UserName");
+    var fullName = string.IsNullOrWhiteSpace(userName) ? "Guest" : userName;
+
+    // ---- Fill these from your model / database ----
+    var contactNumber = "";
+    var studentId = "";
+    var department = "";
+    var email = "";
+}
+
+<div class="dash profile">
+
+    @* ===== Header ===== *@
+    <div class="dash-header d-flex align-items-center justify-content-between pb-3 mb-3">
+        <h1 class="dash-name mb-0">Profile</h1>
+
+        <div class="d-flex align-items-center">
+            <button type="button" class="dash-bell btn" aria-label="Notifications">
+                <i class="fa-regular fa-bell"></i>
+            </button>
+            <div class="dash-user d-flex align-items-center ml-3 ms-3">
+                <span class="dash-avatar d-inline-flex align-items-center justify-content-center">
+                    <i class="fa-solid fa-user"></i>
+                </span>
+                <span class="dash-user-name">@fullName</span>
+            </div>
+        </div>
+    </div>
+
+    <p class="dash-sub profile-intro mb-3">Manage your personal information and account details.</p>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success py-2" role="alert">@TempData["SuccessMessage"]</div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger py-2" role="alert">@TempData["ErrorMessage"]</div>
+    }
+
+    <form asp-controller="Account" asp-action="Profile" method="post" enctype="multipart/form-data" id="profileForm">
+        @Html.AntiForgeryToken()
+
+        <div class="row">
+
+            @* ===== Profile picture ===== *@
+            <div class="col-lg-4 mb-4">
+                <div class="dash-card profile-card h-100">
+                    <div class="profile-card-title">
+                        <i class="fa-solid fa-circle-user"></i>
+                        <h2 class="dash-section-title mb-0">Profile Picture</h2>
+                    </div>
+
+                    <div class="text-center">
+                        <div class="profile-photo-wrap">
+                            <span class="profile-photo d-inline-flex align-items-center justify-content-center" id="photoCircle">
+                                <i class="fa-solid fa-user" id="photoIcon"></i>
+                                <img id="photoPreview" class="d-none" alt="Profile photo" />
+                            </span>
+
+                            <!--
+                            <label for="photoInput" class="profile-camera" title="Change photo">
+                                <i class="fa-solid fa-camera"></i>
+                            </label>
+                            -->
+                        </div>
+
+                        <div class="profile-photo-name">@fullName.ToUpper()</div>
+                        <!--
+                        <input type="file" id="photoInput" name="photo" accept="image/*" class="d-none" />
+                        <label for="photoInput" class="btn dash-btn dash-btn-view profile-change-photo mb-0">
+                            <i class="fa-solid fa-camera"></i> Change Photo
+                        </label>
+                        -->
+                    </div>
+                </div>
+            </div>
+
+            @* ===== Personal information ===== *@
+            <div class="col-lg-8 mb-4">
+                <div class="dash-card profile-card h-100">
+                    <div class="profile-card-title">
+                        <i class="fa-solid fa-user-gear"></i>
+                        <h2 class="dash-section-title mb-0">Personal Information</h2>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="profile-label" for="FullName">Full Name</label>
+                            <div class="profile-field position-relative">
+                                <i class="fa-solid fa-user profile-field-icon"></i>
+                                <input type="text" id="FullName" name="FullName" value="@fullName.ToUpper() "
+                                       class="form-control profile-input" data-editable="true" readonly />
+                            </div>
+                        </div>
+                        <!--
+                        <div class="col-md-6 mb-3">
+                            <label class="profile-label" for="ContactNumber">Contact Number</label>
+                            <div class="profile-field position-relative">
+                                <i class="fa-solid fa-phone profile-field-icon"></i>
+                                <input type="text" id="ContactNumber" name="ContactNumber" value="@contactNumber"
+                                       placeholder="09XX XXX XXXX"
+                                       class="form-control profile-input" data-editable="true" readonly />
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="profile-label" for="StudentId">Student ID</label>
+                            <div class="profile-field position-relative">
+                                <i class="fa-solid fa-id-card profile-field-icon"></i>
+                                <input type="text" id="StudentId" name="StudentId" value="@studentId"
+                                       placeholder="2026 - 123456"
+                                       class="form-control profile-input" data-editable="true" readonly />
+                            </div>
+                        </div>
+
+                  
+
+                        <div class="col-md-6 mb-3">
+                            <label class="profile-label" for="Email">Email Address</label>
+                            <div class="profile-field position-relative">
+                                <i class="fa-solid fa-envelope profile-field-icon"></i>
+                                <input type="email" id="Email" name="Email" value="@email"
+                                       placeholder="name@email.com"
+                                       class="form-control profile-input" data-editable="true" readonly />
+                            </div>
+                        </div>
+                        -->
+                    
+
+                        @* ===== Forgot password ===== *@
+                        <div class="col-12 mb-1">
+                            <a href="#" class="dash-link"
+                               data-toggle="modal" data-target="#changePasswordModal"
+                               data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                <i class="fa-solid fa-key"></i> Forgot password?
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ===== Actions ===== *@
+        <div class="d-flex justify-content-end profile-actions">
+            <button type="button" id="editBtn" class="btn profile-action profile-action-edit">
+                <i class="fa-solid fa-pen"></i> Edit Profile
+            </button>
+            <button type="submit" id="saveBtn" class="btn profile-action profile-action-save ml-3 ms-3" disabled>
+                <i class="fa-regular fa-floppy-disk"></i> Save Changes
+            </button>
+        </div>
+    </form>
+
+    @* ===== Change password modal (kept outside the profile form) ===== *@
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog"
+         aria-labelledby="changePasswordTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content profile-modal">
+                <form asp-controller="Account" asp-action="ChangePassword" method="post" id="changePasswordForm" novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <div class="modal-header profile-modal-header">
+                        <h5 class="modal-title dash-section-title" id="changePasswordTitle">
+                            <i class="fa-solid fa-key"></i> Change Password
+                        </h5>
+                        <button type="button" class="profile-modal-close"
+                                data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="profile-label" for="CurrentPassword">Current Password</label>
+                            <div class="profile-field position-relative">
+                                <i class="fa-solid fa-lock profile-field-icon"></i>
+                                <input type="password" id="CurrentPassword" name="CurrentPassword"
+                                       class="form-control profile-input" autocomplete="current-password"
+                                       placeholder="Enter your current password" required />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="profile-label" for="NewPassword">New Password</label>
+                            <div class="profile-field position-relative">
+                                <i class="fa-solid fa-key profile-field-icon"></i>
+                                <input type="password" id="NewPassword" name="NewPassword"
+                                       class="form-control profile-input" autocomplete="new-password"
+                                       placeholder="Enter a new password" minlength="8" required />
+                            </div>
+                            <small class="dash-muted">At least 8 characters.</small>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="profile-label" for="ConfirmPassword">Confirm New Password</label>
+                            <div class="profile-field position-relative">
+                                <i class="fa-solid fa-key profile-field-icon"></i>
+                                <input type="password" id="ConfirmPassword" name="ConfirmPassword"
+                                       class="form-control profile-input" autocomplete="new-password"
+                                       placeholder="Re-enter your new password" required />
+                            </div>
+                        </div>
+
+                        <div id="passwordError" class="text-danger small d-none"></div>
+                    </div>
+
+                    <div class="modal-footer profile-modal-footer">
+                        <button type="button" class="btn profile-action profile-action-edit"
+                                data-dismiss="modal" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn profile-action profile-action-save">
+                            <i class="fa-regular fa-floppy-disk"></i> Update Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        (function () {
+            var editBtn = document.getElementById('editBtn');
+            var saveBtn = document.getElementById('saveBtn');
+            var inputs = document.querySelectorAll('.profile-input[data-editable="true"]');
+            var editing = false;
+
+            // Edit / cancel toggle
+            editBtn.addEventListener('click', function () {
+                editing = !editing;
+                inputs.forEach(function (i) {
+                    i.readOnly = !editing;
+                    i.classList.toggle('is-editing', editing);
+                });
+                saveBtn.disabled = !editing;
+                editBtn.innerHTML = editing
+                    ? '<i class="fa-solid fa-xmark"></i> Cancel'
+                    : '<i class="fa-solid fa-pen"></i> Edit Profile';
+                if (editing && inputs.length) inputs[0].focus();
+            });
+
+            // Photo preview
+            var photoInput = document.getElementById('photoInput');
+            var preview = document.getElementById('photoPreview');
+            var icon = document.getElementById('photoIcon');
+            photoInput.addEventListener('change', function () {
+                var file = photoInput.files && photoInput.files[0];
+                if (!file) return;
+                preview.src = URL.createObjectURL(file);
+                preview.classList.remove('d-none');
+                icon.classList.add('d-none');
+                // Let the user save a new photo even if they haven't clicked Edit
+                saveBtn.disabled = false;
+            });
+        })();
+    </script>
+
+    <script>
+        // Change password modal: basic checks before submitting
+        // (separate script so the photo error above can't stop it from running)
+        (function () {
+            var form = document.getElementById('changePasswordForm');
+            var errorBox = document.getElementById('passwordError');
+            if (!form) return;
+
+            function showError(msg) {
+                errorBox.textContent = msg;
+                errorBox.classList.remove('d-none');
+            }
+
+            form.addEventListener('submit', function (e) {
+                var current = document.getElementById('CurrentPassword').value;
+                var next = document.getElementById('NewPassword').value;
+                var confirm = document.getElementById('ConfirmPassword').value;
+
+                if (!current || !next || !confirm) {
+                    e.preventDefault();
+                    return showError('Please fill in all fields.');
+                }
+                if (next.length < 8) {
+                    e.preventDefault();
+                    return showError('New password must be at least 8 characters.');
+                }
+                if (next !== confirm) {
+                    e.preventDefault();
+                    return showError('New password and confirmation do not match.');
+                }
+                if (next === current) {
+                    e.preventDefault();
+                    return showError('New password must be different from the current one.');
+                }
+                errorBox.classList.add('d-none');
+            });
+    
+            // Clear fields and errors whenever the modal closes
+            var modal = document.getElementById('changePasswordModal');
+            ['hidden.bs.modal'].forEach(function (evt) {
+                modal.addEventListener(evt, function () {
+                    form.reset();
+                    errorBox.classList.add('d-none');
+                });
+            });
+        })();
+    </script>
+}

@@ -1,5 +1,8 @@
 ﻿@using static ASI.Basecode.Resources.Views.Screen
-
+@{
+    // Login view sets ViewBag.LoginView = true -> no sidebar / footer there
+    bool isLogin = ViewBag.LoginView == true;
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,21 +13,37 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/main.css" />
     <link rel="stylesheet" href="~/css/style.css" />
+    <link rel="stylesheet" href="~/css/sidebar.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css">
     @RenderSection("Styles", required: false)
 </head>
 <body>
-    @Html.Partial("_Header")
-    <div class="container">
-        <main role="main">
-            @RenderBody()
-        </main>
-    </div>
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            @Copyright
+    @if (isLogin)
+    {
+        @RenderBody()
+    }
+    else
+    {
+        <div class="app-shell">
+            @* Header is now a left sidebar on large screens, a top bar on small ones *@
+            <aside class="app-sidebar">
+                @Html.Partial("_Header")
+            </aside>
+
+            <div class="app-content">
+                <div class="container flex-grow-1">
+                    <main role="main">
+                        @RenderBody()
+                    </main>
+                </div>
+                <footer class="border-top footer text-muted">
+                    <div class="container">
+                        @Copyright
+                    </div>
+                </footer>
+            </div>
         </div>
-    </footer>
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -37,7 +56,7 @@
     <script>
         // Configure Toastr options
         toastr.options = {
-            positionClass: "toast-top-center", // Set the notification position to center
+            positionClass: "toast-top-center",
             timeOut: 3000,
             closeButton: true,
             progressBar: true

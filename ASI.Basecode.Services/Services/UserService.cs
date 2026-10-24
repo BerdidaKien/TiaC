@@ -51,5 +51,22 @@ namespace ASI.Basecode.Services.Services
                 throw new InvalidDataException(Resources.Messages.Errors.UserExists);
             }
         }
+
+        public bool ChangePassword(string userId, string currentPassword, string newPassword)
+        {
+            var user = _repository.GetUsers().FirstOrDefault(x => x.UserId == userId);
+            if (user == null) return false;
+
+            // Wrong current password -> reject
+            if (user.Password != PasswordManager.EncryptPassword(currentPassword)) return false;
+
+            // Save the new password encrypted the same way login compares it
+            user.Password = PasswordManager.EncryptPassword(newPassword);
+            user.UpdatedTime = DateTime.Now;
+            user.UpdatedBy = System.Environment.UserName;
+
+            _repository.UpdateUser(user);
+            return true;
+        }
     }
 }
