@@ -1,0 +1,204 @@
+﻿/* Profile page. Builds on dashboard.css (colors, cards, header, buttons). */
+
+.profile-intro {
+    font-size: .95rem;
+}
+
+/* ----- Card titles ----- */
+.profile-card-title {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding-bottom: .6rem;
+    margin-bottom: 1.1rem;
+    border-bottom: 1px solid rgba(90, 0, 0, .2);
+    color: var(--d-maroon);
+}
+
+    .profile-card-title > i {
+        font-size: 1.2rem;
+    }
+
+/* ----- Profile picture ----- */
+.profile-photo-wrap {
+    position: relative;
+    display: inline-block;
+    margin: .5rem 0 .9rem;
+}
+
+.profile-photo {
+    width: 9rem;
+    height: 9rem;
+    border-radius: 50%;
+    border: .4rem solid var(--d-maroon);
+    background: var(--d-circle);
+    color: var(--d-maroon);
+    font-size: 4rem;
+    overflow: hidden;
+}
+
+    .profile-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+.profile-camera {
+    position: absolute;
+    right: .1rem;
+    bottom: .4rem;
+    width: 2rem;
+    height: 2rem;
+    margin: 0;
+    border-radius: 50%;
+    background: var(--d-orange);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(90, 0, 0, .3);
+}
+
+    .profile-camera:hover {
+        background: #8f2309;
+    }
+
+.profile-photo-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--d-maroon);
+    margin-bottom: .75rem;
+}
+
+.profile-change-photo {
+    min-width: 9rem;
+    cursor: pointer;
+    background: var(--d-bg);
+    box-shadow: 0 2px 4px rgba(90, 0, 0, .2);
+}
+
+    .profile-change-photo i {
+        margin-right: .35rem;
+    }
+
+/* ----- Form fields ----- */
+.profile-label {
+    display: block;
+    margin-bottom: .25rem;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--d-maroon);
+}
+
+.profile-field-icon {
+    position: absolute;
+    top: 50%;
+    left: .9rem;
+    transform: translateY(-50%);
+    font-size: .8rem;
+    color: var(--d-maroon);
+    pointer-events: none;
+}
+
+.profile-input {
+    height: 2.4rem;
+    padding-left: 2.4rem;
+    background: #f6e6da;
+    border: 1.5px solid var(--d-red);
+    border-radius: 6px;
+    font-family: var(--d-serif);
+    font-size: .85rem;
+    color: var(--d-maroon);
+}
+
+    .profile-input[readonly] {
+        cursor: default;
+    }
+
+    .profile-input.is-editing {
+        background: #fff8f3;
+        border-color: var(--d-orange);
+    }
+
+    .profile-input:focus {
+        background: #fff8f3;
+        color: var(--d-maroon);
+        border-color: var(--d-orange);
+        box-shadow: 0 0 0 .2rem rgba(179, 45, 14, .2);
+    }
+
+    .profile-input::placeholder {
+        color: #a9786a;
+    }
+
+/* ----- Action buttons ----- */
+.profile-action {
+    min-width: 9.5rem;
+    padding: .5rem 1.2rem;
+    border-radius: 8px;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+    .profile-action i {
+        margin-right: .4rem;
+    }
+
+.profile-action-edit {
+    background: var(--d-card);
+    border: 1px solid var(--d-border);
+    color: var(--d-maroon);
+    box-shadow: 0 2px 4px rgba(90, 0, 0, .2);
+}
+
+    .profile-action-edit:hover {
+        background: var(--d-circle);
+        color: var(--d-maroon);
+    }
+
+.profile-action-save {
+    background: var(--d-maroon);
+    border: 1px solid var(--d-maroon);
+    color: #fff;
+}
+
+    .profile-action-save:hover:not(:disabled) {
+        background: #3d0000;
+        color: #fff;
+    }
+
+.profile-action-save:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+
+/* ----- Change password modal ----- */
+.profile-modal {
+    background: var(--d-card);
+    border: 0;
+    border-radius: 14px;
+    font-family: var(--d-serif);
+    color: var(--d-maroon);
+    box-shadow: 0 6px 20px rgba(90, 0, 0, .25);
+}
+
+.profile-modal-header,
+.profile-modal-footer {
+    border-color: rgba(90, 0, 0, .2);
+}
+
+.profile-modal-header .modal-title i {
+    margin-right: .4rem;
+}
+
+.profile-modal-close {
+    background: transparent;
+    border: 0;
+    font-size: 1.1rem;
+    color: var(--d-maroon);
+    cursor: pointer;
+}

@@ -1,0 +1,396 @@
+﻿/* Dashboard (Home/Index). Bootstrap handles layout; this adds the TiaC look. */
+:root {
+    --d-bg: #fdf0e6;
+    --d-card: #fbe5d6;
+    --d-circle: #efc4ae;
+    --d-maroon: #5a0000;
+    --d-red: #a8300f;
+    --d-orange: #b32d0e;
+    --d-border: #4a3a36;
+    --d-serif: "Libre Bodoni", "Bodoni MT", Georgia, serif;
+}
+
+/* Cream page background behind the dashboard */
+.app-content {
+    background: var(--d-bg);
+}
+
+.dash {
+    font-family: var(--d-serif);
+    color: var(--d-maroon);
+}
+
+/* ----- Header ----- */
+.dash-header {
+    border-bottom: 3px solid var(--d-maroon);
+}
+
+.dash-welcome {
+    font-size: 1.1rem;
+    color: var(--d-red);
+}
+
+.dash-name {
+    font-size: 2.4rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--d-maroon);
+}
+
+.dash-sub {
+    font-size: .75rem;
+    color: var(--d-maroon);
+}
+
+.dash-bell {
+    font-size: 1.4rem;
+    color: var(--d-maroon);
+    box-shadow: none !important;
+}
+
+.dash-user {
+    gap: .75rem;
+    padding: .5rem 1.25rem .5rem .6rem;
+    background: var(--d-card);
+    border-radius: 12px;
+    box-shadow: 0 3px 6px rgba(90, 0, 0, .18);
+}
+
+.dash-avatar {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: var(--d-maroon);
+    color: var(--d-card);
+}
+
+.dash-user-name {
+    font-size: .9rem;
+    font-weight: 500;
+}
+
+/* ----- Cards ----- */
+.dash-card {
+    background: var(--d-card);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 3px 8px rgba(90, 0, 0, .15);
+}
+
+.dash-icon-circle {
+    border-radius: 50%;
+    background: var(--d-circle);
+    color: var(--d-maroon);
+    flex: 0 0 auto;
+}
+
+.dash-icon-lg {
+    width: 3.4rem;
+    height: 3.4rem;
+    font-size: 1.5rem;
+}
+
+.dash-icon-sm {
+    width: 2rem;
+    height: 2rem;
+    font-size: .85rem;
+}
+
+.dash-stat-count {
+    font-size: 2rem;
+    font-weight: 500;
+}
+
+.dash-stat-label {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--d-red);
+    margin-bottom: .4rem;
+}
+
+.dash-link {
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--d-red);
+    text-decoration: none;
+}
+
+    .dash-link:hover {
+        color: var(--d-maroon);
+        text-decoration: none;
+    }
+
+    .dash-link i {
+        margin-left: .35rem;
+    }
+
+.dash-section-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--d-maroon);
+}
+
+/* ----- Search ----- */
+.dash-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    color: var(--d-maroon);
+}
+
+.dash-search-input {
+    padding-left: 2.6rem;
+    height: 2.6rem;
+    background: #f6e6da;
+    border: 1.5px solid var(--d-red);
+    border-radius: 6px;
+    font-family: var(--d-serif);
+    font-size: .85rem;
+    color: var(--d-maroon);
+}
+
+    .dash-search-input:focus {
+        background: #f6e6da;
+        border-color: var(--d-orange);
+        box-shadow: 0 0 0 .2rem rgba(179, 45, 14, .2);
+    }
+
+/* ----- Table ----- */
+.dash-table {
+    font-size: .75rem;
+    color: var(--d-maroon);
+}
+
+    .dash-table thead th {
+        background: #f1d3c0;
+        border: 0;
+        padding: .7rem .9rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+        .dash-table thead th:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .dash-table thead th:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+
+    .dash-table td {
+        vertical-align: middle;
+        padding: .8rem .9rem;
+        border-top: 0;
+        border-bottom: 1px solid rgba(90, 0, 0, .25);
+    }
+
+/* ----- Status pills ----- */
+.dash-pill {
+    display: inline-block;
+    padding: .15rem .7rem;
+    border-radius: 999px;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .65rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+    .dash-pill.is-available {
+        background: #c7f0b0;
+        color: #2e6a17;
+    }
+
+    .dash-pill.is-borrowed {
+        background: #fde08a;
+        color: #7a5200;
+    }
+
+    .dash-pill.is-completed {
+        background: #e3dcd6;
+        color: #555;
+    }
+
+/* ----- Buttons ----- */
+.dash-btn {
+    min-width: 3.9rem;
+    padding: .25rem .8rem;
+    border-radius: 4px;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .7rem;
+    font-weight: 600;
+}
+
+.dash-btn-reserve {
+    background: var(--d-orange);
+    border: 1px solid var(--d-orange);
+    color: #fff;
+}
+
+    .dash-btn-reserve:hover {
+        background: #8f2309;
+        border-color: #8f2309;
+        color: #fff;
+    }
+
+.dash-btn-view {
+    background: transparent;
+    border: 1px solid var(--d-border);
+    color: var(--d-maroon);
+}
+
+    .dash-btn-view:hover {
+        background: rgba(90, 0, 0, .08);
+        color: var(--d-maroon);
+    }
+
+/* ----- Recent reservations ----- */
+.dash-reservations li {
+    padding: .7rem 0;
+    border-bottom: 1px solid rgba(90, 0, 0, .25);
+}
+
+    .dash-reservations li:last-child {
+        border-bottom: 0;
+    }
+
+.dash-res-name {
+    font-size: .72rem;
+    font-weight: 500;
+    line-height: 1.25;
+}
+
+.dash-res-date {
+    font-size: .6rem;
+    color: #7a4a3a;
+}
+
+.dash-muted {
+    color: #7a4a3a;
+}
+
+@media (max-width: 575.98px) {
+    .dash-name {
+        font-size: 1.8rem;
+    }
+
+    .dash-user-name {
+        display: none;
+    }
+
+    .dash-stat-count {
+        font-size: 1.6rem;
+    }
+}
+
+/* =====================================================================
+   Fit to page: on desktop the dashboard fills the window exactly, with no
+   page scrolling. Long lists scroll inside their own card instead.
+   Small screens keep normal scrolling.
+   ===================================================================== */
+.dash {
+    padding: 1.5rem 0;
+}
+
+@media (min-width: 992px) and (min-height: 600px) {
+    /* Everything is sized in rem, so scaling the root font-size with the
+       window shrinks or grows the whole dashboard together. It follows the
+       window's height (and width on narrow windows), capped at normal size. */
+    html {
+        font-size: clamp(10px, min(2vh, 1.1vw), 16px);
+    }
+
+    html, body {
+        height: 100%;
+        margin-bottom: 0; /* template adds 60px for its footer */
+        overflow: hidden;
+    }
+
+    .app-content {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+        .app-content .footer {
+            display: none;
+        }
+        /* no room for it on a one-screen dashboard */
+
+        .app-content > .container {
+            flex: 1 1 auto;
+            min-height: 0;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+            .app-content > .container > main {
+                flex: 1 1 auto;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+
+    .dash {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem 0;
+    }
+
+    .dash-header {
+        margin-bottom: 1rem !important;
+    }
+
+    .dash > .row:not(.dash-bottom) .mb-4 {
+        margin-bottom: 1rem !important;
+    }
+
+    .dash-card {
+        padding: 1rem 1.25rem;
+    }
+
+    .dash-icon-lg {
+        width: 2.9rem;
+        height: 2.9rem;
+        font-size: 1.25rem;
+    }
+
+    .dash-stat .d-flex.mb-3 {
+        margin-bottom: .5rem !important;
+    }
+
+    /* Bottom row takes whatever height is left */
+    .dash-bottom {
+        flex: 1 1 0;
+        min-height: 0;
+    }
+
+        .dash-bottom .dash-col {
+            display: flex;
+            min-height: 0;
+            margin-bottom: 0 !important;
+        }
+
+        .dash-bottom .dash-card {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+    /* Only the lists scroll, not the page */
+    .dash-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .dash-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+}

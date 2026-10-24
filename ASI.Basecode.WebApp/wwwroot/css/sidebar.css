@@ -1,0 +1,202 @@
+﻿/* ===== App shell (used by _Layout.cshtml) ===== */
+.app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.app-sidebar {
+    background: #5a0000;
+}
+
+.app-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+    /* The template's footer is absolutely positioned; keep it in the flow here */
+    .app-content .footer {
+        position: static;
+        width: 100%;
+        margin-top: auto;
+    }
+
+/* ===== Sidebar content (used by _Header.cshtml) ===== */
+.side-nav {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.25rem 1rem;
+    background: #5a0000;
+    color: #f9e6d6;
+}
+
+/* Brand text ("TiaC") */
+.side-nav__brand {
+    display: block;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-family: "Libre Bodoni", Georgia, serif;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #f9e6d6;
+    text-decoration: none;
+}
+
+    .side-nav__brand:hover {
+        color: #fff;
+        text-decoration: none;
+    }
+
+.side-nav__links {
+    flex: 1 1 auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.side-nav__link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .65rem .85rem;
+    margin-bottom: .25rem;
+    border-radius: 6px;
+    color: #f9e6d6;
+    text-decoration: none;
+    transition: background-color .15s ease;
+}
+
+    .side-nav__link i {
+        width: 1.25rem;
+        text-align: center;
+    }
+
+    .side-nav__link:hover,
+    .side-nav__link:focus {
+        background: rgba(249, 230, 214, .14);
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .side-nav__link:focus-visible {
+        outline: 2px solid #f9e6d6;
+        outline-offset: 2px;
+    }
+
+    /* Current page */
+    .side-nav__link.is-active,
+    .side-nav__link.is-active:hover,
+    .side-nav__link.is-active:focus {
+        background: #f9e6d6;
+        color: #5a0000;
+        font-weight: 600;
+    }
+
+/* Quote above the user block */
+.side-nav__quote {
+    margin: 0;
+    padding: 0 .5rem;
+    font-family: "Libre Bodoni", Georgia, serif;
+    font-size: .85rem;
+    font-style: italic;
+    line-height: 1.5;
+    text-align: center;
+    color: #c98f7c;
+}
+
+/* Signed-in user */
+.side-nav__user {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    border-top: 1px solid rgba(249, 230, 214, .25);
+}
+
+    .side-nav__user img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #f9e6d6;
+    }
+
+.side-nav__username {
+    font-size: .9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ===== Small screens: sidebar becomes a top bar ===== */
+@media (max-width: 991.98px) {
+    .side-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem 1rem;
+        padding: .6rem 1rem;
+    }
+
+    .side-nav__brand {
+        margin: 0;
+        font-size: 1.3rem;
+    }
+
+    .side-nav__links {
+        display: flex;
+        justify-content: center;
+        flex: 1 1 auto;
+    }
+
+    .side-nav__link {
+        margin: 0;
+    }
+
+    .side-nav__quote {
+        display: none; /* too cramped in the top bar */
+    }
+
+    .side-nav__user {
+        padding: 0;
+        margin: 0;
+        border: 0;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .side-nav__text,
+    .side-nav__username {
+        display: none; /* icons only on phones */
+    }
+}
+
+/* ===== Large screens: fixed left sidebar ===== */
+@media (min-width: 992px) {
+    .app-shell {
+        display: block;
+        min-height: 100vh;
+    }
+
+    .app-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 250px;
+        height: 100vh;
+        background: #5a0000;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+
+    .app-content {
+        margin-left: 250px;
+        min-height: 100vh;
+        width: calc(100% - 250px);
+    }
+}

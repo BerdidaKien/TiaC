@@ -1,31 +1,96 @@
 ﻿@using Microsoft.AspNetCore.Http
 @inject IHttpContextAccessor HttpContextAccessor
-<header class="@((ViewBag.LoginView == true) ? "hide-navbar" : "")">
-    <div class="logosec hover-pointer">
-        <img src="~/img/asi-logo-invert.svg"
-             style="width: 185px;" alt="logo"
-             onclick="window.location.href = '@Url.Action("Index", "Home")';">
-    </div>
-    <div class="logosec">
-        @HttpContextAccessor.HttpContext.Session.GetString("UserName")
-        <div class="mr-20 hover-pointer" style="position: relative">
-            <div class="dp">
-                <img src="~/img/profile-logo.png"
-                     class="dpicn hover-pointer"
-                     alt="dp">
-            </div>
-            <div class="dropdown">
-                <ul>
-                    <li>
-                        <i class="fa-solid fa-gear"></i>
-                        <a href="#">Settings</a>
-                    </li>
-                    <li>
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                        <a asp-action="SignOutUser" asp-controller="Account">Logout</a>
-                    </li>
-                </ul>
-            </div>
+@{
+    var userName = HttpContextAccessor.HttpContext.Session.GetString("UserName");
+
+    // The page the user is on right now
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    // True when the current page matches. Leave action null to match every
+    // action of that controller (e.g. Equipment/Index, Equipment/Details...).
+    bool IsActive(string controller, string action = null) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) &&
+        (action == null || string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase));
+}
+
+@if (ViewBag.LoginView != true)
+{
+    <nav class="side-nav" aria-label="Main navigation">
+
+        <a class="side-nav__brand" asp-controller="Home" asp-action="Index" aria-label="Go to home page">
+            TiaC
+        </a>
+
+        <ul class="side-nav__links">
+            <li>
+                <a class="side-nav__link @(IsActive("Home", "Index") ? "is-active" : "")"
+                   aria-current="@(IsActive("Home", "Index") ? "page" : null)"
+                   asp-controller="Home" asp-action="Index">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="side-nav__text">Dashboard</span>
+                </a>
+            </li>
+
+          
+            <li>
+                <a class="side-nav__link @(IsActive("Equipment") ? "is-active" : "")"
+                   aria-current="@(IsActive("Equipment") ? "page" : null)" href="#">
+                    <i class="fa-solid fa-search"></i>
+                    <span class="side-nav__text">Search Equipments</span>
+                </a>
+            </li>
+            <li>
+                <a class="side-nav__link @(IsActive("Reservation") ? "is-active" : "")"
+                   aria-current="@(IsActive("Reservation") ? "page" : null)" href="#">
+                    <i class="fa-solid fa-calendar"></i>
+                    <span class="side-nav__text">All Reservations</span>
+                </a>
+            </li>
+            <li>
+                <a class="side-nav__link @(IsActive("History") ? "is-active" : "")"
+                   aria-current="@(IsActive("History") ? "page" : null)" href="#">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span class="side-nav__text">History</span>
+                </a>
+            </li>
+            <li>
+                <a class="side-nav__link @(IsActive("Reports") ? "is-active" : "")"
+                   aria-current="@(IsActive("Reports") ? "page" : null)" href="#">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span class="side-nav__text">Reports</span>
+                </a>
+            </li>
+            <li>
+                <a class="side-nav__link @(IsActive("Account", "Profile") ? "is-active" : "")"
+                   aria-current="@(IsActive("Account", "Profile") ? "page" : null)"
+                   asp-controller="Account" asp-action="Profile">
+                    <i class="fa-solid fa-user"></i>
+                    <span class="side-nav__text">Profile</span>
+                </a>
+            </li>
+            <li>
+                <a class="side-nav__link @(IsActive("Settings") ? "is-active" : "")"
+                   aria-current="@(IsActive("Settings") ? "page" : null)" href="#">
+                    <i class="fa-solid fa-gear"></i>
+                    <span class="side-nav__text">Settings</span>
+                </a>
+            </li>
+            <li>
+                <a class="side-nav__link" asp-action="SignOutUser" asp-controller="Account">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="side-nav__text">Logout</span>
+                </a>
+            </li>
+        </ul>
+
+        @* Quote *@
+        <p class="side-nav__quote">“Better days are ahead, keep going.”</p>
+
+        @* Signed-in user *@
+        <div class="side-nav__user">
+            <img src="~/img/profile-logo.png" alt="Profile picture" />
+            <span class="side-nav__username">@userName</span>
         </div>
-    </div>
-</header>
+    </nav>
+}
