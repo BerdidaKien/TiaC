@@ -31,12 +31,11 @@ namespace ASI.Basecode.WebApp.Controllers
         /// Initializes a new instance of the <see cref="AccountController"/> class.
         /// </summary>
         /// <param name="signInManager">The sign in manager.</param>
-        /// <param name="localizer">The localizer.</param>
-        /// <param name="userService">The user service.</param>
         /// <param name="httpContextAccessor">The HTTP context accessor.</param>
         /// <param name="loggerFactory">The logger factory.</param>
         /// <param name="configuration">The configuration.</param>
         /// <param name="mapper">The mapper.</param>
+        /// <param name="userService">The user service.</param>
         /// <param name="tokenValidationParametersFactory">The token validation parameters factory.</param>
         /// <param name="tokenProviderOptionsFactory">The token provider options factory.</param>
         public AccountController(
@@ -83,39 +82,39 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             this._session.SetString("HasSession", "Exist");
 
-            // int attempts = this._session.GetInt32("LoginAttempts") ?? 0;
             User user = null;
-
-            /*User user = new() { Id = 0, UserId = "0", Name = "Name", Password = "Password" };
-            
-            await this._signInManager.SignInAsync(user);
-            this._session.SetString("UserName", model.UserId);
-
-            return RedirectToAction("Index", "Home");*/
 
             var loginResult = _userService.AuthenticateUser(model.UserId, model.Password, ref user);
             if (loginResult == LoginResult.Success)
             {
-                // 認証OK
+                // Sign in user
                 await this._signInManager.SignInAsync(user);
-                this._session.SetString("UserName", user.Name);
-                this._session.SetString("UserId", user.UserId);   // needed by ChangePassword
-                return RedirectToAction("Index", "Home");
+
+                // Set session data with new model fields
+                var fullName = $"{user.FirstName} {user.LastName}".Trim();
+                this._session.SetString("UserName", fullName);
+                this._session.SetString("UserId", user.UserId);
+                this._session.SetString("UserRole", user.Role ?? "Student");
+
+                // Role-Based Routing
+                var role = user.Role?.ToLowerInvariant() ?? "student";
+                switch (role)
+                {
+                    case "admin":
+                        return RedirectToAction("Index", "Admin");
+
+                    case "custodian":
+                        return RedirectToAction("Index", "Custodian");
+
+                    case "student":
+                    case "user":
+                    default:
+                        return RedirectToAction("Index", "Home");
+                }
             }
             else
             {
-                /*attempts++; this._session.SetInt32("LoginAttempts", attempts); 
-                if (attempts >= 3) 
-                { 
-                    TempData["ErrorMessage"] = "You have reached the login limit"; 
-                }
-                else 
-                { 
-                    TempData["ErrorMessage"] = "Incorrect UserId or Password"; 
-                } return View(model); */
-
-
-                // 認証NG
+                // Failed login
                 TempData["ErrorMessage"] = "Incorrect UserId or Password";
                 return View();
             }
@@ -159,16 +158,11 @@ namespace ASI.Basecode.WebApp.Controllers
             return RedirectToAction("Login", "Account");
         }
 
-
-
-
-
         [HttpGet]
         public IActionResult Profile()
         {
             return View();
         }
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -178,8 +172,6 @@ namespace ASI.Basecode.WebApp.Controllers
             // TODO: save to your database
             return RedirectToAction(nameof(Profile));
         }
-
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]

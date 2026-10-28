@@ -39,7 +39,6 @@ namespace ASI.Basecode.WebApp.Authentication
         /// Initializes a new instance of the SignInManager class.
         /// </summary>
         /// <param name="configuration">The configuration.</param>
-        /// <param name="accountService">The account service.</param>
         /// <param name="httpContextAccessor">The HTTP context accessor.</param>
         public SignInManager(IConfiguration configuration,
                              IHttpContextAccessor httpContextAccessor)
@@ -60,7 +59,7 @@ namespace ASI.Basecode.WebApp.Authentication
             ClaimsIdentity claimsIdentity = null;
             User userData = new User();
 
-            user.loginResult = LoginResult.Success;//TODO this._accountService.AuthenticateUser(username, password, ref userData);
+            user.loginResult = LoginResult.Success; //TODO this._accountService.AuthenticateUser(username, password, ref userData);
 
             if (user.loginResult == LoginResult.Failed)
             {
@@ -80,14 +79,16 @@ namespace ASI.Basecode.WebApp.Authentication
         public ClaimsIdentity CreateClaimsIdentity(User user)
         {
             var token = _configuration.GetTokenAuthentication();
-            //TODO
+            var fullName = $"{user.FirstName} {user.LastName}".Trim();
+
             var claims = new List<Claim>()
             {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId, ClaimValueTypes.String, Const.Issuer),
-                new Claim(ClaimTypes.Name, user.Name, ClaimValueTypes.String, Const.Issuer),
+                new Claim(ClaimTypes.NameIdentifier, user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
+                new Claim(ClaimTypes.Name, fullName, ClaimValueTypes.String, Const.Issuer),
 
-                new Claim("UserId", user.UserId, ClaimValueTypes.String, Const.Issuer),
-                new Claim("UserName", user.Name, ClaimValueTypes.String, Const.Issuer),
+                new Claim("UserId", user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
+                new Claim("UserName", fullName, ClaimValueTypes.String, Const.Issuer),
+                new Claim(ClaimTypes.Role, user.Role ?? "user", ClaimValueTypes.String, Const.Issuer)
             };
             return new ClaimsIdentity(claims, Const.AuthenticationScheme);
         }
@@ -153,7 +154,6 @@ namespace ASI.Basecode.WebApp.Authentication
         /// </summary>
         public async Task SignOutAsync()
         {
-            var token = _configuration.GetTokenAuthentication();
             await _httpContextAccessor.HttpContext.SignOutAsync(Const.AuthenticationScheme);
         }
     }

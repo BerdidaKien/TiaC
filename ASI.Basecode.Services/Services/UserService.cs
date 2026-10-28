@@ -27,7 +27,7 @@ namespace ASI.Basecode.Services.Services
             user = new User();
             var passwordKey = PasswordManager.EncryptPassword(password);
             user = _repository.GetUsers().Where(x => x.UserId == userId &&
-                                                     x.Password == passwordKey).FirstOrDefault();
+                                                     x.PasswordHash == passwordKey).FirstOrDefault();
 
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
@@ -37,8 +37,24 @@ namespace ASI.Basecode.Services.Services
             var user = new User();
             if (!_repository.UserExists(model.UserId))
             {
+                // Map properties from UserViewModel to User entity
                 _mapper.Map(model, user);
-                user.Password = PasswordManager.EncryptPassword(model.Password);
+
+                // Explicit field assignments matching the new schema
+                user.UserId = model.UserId;
+                user.FirstName = model.FirstName;
+                user.MiddleName = model.MiddleName;
+                user.LastName = model.LastName;
+                user.ContactNumber = model.ContactNumber;
+                user.Email = model.Email;
+                user.Role = string.IsNullOrWhiteSpace(model.Role) ? "Custodian" : model.Role;
+                user.PasswordHash = PasswordManager.EncryptPassword(model.Password);
+
+                // Account Status Defaults
+                user.BorrowerStatus = "Active";
+                user.IsActive = true;
+
+                // Audit Metadata
                 user.CreatedTime = DateTime.Now;
                 user.UpdatedTime = DateTime.Now;
                 user.CreatedBy = System.Environment.UserName;
@@ -58,10 +74,10 @@ namespace ASI.Basecode.Services.Services
             if (user == null) return false;
 
             // Wrong current password -> reject
-            if (user.Password != PasswordManager.EncryptPassword(currentPassword)) return false;
+            if (user.PasswordHash != PasswordManager.EncryptPassword(currentPassword)) return false;
 
             // Save the new password encrypted the same way login compares it
-            user.Password = PasswordManager.EncryptPassword(newPassword);
+            user.PasswordHash = PasswordManager.EncryptPassword(newPassword);
             user.UpdatedTime = DateTime.Now;
             user.UpdatedBy = System.Environment.UserName;
 

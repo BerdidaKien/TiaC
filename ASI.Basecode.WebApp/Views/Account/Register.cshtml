@@ -2,69 +2,155 @@
 @model UserViewModel
 @{
     ViewBag.LoginView = true;
-    ViewData["Title"] = "Register Page";
+    ViewData["Title"] = "Custodian Registration";
 }
 @section styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/login.css" />
 }
-<div class="container py-5 h-100 register-box">
-    <div class="row d-flex justify-content-center align-items-center h-100">
-        <div class="col-xl-10">
-            <div class="card rounded-3 text-black">
-                <div class="row g-0">
-                    <div class="card-body p-md-5 mx-md-4">
 
-                        <div class="text-center">
-                            <img src="https://www.alliance.com.ph/images/asi-logo-invert.svg"
-                                 style="width: 185px;" alt="logo">
-                        </div>
+@* Full-window wrapper *@
+<div class="fixed-top h-100 overflow-auto login-page">
+    <div class="row g-0 no-gutters m-0 min-vh-100">
 
-                        <form method="post" action="/Account/Register">
-                            <div class="form-outline mb-4">
-                                <label class="form-label" for="userId">UserId</label>
-                                <input type="text" id="userId" class="form-control"
-                                       asp-for="UserId" placeholder="Enter userid" />
-                                <span asp-validation-for="UserId" class="text-danger"></span>
-                            </div>
-                            <div class="form-outline mb-4">
-                                <label class="form-label" for="name">Name</label>
-                                <input type="text" id="name" class="form-control"
-                                       asp-for="Name" placeholder="Enter name" />
-                                <span asp-validation-for="Name" class="text-danger"></span>
-                            </div>
-                            <div class="form-outline mb-4">
-                                <label class="form-label" for="password">Password</label>
-                                <input type="password" id="password" class="form-control"
-                                       asp-for="Password" placeholder="Enter password" />
-                                <span asp-validation-for="Password" class="text-danger"></span>
-                            </div>
-                            <div class="form-outline mb-4">
-                                <label class="form-label" for="confirmpassword">Confirm Password</label>
-                                <input type="password" id="confirmpassword" class="form-control" 
-                                       asp-for="ConfirmPassword" placeholder="Confirm Password" />
-                                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
-                            </div>
-                            <div class="text-center pt-1 mb-5 pb-1 d-flex flex-column align-items-center">
-                                <button class="btn btn-primary btn-block login-btn gradient-custom-2 mb-3" type="submit">
-                                    Register
-                                </button>
-                                <a asp-controller="Account" asp-action="Login">
-                                    &#8592 Back
-                                </a>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+        @* ===== Left: Brand Panel ===== *@
+        <aside class="col-lg-6 login-brand position-relative d-flex align-items-center justify-content-center text-center p-4 p-md-5">
+            <div class="login-brand-inner mx-auto">
+                <h1 class="login-welcome mb-4">Custodian Portal</h1>
+                <p class="login-tagline mb-0">
+                    Register as an equipment custodian to log inventory, verify borrower releases, and handle returns.
+                </p>
             </div>
-        </div>
+        </aside>
+
+        @* ===== Right: Registration Form Panel ===== *@
+        <main class="col-lg-6 login-form-panel d-flex align-items-center justify-content-center p-4">
+            <div class="w-100 login-form-wrap my-auto">
+                <h2 class="login-title mb-2">Custodian Registration</h2>
+                <p class="login-subtitle mb-4">Fill in your information to register your account.</p>
+
+                <form method="post" action="/Account/Register" id="registerForm" novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <!-- Role (Locked to Custodian) -->
+                    <input type="hidden" asp-for="Role" value="Custodian" />
+
+                    <div class="mb-3">
+                        <label class="login-label mb-1" for="RoleDisplay">Account Role</label>
+                        <input type="text" id="RoleDisplay" class="form-control login-input bg-light" value="Custodian" readonly disabled />
+                    </div>
+
+                    <!-- Employee ID -->
+                    <div class="mb-3">
+                        <label class="login-label mb-1" for="UserId">Employee ID</label>
+                        <input type="text" id="UserId" class="form-control login-input"
+                               asp-for="UserId" placeholder="eg. EMP-10492" autocomplete="username" />
+                        <span asp-validation-for="UserId" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Name Fields (Row) -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="login-label mb-1" for="FirstName">First Name</label>
+                            <input type="text" id="FirstName" class="form-control login-input"
+                                   asp-for="FirstName" placeholder="First name" autocomplete="given-name" />
+                            <span asp-validation-for="FirstName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="login-label mb-1" for="MiddleName">Middle Name <span class="text-muted fw-normal">(Optional)</span></label>
+                            <input type="text" id="MiddleName" class="form-control login-input"
+                                   asp-for="MiddleName" placeholder="Middle name" autocomplete="additional-name" />
+                            <span asp-validation-for="MiddleName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="login-label mb-1" for="LastName">Last Name</label>
+                            <input type="text" id="LastName" class="form-control login-input"
+                                   asp-for="LastName" placeholder="Last name" autocomplete="family-name" />
+                            <span asp-validation-for="LastName" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <!-- Contact & Email -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="login-label mb-1" for="ContactNumber">Contact Number</label>
+                            <input type="tel" id="ContactNumber" class="form-control login-input"
+                                   asp-for="ContactNumber" placeholder="09123456789" autocomplete="tel" />
+                            <span asp-validation-for="ContactNumber" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="login-label mb-1" for="Email">Email Address</label>
+                            <input type="email" id="Email" class="form-control login-input"
+                                   asp-for="Email" placeholder="custodian@school.edu.ph" autocomplete="email" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <!-- Passwords -->
+                    <div class="mb-3">
+                        <label class="login-label mb-1" for="Password">Password</label>
+                        <div class="position-relative">
+                            <input type="password" id="Password" class="form-control login-input pr-5 pe-5"
+                                   asp-for="Password" placeholder="Enter password" autocomplete="new-password" />
+                            <button type="button" class="btn login-eye position-absolute d-flex align-items-center justify-content-center p-0"
+                                    id="togglePassword" aria-label="Show password" aria-pressed="false">
+                                <i class="bi bi-eye-slash" id="togglePasswordIcon" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger small d-block"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="login-label mb-1" for="ConfirmPassword">Confirm Password</label>
+                        <div class="position-relative">
+                            <input type="password" id="ConfirmPassword" class="form-control login-input pr-5 pe-5"
+                                   asp-for="ConfirmPassword" placeholder="Confirm password" autocomplete="new-password" />
+                            <button type="button" class="btn login-eye position-absolute d-flex align-items-center justify-content-center p-0"
+                                    id="toggleConfirmPassword" aria-label="Show confirm password" aria-pressed="false">
+                                <i class="bi bi-eye-slash" id="toggleConfirmPasswordIcon" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <span asp-validation-for="ConfirmPassword" class="text-danger small d-block"></span>
+                    </div>
+
+                    <div class="d-flex flex-column align-items-center mt-4">
+                        <button class="btn login-btn text-white shadow mb-3" type="submit">Register as Custodian</button>
+                        <a asp-controller="Account" asp-action="Login" class="text-decoration-none">
+                            &#8592; Back to Login
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </main>
     </div>
 </div>
+
 @section scripts {
     <script>
-        // Check for error message and display Toastr notification
         var errorMessage = '@TempData["ErrorMessage"]';
         if (errorMessage) {
             toastr.error(errorMessage);
         }
+
+        function setupPasswordToggle(buttonId, inputId, iconId) {
+            var btn = document.getElementById(buttonId);
+            var input = document.getElementById(inputId);
+            var icon = document.getElementById(iconId);
+            if (!btn || !input || !icon) return;
+
+            btn.addEventListener('click', function () {
+                var show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                icon.className = show ? 'bi bi-eye' : 'bi bi-eye-slash';
+                btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+                btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            });
+        }
+
+        setupPasswordToggle('togglePassword', 'Password', 'togglePasswordIcon');
+        setupPasswordToggle('toggleConfirmPassword', 'ConfirmPassword', 'toggleConfirmPasswordIcon');
     </script>
 }

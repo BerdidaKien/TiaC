@@ -1,0 +1,533 @@
+﻿@{
+    Layout = null;
+    ViewData["Title"] = "All Reservations";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - TiaC</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:ital,wght@0,400..700;1,400..700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
+    <style>
+            :root {
+                --tiac-maroon: #580a0a;
+                --tiac-maroon-hover: #420707;
+                --tiac-cream: #fbf3ea;
+                --tiac-cream-card: #f5e8d9;
+                --tiac-cream-table-head: #ebd4bf;
+                --tiac-orange: #c84b23;
+                --tiac-orange-hover: #a83c19;
+                --tiac-text-dark: #331d1d;
+            }
+
+            body {
+                background-color: var(--tiac-cream);
+                font-family: 'Inter', sans-serif;
+                color: var(--tiac-text-dark);
+                margin: 0;
+                overflow-x: hidden;
+            }
+
+            .custodian-wrapper {
+                display: flex;
+                min-height: 100vh;
+            }
+
+            /* ===== SIDEBAR STYLES ===== */
+            .sidebar {
+                width: 280px;
+                background-color: var(--tiac-maroon);
+                color: #ffffff;
+                display: flex;
+                flex-direction: column;
+                padding: 2rem 1.25rem 1.5rem 1.25rem;
+                flex-shrink: 0;
+            }
+
+            .sidebar-brand {
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+
+            .sidebar-brand-title {
+                font-family: 'Libre Bodoni', serif;
+                font-size: 2.2rem;
+                font-weight: 700;
+                letter-spacing: 1px;
+                color: #ffffff;
+                margin: 0;
+            }
+
+            .sidebar-nav {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+            }
+
+            .sidebar-nav-item a {
+                display: flex;
+                align-items: center;
+                gap: 0.85rem;
+                padding: 0.75rem 1rem;
+                color: rgba(255, 255, 255, 0.85);
+                text-decoration: none;
+                font-size: 0.95rem;
+                font-weight: 500;
+                border-radius: 8px;
+                transition: all 0.2s ease;
+            }
+
+                .sidebar-nav-item a:hover {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    color: #ffffff;
+                }
+
+            .sidebar-nav-item.active a {
+                background-color: rgba(255, 255, 255, 0.2);
+                color: #ffffff;
+                font-weight: 600;
+            }
+
+            .sidebar-divider {
+                border-top: 1px solid rgba(255, 255, 255, 0.2);
+                margin: 1.5rem 0 1rem 0;
+            }
+
+            .sidebar-quote {
+                text-align: center;
+                font-family: 'Libre Bodoni', serif;
+                font-style: italic;
+                font-size: 0.85rem;
+                color: rgba(255, 255, 255, 0.7);
+                margin: 1rem 0;
+            }
+
+            .logout-link {
+                margin-top: auto;
+                color: rgba(255, 255, 255, 0.85);
+                text-decoration: none;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.75rem 1rem;
+                font-weight: 500;
+            }
+
+                .logout-link:hover {
+                    color: #ffffff;
+                }
+
+            /* ===== MAIN CONTENT ===== */
+            .main-content {
+                flex-grow: 1;
+                padding: 2.5rem 3rem;
+            }
+
+            .page-title {
+                font-family: 'Libre Bodoni', serif;
+                font-size: 2.4rem;
+                font-weight: 700;
+                color: var(--tiac-maroon);
+                margin-bottom: 0.25rem;
+            }
+
+            .page-subtitle {
+                font-size: 0.95rem;
+                color: var(--tiac-orange);
+                margin-bottom: 2rem;
+            }
+
+            /* ===== SEARCH BAR CARD ===== */
+            .search-card {
+                background-color: var(--tiac-cream-card);
+                border-radius: 14px;
+                padding: 1.25rem 1.5rem;
+                margin-bottom: 2rem;
+                border: 1px solid rgba(88, 10, 10, 0.08);
+                box-shadow: 0 4px 12px rgba(88, 10, 10, 0.04);
+            }
+
+            .search-label {
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: #7a6666;
+                margin-bottom: 0.4rem;
+            }
+
+            .search-input {
+                background-color: var(--tiac-cream);
+                border: 1px solid #d8c2b0;
+                border-radius: 8px;
+                padding: 0.55rem 1rem;
+                color: var(--tiac-text-dark);
+            }
+
+            .btn-search {
+                background-color: var(--tiac-maroon);
+                color: #ffffff;
+                border: none;
+                padding: 0.55rem 1.5rem;
+                border-radius: 8px;
+                font-weight: 600;
+                transition: background-color 0.2s ease;
+            }
+
+                .btn-search:hover {
+                    background-color: var(--tiac-maroon-hover);
+                    color: #ffffff;
+                }
+
+            /* ===== RESERVATIONS TABLE CARD ===== */
+            .table-card {
+                background-color: var(--tiac-cream-card);
+                border-radius: 16px;
+                padding: 1.75rem;
+                border: 1px solid rgba(88, 10, 10, 0.08);
+                box-shadow: 0 6px 18px rgba(88, 10, 10, 0.05);
+            }
+
+            .section-title {
+                font-family: 'Libre Bodoni', serif;
+                font-size: 1.8rem;
+                font-weight: 700;
+                color: var(--tiac-maroon);
+            }
+
+            .custom-table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0 0.5rem;
+            }
+
+                .custom-table th {
+                    background-color: var(--tiac-cream-table-head);
+                    color: var(--tiac-maroon);
+                    font-family: 'Libre Bodoni', serif;
+                    font-weight: 700;
+                    font-size: 0.95rem;
+                    padding: 0.85rem 1rem;
+                    border: none;
+                }
+
+                    .custom-table th:first-child {
+                        border-top-left-radius: 8px;
+                        border-bottom-left-radius: 8px;
+                    }
+
+                    .custom-table th:last-child {
+                        border-top-right-radius: 8px;
+                        border-bottom-right-radius: 8px;
+                    }
+
+                .custom-table td {
+                    background-color: transparent;
+                    padding: 0.85rem 1rem;
+                    vertical-align: middle;
+                    font-size: 0.9rem;
+                    border-bottom: 1px solid rgba(88, 10, 10, 0.1);
+                }
+
+            .item-icon-box {
+                width: 44px;
+                height: 44px;
+                background-color: #ffffff;
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.3rem;
+                color: var(--tiac-maroon);
+                flex-shrink: 0;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                background-color: var(--tiac-maroon);
+                color: #ffffff;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.9rem;
+                flex-shrink: 0;
+            }
+
+            /* STATUS BADGES */
+            .badge-completed {
+                background-color: #c9ebc3;
+                color: #27691c;
+                font-size: 0.78rem;
+                font-weight: 600;
+                padding: 0.3rem 0.75rem;
+                border-radius: 12px;
+            }
+
+            .badge-pending {
+                background-color: #bee3f8;
+                color: #2b6cb0;
+                font-size: 0.78rem;
+                font-weight: 600;
+                padding: 0.3rem 0.75rem;
+                border-radius: 12px;
+            }
+
+            .badge-canceled {
+                background-color: #fed7d7;
+                color: #c53030;
+                font-size: 0.78rem;
+                font-weight: 600;
+                padding: 0.3rem 0.75rem;
+                border-radius: 12px;
+            }
+
+            .btn-view {
+                border: 1px solid var(--tiac-maroon);
+                color: var(--tiac-maroon);
+                background-color: transparent;
+                border-radius: 6px;
+                padding: 0.25rem 0.85rem;
+                font-size: 0.85rem;
+                font-weight: 500;
+                transition: all 0.2s ease;
+            }
+
+                .btn-view:hover {
+                    background-color: var(--tiac-maroon);
+                    color: #ffffff;
+                }
+    </style>
+</head>
+<body>
+
+    <div class="custodian-wrapper">
+        <!-- SIDE NAVIGATION PANEL -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <h1 class="sidebar-brand-title">TiaC</h1>
+            </div>
+
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a asp-controller="Custodian" asp-action="Index">
+                        <i class="bi bi-house-door"></i> Dashboard
+                    </a>
+                </li>
+                <li class="sidebar-nav-item active">
+                    <a asp-controller="Custodian" asp-action="Reservations">
+                        <i class="bi bi-calendar-check"></i> All Reservation
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a asp-controller="Custodian" asp-action="Equipment">
+                        <i class="bi bi-box-seam"></i> Equipment
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a asp-controller="Custodian" asp-action="History">
+                        <i class="bi bi-clock-history"></i> History
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a asp-controller="Custodian" asp-action="Reports">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Reports
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a asp-controller="Account" asp-action="Profile">
+                        <i class="bi bi-person"></i> Profile
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a asp-controller="Custodian" asp-action="Settings">
+                        <i class="bi bi-gear"></i> Settings
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-divider"></div>
+
+            <div class="sidebar-quote">
+                “Better days are ahead,<br />keep going”
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <a asp-controller="Account" asp-action="SignOutUser" class="logout-link">
+                <i class="bi bi-box-arrow-left"></i> Logout
+            </a>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <h1 class="page-title">All Reservations</h1>
+            <p class="page-subtitle">Find and reserve the equipment you need.</p>
+
+            <!-- Search & Filter Card -->
+            <div class="search-card">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <div class="position-relative">
+                            <input type="text" class="form-control search-input ps-5" placeholder="Search for equipment..." />
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="search-label">Category</div>
+                        <select class="form-select search-input">
+                            <option selected>All Categories</option>
+                            <option>Camera</option>
+                            <option>Projector</option>
+                            <option>Accessories</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="search-label">Availability</div>
+                        <select class="form-select search-input">
+                            <option selected>All Status</option>
+                            <option>Completed</option>
+                            <option>Pending</option>
+                            <option>Canceled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-search w-100">
+                            <i class="bi bi-search me-1"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reservations Table Container -->
+            <div class="table-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="section-title mb-0">All Reservations</h2>
+                    <span class="text-muted small">Total Reservations: <strong>3</strong></span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Reservation ID</th>
+                                <th>Equipment</th>
+                                <th>User</th>
+                                <th>Reservation Date & Time</th>
+                                <th>Return Date & Time</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Row 1: Completed -->
+                            <tr>
+                                <td class="fw-semibold">RES-2026-0924</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="item-icon-box">
+                                            <i class="bi bi-camera"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">Camera (Canon EOS)</div>
+                                            <div class="text-muted small">Camera</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="user-avatar">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">Calood, Tia</div>
+                                            <div class="text-muted small">BSIT-4A</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>September 24 2026 - 9:00am</td>
+                                <td>September 24 2026 - 12:00pm</td>
+                                <td><span class="badge-completed">Completed</span></td>
+                                <td><button class="btn btn-view">View</button></td>
+                            </tr>
+
+                            <!-- Row 2: Pending -->
+                            <tr>
+                                <td class="fw-semibold">RES-2026-0923</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="item-icon-box">
+                                            <i class="bi bi-projector"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">Projector (Epson)</div>
+                                            <div class="text-muted small">Projector</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="user-avatar">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">Calood, Tia</div>
+                                            <div class="text-muted small">BSIT-4A</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>September 23 2026 - 10:00am</td>
+                                <td>September 23 2026 - 5:00pm</td>
+                                <td><span class="badge-pending">Pending</span></td>
+                                <td><button class="btn btn-view">View</button></td>
+                            </tr>
+
+                            <!-- Row 3: Canceled -->
+                            <tr>
+                                <td class="fw-semibold">RES-2026-0925</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="item-icon-box">
+                                            <i class="bi bi-camera-reels"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">Tripod (Manfrotto)</div>
+                                            <div class="text-muted small">Accessories</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="user-avatar">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">Calood, Tia</div>
+                                            <div class="text-muted small">BSIT-4A</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>September 24 2026 - 12:00pm</td>
+                                <td>September 24 2026 - 12:00pm</td>
+                                <td><span class="badge-canceled">Canceled</span></td>
+                                <td><button class="btn btn-view">View</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

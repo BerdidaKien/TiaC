@@ -12,17 +12,13 @@
     ViewData["Title"] = "Login Page";
 }
 
-@* Full-window wrapper (Bootstrap: fixed-top + h-100) *@
+@* Full-window wrapper *@
 <div class="fixed-top h-100 overflow-auto login-page">
     <div class="row g-0 no-gutters m-0 min-vh-100">
 
-        @* ===== Left: brand panel ===== *@
+        @* ===== Left: Brand Panel ===== *@
         <aside class="col-lg-6 login-brand position-relative d-flex align-items-center justify-content-center text-center p-4 p-md-5">
-            
-
             <div class="login-brand-inner mx-auto">
-                @* Replace with your TiaC logo file *@
-                
                 <h1 class="login-welcome mb-4">Welcome back</h1>
                 <p class="login-tagline mb-0">
                     Borrow what you need, return it when you're through,
@@ -31,19 +27,19 @@
             </div>
         </aside>
 
-        @* ===== Right: form panel ===== *@
+        @* ===== Right: Form Panel ===== *@
         <main class="col-lg-6 login-form-panel d-flex align-items-center justify-content-center p-4">
             <div class="w-100 login-form-wrap">
                 <h2 class="login-title mb-2">Log in</h2>
-                <p class="login-subtitle mb-4">Enter your credentials to continue.</p>
+                <p class="login-subtitle mb-4">Enter your credentials to access TiaC.</p>
 
                 <form method="post" action="/Account/Login" id="loginForm" novalidate>
                     @Html.AntiForgeryToken()
 
                     <div class="mb-3">
-                        <label class="login-label mb-1" for="UserId">Student ID</label>
+                        <label class="login-label mb-1" for="UserId">User ID</label>
                         <input type="text" id="UserId" class="form-control login-input"
-                               asp-for="UserId" placeholder="eg. 26 - 123456" autocomplete="username" />
+                               asp-for="UserId" placeholder="Enter Student or Employee ID" autocomplete="username" />
                         <span asp-validation-for="UserId" class="text-danger small"></span>
                     </div>
 
@@ -60,9 +56,12 @@
                         <span asp-validation-for="Password" class="text-danger small d-block"></span>
                     </div>
 
-
-                    <div class="d-flex justify-content-center mt-4">
-                        <button class="btn login-btn text-white shadow" type="submit">Sign In</button>
+                    <div class="d-flex flex-column align-items-center mt-4">
+                        <button class="btn login-btn text-white shadow mb-3" type="submit">Sign In</button>
+                        <span class="small text-muted">
+                            Need a custodian account? 
+                            <a asp-controller="Account" asp-action="Register" class="text-decoration-none fw-semibold">Register here</a>
+                        </span>
                     </div>
                 </form>
             </div>
