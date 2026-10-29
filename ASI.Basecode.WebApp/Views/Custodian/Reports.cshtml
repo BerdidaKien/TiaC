@@ -1,0 +1,74 @@
+﻿@{
+    ViewData["Title"] = "Reports & Analytics";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
+<div class="dash-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="dash dash-name m-0">Reports & Analytics</h1>
+        <p class="dash-sub">Monitor inventory utilization, damage logs, overdue metrics, and generate audit reports.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-danger btn-sm fw-bold"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV Summary</button>
+        <button class="btn dash-btn-reserve btn-sm fw-bold"><i class="bi bi-file-earmark-pdf me-1"></i> Generate Full PDF Report</button>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Total Transactions Logged</div><div class="dash-stat-count">142</div></div></div>
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Overdue Items Flagged</div><div class="dash-stat-count text-danger">8</div></div></div>
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Damaged Asset Logs</div><div class="dash-stat-count text-warning">2</div></div></div>
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Utilization Rate</div><div class="dash-stat-count text-success">74%</div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="dash-card h-100">
+            <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-trophy me-1"></i> Top Requested Equipment</h5>
+            <ul class="list-group list-group-flush bg-transparent">
+                <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                    <div><div class="fw-bold">Canon EOS 2000D</div><div class="text-muted small">Category: Multimedia</div></div>
+                    <span class="badge bg-danger rounded-pill">48 Borrows</span>
+                </li>
+                <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                    <div><div class="fw-bold">Epson EB-E01 Projector</div><div class="text-muted small">Category: Projector</div></div>
+                    <span class="badge bg-danger rounded-pill">36 Borrows</span>
+                </li>
+                <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                    <div><div class="fw-bold">Manfrotto Compact Tripod</div><div class="text-muted small">Category: Accessories</div></div>
+                    <span class="badge bg-danger rounded-pill">29 Borrows</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="dash-card h-100">
+            <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-exclamation-triangle me-1"></i> Recent Penalty & Overdue Summary</h5>
+            <div class="table-responsive">
+                <table class="table dash-table table-sm align-middle">
+                    <thead>
+                        <tr><th>Borrower</th><th>Item</th><th>Overdue Duration</th><th>Penalty Flag</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Kien Berdida</td>
+                            <td>Projector (Epson)</td>
+                            <td>+1 Day</td>
+                            <td><span class="badge bg-warning text-dark">Overdue Fine</span></td>
+                        </tr>
+                        <tr>
+                            <td>Juan Dela Cruz</td>
+                            <td>Canon EOS 2000D</td>
+                            <td>+3 Hours</td>
+                            <td><span class="badge bg-info text-dark">Warning Flag</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

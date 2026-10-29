@@ -1,0 +1,81 @@
+﻿@using Microsoft.AspNetCore.Http
+@using System.Linq
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    bool IsActive(string controller, params string[] actions) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) &&
+        (actions == null || actions.Length == 0 ||
+         actions.Any(a => string.Equals(currentAction, a, StringComparison.OrdinalIgnoreCase)));
+}
+
+@if (ViewBag.LoginView != true)
+{
+    <div class="side-nav">
+        <a asp-controller="Custodian" asp-action="Index" class="side-nav__brand">TiaC</a>
+
+        <ul class="side-nav__links">
+            <li>
+                <a asp-controller="Custodian" asp-action="Index"
+                   class="side-nav__link @(IsActive("Custodian", "Index") ? "is-active" : "")">
+                    <i class="bi bi-house-door"></i>
+                    <span class="side-nav__text">Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a asp-controller="Custodian" asp-action="Reservations"
+                   class="side-nav__link @(IsActive("Custodian", "Reservations") ? "is-active" : "")">
+                    <i class="bi bi-calendar-check"></i>
+                    <span class="side-nav__text">All Reservation</span>
+                </a>
+            </li>
+            <li>
+                <a asp-controller="Custodian" asp-action="Equipment"
+                   class="side-nav__link @(IsActive("Custodian", "Equipment", "AddEquipment") ? "is-active" : "")">
+                    <i class="bi bi-box-seam"></i>
+                    <span class="side-nav__text">Equipment</span>
+                </a>
+            </li>
+            <li>
+                <a asp-controller="Custodian" asp-action="History"
+                   class="side-nav__link @(IsActive("Custodian", "History") ? "is-active" : "")">
+                    <i class="bi bi-clock-history"></i>
+                    <span class="side-nav__text">History</span>
+                </a>
+            </li>
+            <li>
+                <a asp-controller="Custodian" asp-action="Reports"
+                   class="side-nav__link @(IsActive("Custodian", "Reports") ? "is-active" : "")">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span class="side-nav__text">Reports</span>
+                </a>
+            </li>
+            <li>
+                <a asp-controller="Custodian" asp-action="Profile"
+                   class="side-nav__link @(IsActive("Custodian", "Profile") ? "is-active" : "")">
+                    <i class="bi bi-person"></i>
+                    <span class="side-nav__text">Profile</span>
+                </a>
+            </li>
+            <li>
+                <a asp-controller="Custodian" asp-action="Settings"
+                   class="side-nav__link @(IsActive("Custodian", "Settings") ? "is-active" : "")">
+                    <i class="bi bi-gear"></i>
+                    <span class="side-nav__text">Settings</span>
+                </a>
+            </li>
+        </ul>
+
+        <p class="side-nav__quote">
+            “Better days are ahead,<br />keep going”
+        </p>
+
+        <div class="side-nav__user">
+            <i class="bi bi-box-arrow-left fs-5"></i>
+            <a asp-controller="Account" asp-action="SignOutUser" class="side-nav__link p-0 bg-transparent text-white border-0">
+                <span class="side-nav__username">Logout</span>
+            </a>
+        </div>
+    </div>
+}

@@ -179,8 +179,9 @@
 /* ===== Large screens: fixed left sidebar ===== */
 @media (min-width: 992px) {
     .app-shell {
-        display: block;
+        display: flex;
         min-height: 100vh;
+        width: 100%;
     }
 
     .app-sidebar {
@@ -192,11 +193,13 @@
         background: #5a0000;
         overflow-y: auto;
         z-index: 1000;
+        flex-shrink: 0;
     }
 
     .app-content {
         margin-left: 250px;
-        min-height: 100vh;
         width: calc(100% - 250px);
+        min-height: 100vh;
+        padding: 2rem 2.5rem;
     }
 }

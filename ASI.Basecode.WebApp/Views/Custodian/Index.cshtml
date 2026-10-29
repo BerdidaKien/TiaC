@@ -1,460 +1,103 @@
 ﻿@{
-    Layout = null;
     ViewData["Title"] = "Custodian Dashboard";
 }
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - TiaC</title>
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:ital,wght@0,400..700;1,400..700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+<div class="dash-header mb-4">
+    <h1 class="dash dash-name m-0">Custodian Dashboard</h1>
+    <p class="dash-sub">Manage inventory stock, track active borrowings, and oversee reservations.</p>
+</div>
 
-    <style>
-            :root {
-                --tiac-maroon: #580a0a;
-                --tiac-maroon-hover: #420707;
-                --tiac-cream: #fbf3ea;
-                --tiac-cream-card: #f5e8d9;
-                --tiac-orange: #c84b23;
-                --tiac-orange-hover: #a83c19;
-                --tiac-text-dark: #331d1d;
-            }
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Total Equipment Types</div><div class="dash-stat-count">6</div></div></div>
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Available Items</div><div class="dash-stat-count">18</div></div></div>
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Currently Borrowed</div><div class="dash-stat-count">7</div></div></div>
+    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Pending Requests</div><div class="dash-stat-count">4</div></div></div>
+</div>
 
-            body {
-                background-color: var(--tiac-cream);
-                font-family: 'Inter', sans-serif;
-                color: var(--tiac-text-dark);
-                margin: 0;
-                overflow-x: hidden;
-            }
+<div class="dash-card mb-4">
+    <div class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <input type="text" class="form-control dash-search-input" placeholder="Search equipment by name or code..." />
+        </div>
+        <div class="col-md-3">
+            <select class="form-select dash-search-input">
+                <option selected>All Categories</option>
+                <option>Camera</option>
+                <option>Projector</option>
+                <option>Accessories</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select dash-search-input">
+                <option selected>All Status</option>
+                <option>Available</option>
+                <option>Currently Borrowed</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn dash-btn-reserve w-100">Search</button>
+        </div>
+    </div>
+</div>
 
-            .custodian-wrapper {
-                display: flex;
-                min-height: 100vh;
-            }
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="dash fs-3 fw-bold m-0">Equipment Overview</h3>
+    <span class="text-muted small">Showing 3 items</span>
+</div>
 
-            /* ===== SIDEBAR STYLES ===== */
-            .sidebar {
-                width: 280px;
-                background-color: var(--tiac-maroon);
-                color: #ffffff;
-                display: flex;
-                flex-direction: column;
-                padding: 2rem 1.25rem 1.5rem 1.25rem;
-                flex-shrink: 0;
-            }
-
-            .sidebar-brand {
-                text-align: center;
-                margin-bottom: 2rem;
-            }
-
-            .sidebar-brand-title {
-                font-family: 'Libre Bodoni', serif;
-                font-size: 2.2rem;
-                font-weight: 700;
-                letter-spacing: 1px;
-                color: #ffffff;
-                margin: 0;
-            }
-
-            .sidebar-nav {
-                list-style: none;
-                padding: 0;
-                margin: 0;
-                display: flex;
-                flex-direction: column;
-                gap: 0.4rem;
-            }
-
-            .sidebar-nav-item a {
-                display: flex;
-                align-items: center;
-                gap: 0.85rem;
-                padding: 0.75rem 1rem;
-                color: rgba(255, 255, 255, 0.85);
-                text-decoration: none;
-                font-size: 0.95rem;
-                font-weight: 500;
-                border-radius: 8px;
-                transition: all 0.2s ease;
-            }
-
-                .sidebar-nav-item a:hover {
-                    background-color: rgba(255, 255, 255, 0.1);
-                    color: #ffffff;
-                }
-
-            .sidebar-nav-item.active a {
-                background-color: rgba(255, 255, 255, 0.2);
-                color: #ffffff;
-                font-weight: 600;
-            }
-
-            .sidebar-divider {
-                border-top: 1px solid rgba(255, 255, 255, 0.2);
-                margin: 1.5rem 0 1rem 0;
-            }
-
-            .sidebar-quote {
-                text-align: center;
-                font-family: 'Libre Bodoni', serif;
-                font-style: italic;
-                font-size: 0.85rem;
-                color: rgba(255, 255, 255, 0.7);
-                margin: 1rem 0;
-            }
-
-            .logout-link {
-                margin-top: auto;
-                color: rgba(255, 255, 255, 0.85);
-                text-decoration: none;
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                padding: 0.75rem 1rem;
-                font-weight: 500;
-            }
-
-                .logout-link:hover {
-                    color: #ffffff;
-                }
-
-            /* ===== MAIN CONTENT ===== */
-            .main-content {
-                flex-grow: 1;
-                padding: 2.5rem 3rem;
-            }
-
-            .page-title {
-                font-family: 'Libre Bodoni', serif;
-                font-size: 2.4rem;
-                font-weight: 700;
-                color: var(--tiac-text-dark);
-                margin-bottom: 0.25rem;
-            }
-
-            .page-subtitle {
-                font-size: 0.95rem;
-                color: #6c5a5a;
-                margin-bottom: 2rem;
-            }
-
-            /* ===== METRIC CARDS ===== */
-            .stat-card {
-                background-color: var(--tiac-cream-card);
-                border-radius: 12px;
-                padding: 1.25rem 1.5rem;
-                box-shadow: 0 4px 12px rgba(88, 10, 10, 0.05);
-                border: 1px solid rgba(88, 10, 10, 0.08);
-            }
-
-            .stat-label {
-                font-size: 0.85rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                color: #7a6666;
-                margin-bottom: 0.5rem;
-            }
-
-            .stat-value {
-                font-family: 'Libre Bodoni', serif;
-                font-size: 2.2rem;
-                font-weight: 700;
-                color: var(--tiac-maroon);
-            }
-
-            /* ===== EQUIPMENT CATALOG CARDS ===== */
-            .equipment-card {
-                background-color: var(--tiac-cream-card);
-                border-radius: 14px;
-                padding: 1.25rem;
-                box-shadow: 0 6px 16px rgba(88, 10, 10, 0.06);
-                border: 1px solid rgba(88, 10, 10, 0.08);
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                height: 100%;
-            }
-
-            .equipment-img-wrap {
-                height: 140px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin-bottom: 1rem;
-                overflow: hidden;
-                border-radius: 8px;
-                background-color: rgba(255, 255, 255, 0.4);
-            }
-
-            .equipment-title {
-                font-family: 'Libre Bodoni', serif;
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: var(--tiac-maroon);
-                margin-bottom: 0.2rem;
-            }
-
-            .equipment-category {
-                font-size: 0.85rem;
-                color: #7a6666;
-                margin-bottom: 0.75rem;
-            }
-
-            .stock-badge {
-                display: inline-block;
-                padding: 0.25rem 0.65rem;
-                font-size: 0.78rem;
-                font-weight: 600;
-                border-radius: 20px;
-                background-color: #d1e7dd;
-                color: #0f5132;
-            }
-
-                .stock-badge.warning {
-                    background-color: #fff3cd;
-                    color: #664d03;
-                }
-
-            .btn-action-primary {
-                background-color: var(--tiac-orange);
-                color: #ffffff;
-                border: none;
-                padding: 0.55rem 1.2rem;
-                border-radius: 8px;
-                font-weight: 600;
-                transition: background-color 0.2s ease;
-                width: 100%;
-            }
-
-                .btn-action-primary:hover {
-                    background-color: var(--tiac-orange-hover);
-                    color: #ffffff;
-                }
-
-            .search-box {
-                background-color: var(--tiac-cream-card);
-                border-radius: 12px;
-                padding: 1.25rem;
-                margin-bottom: 2rem;
-                border: 1px solid rgba(88, 10, 10, 0.08);
-            }
-
-            .search-input {
-                background-color: #ffffff;
-                border: 1px solid #d4c4c4;
-                border-radius: 8px;
-                padding: 0.6rem 1rem;
-            }
-    </style>
-</head>
-<body>
-
-    <div class="custodian-wrapper">
-        <!-- SIDE NAVIGATION PANEL -->
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <h1 class="sidebar-brand-title">TiaC</h1>
-            </div>
-
-            <ul class="sidebar-nav">
-                <li class="sidebar-nav-item active">
-                    <a asp-controller="Custodian" asp-action="Index">
-                        <i class="bi bi-house-door"></i> Dashboard
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a asp-controller="Custodian" asp-action="Reservations">
-                        <i class="bi bi-calendar-check"></i> All Reservation
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a asp-controller="Custodian" asp-action="Equipment">
-                        <i class="bi bi-box-seam"></i> Equipment
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a asp-controller="Custodian" asp-action="History">
-                        <i class="bi bi-clock-history"></i> History
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a asp-controller="Custodian" asp-action="Reports">
-                        <i class="bi bi-file-earmark-bar-graph"></i> Reports
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a asp-controller="Account" asp-action="Profile">
-                        <i class="bi bi-person"></i> Profile
-                    </a>
-                </li>
-                <li class="sidebar-nav-item">
-                    <a asp-controller="Custodian" asp-action="Settings">
-                        <i class="bi bi-gear"></i> Settings
-                    </a>
-                </li>
-            </ul>
-
-            <div class="sidebar-divider"></div>
-
-            <div class="sidebar-quote">
-                “Better days are ahead,<br />keep going”
-            </div>
-
-            <div class="sidebar-divider"></div>
-
-            <a asp-controller="Account" asp-action="SignOutUser" class="logout-link">
-                <i class="bi bi-box-arrow-left"></i> Logout
-            </a>
-        </aside>
-
-        <!-- MAIN CONTENT -->
-        <main class="main-content">
-            <h1 class="page-title">Custodian Dashboard</h1>
-            <p class="page-subtitle">Manage inventory stock, track active borrowings, and oversee reservations.</p>
-
-            <!-- Metric Cards Row -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-label">Total Equipment Types</div>
-                        <div class="stat-value">6</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-label">Available Items</div>
-                        <div class="stat-value">18</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-label">Currently Borrowed</div>
-                        <div class="stat-value">7</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="stat-card">
-                        <div class="stat-label">Pending Requests</div>
-                        <div class="stat-value">4</div>
-                    </div>
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-center p-3 mb-3 bg-white rounded"><i class="bi bi-camera fs-1 text-secondary"></i></div>
+                <h4 class="dash fs-5 fw-bold mb-1">Camera <span class="fs-6 fw-normal text-muted">(Canon EOS)</span></h4>
+                <div class="small text-muted mb-2">Category: Multimedia</div>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                    <span>Remaining Quantity:</span><span class="fw-bold text-dark">5 / 8</span>
                 </div>
             </div>
-
-            <!-- Filter & Search Bar -->
-            <div class="search-box">
-                <div class="row g-2 align-items-center">
-                    <div class="col-md-5">
-                        <input type="text" class="form-control search-input" placeholder="Search equipment by name or code..." />
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select search-input">
-                            <option selected>All Categories</option>
-                            <option>Camera</option>
-                            <option>Projector</option>
-                            <option>Accessories</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <select class="form-select search-input">
-                            <option selected>All Status</option>
-                            <option>Available</option>
-                            <option>Currently Borrowed</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button class="btn btn-action-primary w-100">Search</button>
-                    </div>
-                </div>
+            <div class="mt-3">
+                <div class="mb-2"><span class="dash-pill is-available">3 Currently Borrowed</span></div>
+                <button class="btn btn-outline-danger w-100 fw-bold">Manage Stock</button>
             </div>
-
-            <!-- Equipment Inventory Grid -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="mb-0 fw-bold" style="font-family: 'Libre Bodoni', serif;">Equipment Overview</h3>
-                <span class="text-muted small">Showing 6 items</span>
-            </div>
-
-            <div class="row g-4">
-                <!-- Item 1: Camera -->
-                <div class="col-md-4">
-                    <div class="equipment-card">
-                        <div>
-                            <div class="equipment-img-wrap">
-                                <i class="bi bi-camera fs-1 text-secondary"></i>
-                            </div>
-                            <h4 class="equipment-title">Camera <span class="fs-6 fw-normal text-muted">(Canon EOS)</span></h4>
-                            <div class="equipment-category">Category: Multimedia</div>
-                            <div class="d-flex justify-content-between text-muted small mb-2">
-                                <span>Remaining Quantity:</span>
-                                <span class="fw-bold text-dark">5 / 8</span>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="stock-badge">3 Currently Borrowed</span>
-                            </div>
-                            <button class="btn btn-action-primary">Manage Stock</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Item 2: Projector -->
-                <div class="col-md-4">
-                    <div class="equipment-card">
-                        <div>
-                            <div class="equipment-img-wrap">
-                                <i class="bi bi-projector fs-1 text-secondary"></i>
-                            </div>
-                            <h4 class="equipment-title">Projector <span class="fs-6 fw-normal text-muted">(Epson)</span></h4>
-                            <div class="equipment-category">Category: Projector</div>
-                            <div class="d-flex justify-content-between text-muted small mb-2">
-                                <span>Remaining Quantity:</span>
-                                <span class="fw-bold text-dark">2 / 5</span>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="stock-badge warning">3 Currently Borrowed</span>
-                            </div>
-                            <button class="btn btn-action-primary">Manage Stock</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Item 3: Tripod -->
-                <div class="col-md-4">
-                    <div class="equipment-card">
-                        <div>
-                            <div class="equipment-img-wrap">
-                                <i class="bi bi-camera-reels fs-1 text-secondary"></i>
-                            </div>
-                            <h4 class="equipment-title">Tripod <span class="fs-6 fw-normal text-muted">(Manfrotto)</span></h4>
-                            <div class="equipment-category">Category: Accessories</div>
-                            <div class="d-flex justify-content-between text-muted small mb-2">
-                                <span>Remaining Quantity:</span>
-                                <span class="fw-bold text-dark">11 / 12</span>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="stock-badge">1 Currently Borrowed</span>
-                            </div>
-                            <button class="btn btn-action-primary">Manage Stock</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
+        </div>
     </div>
 
-</body>
-</html>
+    <div class="col-md-4">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-center p-3 mb-3 bg-white rounded"><i class="bi bi-projector fs-1 text-secondary"></i></div>
+                <h4 class="dash fs-5 fw-bold mb-1">Projector <span class="fs-6 fw-normal text-muted">(Epson)</span></h4>
+                <div class="small text-muted mb-2">Category: Projector</div>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                    <span>Remaining Quantity:</span><span class="fw-bold text-dark">2 / 5</span>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="mb-2"><span class="dash-pill is-borrowed">3 Currently Borrowed</span></div>
+                <button class="btn btn-outline-danger w-100 fw-bold">Manage Stock</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-center p-3 mb-3 bg-white rounded"><i class="bi bi-camera-reels fs-1 text-secondary"></i></div>
+                <h4 class="dash fs-5 fw-bold mb-1">Tripod <span class="fs-6 fw-normal text-muted">(Manfrotto)</span></h4>
+                <div class="small text-muted mb-2">Category: Accessories</div>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                    <span>Remaining Quantity:</span><span class="fw-bold text-dark">11 / 12</span>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="mb-2"><span class="dash-pill is-available">1 Currently Borrowed</span></div>
+                <button class="btn btn-outline-danger w-100 fw-bold">Manage Stock</button>
+            </div>
+        </div>
+    </div>
+</div>

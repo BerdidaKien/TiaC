@@ -40,6 +40,10 @@ namespace ASI.Basecode.WebApp
             // Repositories
             this._services.AddScoped<IUserRepository, UserRepository>();
 
+            // Equipment Master Data Dependency Injection
+            this._services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+            this._services.AddScoped<IEquipmentService, EquipmentService>();
+
             // Manager Class
             this._services.AddScoped<SignInManager>();
 

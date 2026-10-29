@@ -1,0 +1,67 @@
+﻿@{
+    ViewData["Title"] = "Custodian Settings";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
+<div class="dash-header mb-4">
+    <h1 class="dash dash-name m-0">System & Operational Settings</h1>
+    <p class="dash-sub">Configure borrowing limits, grace periods, operating hours, and email alerts.</p>
+</div>
+
+<form method="post" action="/Custodian/SaveSettings">
+    @Html.AntiForgeryToken()
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="dash-card h-100">
+                <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-sliders me-1"></i> Borrowing Rules & Limits</h5>
+
+                <div class="mb-3">
+                    <label class="dash-stat-label mb-1">Max Active Items per Student</label>
+                    <input type="number" name="MaxBorrowLimit" class="form-control dash-search-input" value="2" min="1" max="5" />
+                    <div class="form-text text-muted small">Limits how many items a student can borrow concurrently.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="dash-stat-label mb-1">Default Reservation Duration (Hours)</label>
+                    <input type="number" name="DefaultDurationHours" class="form-control dash-search-input" value="8" min="1" max="72" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="dash-stat-label mb-1">Overdue Grace Period (Minutes)</label>
+                    <input type="number" name="OverdueGraceMinutes" class="form-control dash-search-input" value="30" min="0" max="120" />
+                    <div class="form-text text-muted small">Buffer time before system flags an unreturned item as overdue.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="dash-card h-100">
+                <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-bell me-1"></i> Notifications & Alerts</h5>
+
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="emailNewReq" checked />
+                    <label class="form-check-label fw-semibold" for="emailNewReq">Email me when new reservations are submitted</label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="reminderStudent" checked />
+                    <label class="form-check-label fw-semibold" for="reminderStudent">Send automatic return reminders to students (2 hrs before deadline)</label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="overdueAlert" checked />
+                    <label class="form-check-label fw-semibold" for="overdueAlert">Send daily overdue digest summaries</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-3">
+        <button type="reset" class="btn btn-outline-secondary">Reset Defaults</button>
+        <button type="submit" class="btn dash-btn-reserve fw-bold">
+            <i class="bi bi-floppy me-1"></i> Save Configuration
+        </button>
+    </div>
+</form>
