@@ -7,6 +7,7 @@ using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Models;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace ASI.Basecode.Data.Repositories
 {
     public class EquipmentRepository : IEquipmentRepository
@@ -60,6 +61,15 @@ namespace ASI.Basecode.Data.Repositories
             equipment.Status = "archived";
             _context.EquipmentItems.Update(equipment);
             _context.SaveChanges();
+        }
+        public IQueryable<Reservation> GetReservations()
+        {
+            return _context.Reservations;
+        }
+
+        public IQueryable<BorrowingTransaction> GetBorrowingTransactions()
+        {
+            return _context.BorrowingTransactions;
         }
     }
 }

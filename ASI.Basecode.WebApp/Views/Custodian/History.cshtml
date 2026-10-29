@@ -1,5 +1,43 @@
-﻿@{
+﻿@using ASI.Basecode.Data.Models
+@using ASI.Basecode.Services.ServiceModels
+@model HistoryPageViewModel
+@{
     ViewData["Title"] = "Borrowing History Log";
+    var f = Model.Filter;
+    string dFrom = f.DateFrom?.ToString("yyyy-MM-dd");
+    string dTo = f.DateTo?.ToString("yyyy-MM-dd");
+
+    (string Text, string Css) StatusOf(BorrowingTransaction t)
+    {
+        if (t.ActualReturnTime == null)
+        {
+            var due = t.Reservation?.EstimatedReturnDate;
+            return (due.HasValue && due.Value < DateTime.Now)
+                ? ("Overdue - Not Returned", "badge bg-danger")
+                : ("Currently Borrowed", "dash-pill is-borrowed");
+        }
+        return t.IsOverdue
+            ? ($"Returned Late (+{t.DelayDurationHours}h)", "badge bg-warning text-dark")
+            : ("Returned On-Time", "dash-pill is-available");
+    }
+
+    string ConditionLabel(string c) => c switch
+    {
+        null => "Not yet returned",
+        "excellent" => "Excellent",
+        "good" => "Good Condition",
+        "minor_wear" => "Minor Wear",
+        "needs_maintenance" => "Needs Maintenance",
+        _ => c
+    };
+
+    string ConditionCss(string c) => c switch
+    {
+        "excellent" or "good" => "bg-success",
+        "minor_wear" => "bg-warning text-dark",
+        "needs_maintenance" => "bg-danger",
+        _ => "bg-secondary"
+    };
 }
 
 @section Styles {
@@ -12,50 +50,79 @@
         <p class="dash-sub">View past transactions, audit trails, return conditions, and penalty summaries.</p>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-outline-danger btn-sm fw-bold"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV</button>
-        <button class="btn dash-btn-reserve btn-sm fw-bold"><i class="bi bi-file-earmark-pdf me-1"></i> Export PDF</button>
+        <a class="btn btn-outline-danger btn-sm fw-bold" asp-controller="Custodian" asp-action="ExportHistoryCsv"
+           asp-route-search="@f.Search" asp-route-categoryId="@f.CategoryId" asp-route-result="@f.Result"
+           asp-route-dateFrom="@dFrom" asp-route-dateTo="@dTo">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+        </a>
+        <a class="btn dash-btn-reserve btn-sm fw-bold" target="_blank" asp-controller="Custodian" asp-action="HistoryPrint"
+           asp-route-search="@f.Search" asp-route-categoryId="@f.CategoryId" asp-route-result="@f.Result"
+           asp-route-dateFrom="@dFrom" asp-route-dateTo="@dTo">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+        </a>
     </div>
 </div>
 
-<div class="dash-card mb-4">
-    <div class="row g-2 align-items-center">
-        <div class="col-md-4">
+<!-- Summary metrics -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Total Transactions</div><div class="dash-stat-count">@Model.TotalTransactions</div></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Active Loans</div><div class="dash-stat-count">@Model.ActiveLoans</div></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Late Returns</div><div class="dash-stat-count text-warning">@Model.LateReturns</div><div class="small text-muted">@Model.TotalDelayHours total delay hrs</div></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Overdue Now</div><div class="dash-stat-count text-danger">@Model.CurrentlyOverdue</div></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Damaged Returns</div><div class="dash-stat-count text-danger">@Model.DamagedReturns</div></div></div>
+    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">On-Time Rate</div><div class="dash-stat-count text-success">@Model.OnTimeRate%</div></div></div>
+</div>
+
+<!-- Filter & Search Bar -->
+<form method="get" asp-controller="Custodian" asp-action="History" class="dash-card mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
             <label class="dash-stat-label mb-1">Search Keywords</label>
-            <input type="text" class="form-control dash-search-input" placeholder="Search by Transaction ID, Borrower ID, or Item Code..." />
+            <input type="text" name="search" value="@f.Search" class="form-control dash-search-input"
+                   placeholder="Borrower ID, name, item code..." />
         </div>
         <div class="col-md-2">
             <label class="dash-stat-label mb-1">Category</label>
-            <select class="form-select dash-search-input">
-                <option selected>All Categories</option>
-                <option>Camera</option>
-                <option>Projector</option>
-                <option>Accessories</option>
+            <select name="categoryId" class="form-select dash-search-input">
+                <option value="">All Categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id" selected="@(f.CategoryId == c.Id)">@c.CategoryName</option>
+                }
             </select>
         </div>
         <div class="col-md-2">
-            <label class="dash-stat-label mb-1">Transaction Result</label>
-            <select class="form-select dash-search-input">
-                <option selected>All Transactions</option>
-                <option>Returned (On-Time)</option>
-                <option>Returned (Overdue)</option>
-                <option>Damaged Return</option>
-                <option>Canceled</option>
+            <label class="dash-stat-label mb-1">Result</label>
+            <select name="result" class="form-select dash-search-input">
+                <option value="">All Transactions</option>
+                <option value="active" selected="@(f.Result == "active")">Currently Borrowed</option>
+                <option value="ontime" selected="@(f.Result == "ontime")">Returned On-Time</option>
+                <option value="overdue" selected="@(f.Result == "overdue")">Overdue / Late</option>
+                <option value="damaged" selected="@(f.Result == "damaged")">Damaged Return</option>
             </select>
         </div>
         <div class="col-md-2">
-            <label class="dash-stat-label mb-1">Date Range</label>
-            <input type="date" class="form-control dash-search-input" />
+            <label class="dash-stat-label mb-1">From</label>
+            <input type="date" name="dateFrom" value="@dFrom" class="form-control dash-search-input" />
         </div>
-        <div class="col-md-2 align-self-end">
-            <button class="btn dash-btn-reserve w-100">Filter History</button>
+        <div class="col-md-2">
+            <label class="dash-stat-label mb-1">To</label>
+            <input type="date" name="dateTo" value="@dTo" class="form-control dash-search-input" />
+        </div>
+        <div class="col-md-1 d-grid gap-1">
+            <button type="submit" class="btn dash-btn-reserve">Filter</button>
         </div>
     </div>
-</div>
+    <div class="mt-2">
+        <a asp-controller="Custodian" asp-action="History" class="small text-muted">Reset filters</a>
+    </div>
+</form>
 
-<div class="dash-card">
+<!-- History Table -->
+<div class="dash-card mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="dash fs-3 fw-bold m-0">Transaction Audit Log</h3>
-        <span class="text-muted small">Total Historical Records: <strong>3</strong></span>
+        <span class="text-muted small">Showing <strong>@Model.Rows.Count</strong> of @Model.TotalTransactions records</span>
     </div>
 
     <div class="table-responsive">
@@ -63,62 +130,156 @@
             <thead>
                 <tr>
                     <th>Txn ID</th>
-                    <th>Equipment Details</th>
+                    <th>Equipment</th>
                     <th>Borrower</th>
-                    <th>Issued Date</th>
-                    <th>Returned Date</th>
-                    <th>Returned Condition</th>
-                    <th>Status / Penalty</th>
+                    <th>Handover</th>
+                    <th>Returned</th>
+                    <th>Condition</th>
+                    <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td class="fw-semibold">TXN-2026-0812</td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="p-2 bg-white rounded"><i class="bi bi-camera fs-5 text-secondary"></i></div>
-                            <div><div class="fw-bold">Canon EOS 2000D</div><div class="text-muted small">EQ-CAM-001</div></div>
-                        </div>
-                    </td>
-                    <td><div class="fw-bold">Calood, Tia</div><div class="text-muted small">ID: 2026-10492</div></td>
-                    <td>Sep 24, 2026<br /><span class="text-muted small">09:00 AM</span></td>
-                    <td>Sep 24, 2026<br /><span class="text-muted small">11:45 AM</span></td>
-                    <td><span class="badge bg-success">Good Condition</span></td>
-                    <td><span class="dash-pill is-available">Returned On-Time</span></td>
-                    <td><button class="btn dash-btn-view btn-sm" title="View Audit Details"><i class="bi bi-eye"></i> View Log</button></td>
-                </tr>
-                <tr>
-                    <td class="fw-semibold">TXN-2026-0810</td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="p-2 bg-white rounded"><i class="bi bi-projector fs-5 text-secondary"></i></div>
-                            <div><div class="fw-bold">Epson EB-E01</div><div class="text-muted small">EQ-PRJ-004</div></div>
-                        </div>
-                    </td>
-                    <td><div class="fw-bold">Berdida, Kien</div><div class="text-muted small">ID: 2026-10331</div></td>
-                    <td>Sep 20, 2026<br /><span class="text-muted small">10:00 AM</span></td>
-                    <td>Sep 21, 2026<br /><span class="text-muted small">08:30 AM</span></td>
-                    <td><span class="badge bg-warning text-dark">Minor Wear</span></td>
-                    <td><span class="dash-pill is-borrowed">Overdue (+1 Day)</span></td>
-                    <td><button class="btn dash-btn-view btn-sm" title="View Audit Details"><i class="bi bi-eye"></i> View Log</button></td>
-                </tr>
-                <tr>
-                    <td class="fw-semibold">TXN-2026-0805</td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="p-2 bg-white rounded"><i class="bi bi-camera-reels fs-5 text-secondary"></i></div>
-                            <div><div class="fw-bold">Manfrotto Compact</div><div class="text-muted small">EQ-TRP-009</div></div>
-                        </div>
-                    </td>
-                    <td><div class="fw-bold">Dela Cruz, Juan</div><div class="text-muted small">ID: 2026-10211</div></td>
-                    <td>Sep 15, 2026<br /><span class="text-muted small">N/A</span></td>
-                    <td>Sep 15, 2026<br /><span class="text-muted small">N/A</span></td>
-                    <td><span class="badge bg-secondary">Unissued</span></td>
-                    <td><span class="dash-pill is-completed">Canceled by User</span></td>
-                    <td><button class="btn dash-btn-view btn-sm" title="View Audit Details"><i class="bi bi-eye"></i> View Log</button></td>
-                </tr>
+                @foreach (var t in Model.Rows)
+                {
+                    var status = StatusOf(t);
+                    var releasedBy = t.ReleasedByNavigation == null ? "-" : $"{t.ReleasedByNavigation.FirstName} {t.ReleasedByNavigation.LastName}";
+                    var receivedBy = t.ReturnedToNavigation == null ? "-" : $"{t.ReturnedToNavigation.FirstName} {t.ReturnedToNavigation.LastName}";
+                    <tr>
+                        <td class="fw-semibold">@HistoryPageViewModel.TxnCode(t)</td>
+                        <td>
+                            <div class="fw-bold">@t.EquipmentItem.BrandModel</div>
+                            <div class="text-muted small">@t.EquipmentItem.ItemCode - @t.EquipmentItem.Category?.CategoryName</div>
+                        </td>
+                        <td>
+                            <div class="fw-bold">@t.Borrower.LastName, @t.Borrower.FirstName</div>
+                            <div class="text-muted small">ID: @t.Borrower.UserId</div>
+                        </td>
+                        <td>
+                            @($"{t.ActualPickupTime:MMM d, yyyy}")<br />
+                            <span class="text-muted small">@($"{t.ActualPickupTime:h:mm tt}") &middot; by @releasedBy</span>
+                        </td>
+                        <td>
+                            @if (t.ActualReturnTime == null)
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                            else
+                            {
+                                @($"{t.ActualReturnTime:MMM d, yyyy}")<br />
+                                <span class="text-muted small">@($"{t.ActualReturnTime:h:mm tt}") &middot; to @receivedBy</span>
+                            }
+                        </td>
+                        <td><span class="badge @ConditionCss(t.ReturnCondition)">@ConditionLabel(t.ReturnCondition)</span></td>
+                        <td><span class="@status.Css">@status.Text</span></td>
+                        <td>
+                            <button type="button" class="btn dash-btn-view btn-sm" data-bs-toggle="modal" data-bs-target="#logModal"
+                                    data-txn="@HistoryPageViewModel.TxnCode(t)"
+                                    data-item="@t.EquipmentItem.BrandModel (@t.EquipmentItem.ItemCode)"
+                                    data-borrower="@t.Borrower.FirstName @t.Borrower.LastName (@t.Borrower.UserId)"
+                                    data-handover="@($"{t.ActualPickupTime:MMM d, yyyy h:mm tt}")"
+                                    data-releasedby="@releasedBy"
+                                    data-due="@($"{t.Reservation?.EstimatedReturnDate:MMM d, yyyy h:mm tt}")"
+                                    data-returned="@(t.ActualReturnTime == null ? "Not yet returned" : $"{t.ActualReturnTime:MMM d, yyyy h:mm tt}")"
+                                    data-receivedby="@receivedBy"
+                                    data-condition="@ConditionLabel(t.ReturnCondition)"
+                                    data-delay="@(t.IsOverdue ? t.DelayDurationHours + " hour(s) late" : "None")"
+                                    data-notes="@(string.IsNullOrWhiteSpace(t.DamageNotes) ? "None" : t.DamageNotes)">
+                                <i class="bi bi-eye"></i> View Log
+                            </button>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Rows.Any())
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4">No transactions match your filters.</td></tr>
+                }
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- Overdue & Damage Penalty Summary -->
+<div class="dash-card">
+    <h5 class="dash fw-bold border-bottom pb-2 mb-3">
+        <i class="bi bi-exclamation-triangle me-1"></i> Overdue & Damage Penalty Summary
+        <span class="text-muted small fw-normal">(latest 10)</span>
+    </h5>
+    <div class="table-responsive">
+        <table class="table dash-table table-sm align-middle">
+            <thead>
+                <tr><th>Txn ID</th><th>Borrower</th><th>Item</th><th>Issue</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model.PenaltyRows)
+                {
+                    var due = t.Reservation?.EstimatedReturnDate;
+                    <tr>
+                        <td>@HistoryPageViewModel.TxnCode(t)</td>
+                        <td>@t.Borrower.FirstName @t.Borrower.LastName</td>
+                        <td>@t.EquipmentItem.BrandModel</td>
+                        <td>
+                            @if (t.ActualReturnTime != null && t.IsOverdue)
+                            {
+                                <span class="badge bg-warning text-dark">Late +@t.DelayDurationHours h</span>
+                            }
+                            @if (t.ActualReturnTime == null && due.HasValue && due.Value < DateTime.Now)
+                            {
+                                <span class="badge bg-danger">Overdue - not returned</span>
+                            }
+                            @if (t.ReturnCondition == "needs_maintenance")
+                            {
+                                <span class="badge bg-danger">Damaged</span>
+                            }
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(t.DamageNotes) ? "-" : t.DamageNotes)</td>
+                    </tr>
+                }
+                @if (!Model.PenaltyRows.Any())
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-3">No late returns or damaged assets.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold">Audit Details - <span id="m-txn"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body small">
+                    <div class="mb-2"><strong>Equipment:</strong> <span id="m-item"></span></div>
+                    <div class="mb-2"><strong>Borrower:</strong> <span id="m-borrower"></span></div>
+                    <hr />
+                    <div class="mb-2"><strong>Handover time:</strong> <span id="m-handover"></span></div>
+                    <div class="mb-2"><strong>Released by:</strong> <span id="m-releasedby"></span></div>
+                    <div class="mb-2"><strong>Due return:</strong> <span id="m-due"></span></div>
+                    <hr />
+                    <div class="mb-2"><strong>Returned time:</strong> <span id="m-returned"></span></div>
+                    <div class="mb-2"><strong>Received by:</strong> <span id="m-receivedby"></span></div>
+                    <div class="mb-2"><strong>Return condition:</strong> <span id="m-condition"></span></div>
+                    <div class="mb-2"><strong>Delay:</strong> <span id="m-delay"></span></div>
+                    <div class="mb-0"><strong>Notes:</strong> <span id="m-notes"></span></div>
+                </div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('logModal').addEventListener('show.bs.modal', function (event) {
+            var b = event.relatedTarget;
+            ['txn', 'item', 'borrower', 'handover', 'releasedby', 'due',
+             'returned', 'receivedby', 'condition', 'delay', 'notes'].forEach(function (key) {
+                document.getElementById('m-' + key).textContent = b.getAttribute('data-' + key) || '-';
+            });
+        });
+    </script>
+}

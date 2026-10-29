@@ -12,6 +12,8 @@ namespace ASI.Basecode.Data.Interfaces
         IQueryable<EquipmentItem> GetEquipmentItems();
         IQueryable<EquipmentCategory> GetCategories();
         EquipmentItem GetEquipmentById(int id);
+        IQueryable<Reservation> GetReservations();
+        IQueryable<BorrowingTransaction> GetBorrowingTransactions();
         bool EquipmentExists(string itemCode);
         void AddEquipment(EquipmentItem equipment);
         void UpdateEquipment(EquipmentItem equipment);

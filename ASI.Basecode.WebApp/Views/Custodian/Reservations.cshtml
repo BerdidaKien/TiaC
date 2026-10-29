@@ -1,4 +1,5 @@
-﻿@{
+﻿@model ASI.Basecode.Services.ServiceModels.ReservationsPageViewModel
+@{
     ViewData["Title"] = "Manage Borrow Requests & Active Loans";
 }
 
@@ -11,75 +12,111 @@
     <p class="dash-sub">Review incoming student requests, approve or decline borrowings, and process returns.</p>
 </div>
 
-<div class="dash-card mb-4">
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<form method="get" asp-controller="Custodian" asp-action="Reservations" class="dash-card mb-4">
     <div class="row g-2 align-items-center">
         <div class="col-md-6">
-            <input type="text" class="form-control dash-search-input" placeholder="Search by borrower name, ID, or item code..." />
+            <input type="text" name="search" value="@Model.Search" class="form-control dash-search-input"
+                   placeholder="Search by borrower name, ID, or item code..." />
         </div>
         <div class="col-md-4">
-            <select class="form-select dash-search-input">
-                <option selected>All Equipment Categories</option>
-                <option>Camera / Multimedia</option>
-                <option>Projector</option>
-                <option>Accessories</option>
+            <select name="categoryId" class="form-select dash-search-input">
+                <option value="">All Equipment Categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id" selected="@(Model.CategoryId == c.Id)">@c.CategoryName</option>
+                }
             </select>
         </div>
         <div class="col-md-2">
-            <button class="btn dash-btn-reserve w-100">Filter</button>
+            <button type="submit" class="btn dash-btn-reserve w-100">Filter</button>
         </div>
     </div>
-</div>
+</form>
 
 <div class="row g-4">
     <div class="col-xl-6">
         <div class="dash-card h-100">
             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h4 class="dash fs-5 fw-bold m-0"><i class="bi bi-hourglass-split text-warning me-1"></i> Pending Approval Queue</h4>
-                <span class="badge bg-danger rounded-pill">2 Pending</span>
+                <span class="badge bg-danger rounded-pill">@Model.Pending.Count Pending</span>
+            </div>
+
+            <div class="d-flex flex-column gap-3 mb-4">
+                @foreach (var r in Model.Pending)
+                {
+                    <div class="p-3 bg-white rounded border">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="fw-bold mb-0">@r.EquipmentItem.BrandModel</h5>
+                                <span class="text-muted small">Code: @r.EquipmentItem.ItemCode</span>
+                            </div>
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        </div>
+                        <div class="small text-muted mb-2"><i class="bi bi-person-circle me-1"></i> <strong>@r.Borrower.FirstName @r.Borrower.LastName</strong> (@r.Borrower.UserId)</div>
+                        <div class="small text-muted mb-2"><i class="bi bi-calendar-event me-1"></i> Pickup: <strong>@($"{r.RequestedPickupDate:MMM d, yyyy - h:mm tt}")</strong></div>
+                        <div class="small text-muted mb-3"><i class="bi bi-clock me-1"></i> Est. Return: <strong>@($"{r.EstimatedReturnDate:MMM d, yyyy - h:mm tt}")</strong></div>
+                        <div class="d-flex gap-2 border-top pt-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger w-50" data-bs-toggle="modal" data-bs-target="#declineModal" data-id="@r.Id">
+                                <i class="bi bi-x-circle me-1"></i> Decline
+                            </button>
+                            <button type="button" class="btn btn-sm dash-btn-reserve w-50" data-bs-toggle="modal" data-bs-target="#approveModal" data-id="@r.Id">
+                                <i class="bi bi-check-circle me-1"></i> Approve Request
+                            </button>
+                        </div>
+                    </div>
+                }
+                @if (!Model.Pending.Any())
+                {
+                    <div class="text-center text-muted py-3">No pending requests.</div>
+                }
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <h4 class="dash fs-5 fw-bold m-0"><i class="bi bi-bag-check text-primary me-1"></i> Approved - Awaiting Pickup</h4>
+                <span class="badge bg-primary rounded-pill">@Model.Approved.Count</span>
             </div>
 
             <div class="d-flex flex-column gap-3">
-                <div class="p-3 bg-white rounded border">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h5 class="fw-bold mb-0">Canon EOS 2000D</h5>
-                            <span class="text-muted small">Code: EQ-CAM-001</span>
+                @foreach (var r in Model.Approved)
+                {
+                    <div class="p-3 bg-white rounded border border-primary">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="fw-bold mb-0">@r.EquipmentItem.BrandModel</h5>
+                                <span class="text-muted small">Code: @r.EquipmentItem.ItemCode</span>
+                            </div>
+                            <span class="badge bg-primary">Approved</span>
                         </div>
-                        <span class="badge bg-warning text-dark">Pending</span>
+                        <div class="small text-muted mb-2"><i class="bi bi-person-circle me-1"></i> <strong>@r.Borrower.FirstName @r.Borrower.LastName</strong> (@r.Borrower.UserId)</div>
+                        <div class="small text-muted mb-3"><i class="bi bi-calendar-event me-1"></i> Pickup: <strong>@($"{r.RequestedPickupDate:MMM d, yyyy - h:mm tt}")</strong></div>
+                        <form method="post" asp-controller="Custodian" asp-action="ReleaseItem">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <button type="submit" class="btn btn-sm dash-btn-reserve w-100 fw-bold">
+                                <i class="bi bi-box-arrow-right me-1"></i> Release Item to Borrower
+                            </button>
+                        </form>
                     </div>
-                    <div class="small text-muted mb-2"><i class="bi bi-person-circle me-1"></i> <strong>Tia Calood</strong> (BSIT-4A)</div>
-                    <div class="small text-muted mb-2"><i class="bi bi-calendar-event me-1"></i> Pickup: <strong>Sep 28, 2026 - 9:00 AM</strong></div>
-                    <div class="small text-muted mb-3"><i class="bi bi-clock me-1"></i> Est. Return: <strong>Sep 28, 2026 - 5:00 PM</strong></div>
-                    <div class="d-flex gap-2 border-top pt-2">
-                        <button type="button" class="btn btn-sm btn-outline-danger w-50" data-bs-toggle="modal" data-bs-target="#declineModal">
-                            <i class="bi bi-x-circle me-1"></i> Decline
-                        </button>
-                        <button type="button" class="btn btn-sm dash-btn-reserve w-50" data-bs-toggle="modal" data-bs-target="#approveModal">
-                            <i class="bi bi-check-circle me-1"></i> Approve Request
-                        </button>
-                    </div>
-                </div>
-
-                <div class="p-3 bg-white rounded border">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h5 class="fw-bold mb-0">Manfrotto Compact Tripod</h5>
-                            <span class="text-muted small">Code: EQ-TRP-009</span>
-                        </div>
-                        <span class="badge bg-warning text-dark">Pending</span>
-                    </div>
-                    <div class="small text-muted mb-2"><i class="bi bi-person-circle me-1"></i> <strong>Juan Dela Cruz</strong> (BSIT-3B)</div>
-                    <div class="small text-muted mb-2"><i class="bi bi-calendar-event me-1"></i> Pickup: <strong>Sep 29, 2026 - 1:00 PM</strong></div>
-                    <div class="small text-muted mb-3"><i class="bi bi-clock me-1"></i> Est. Return: <strong>Sep 30, 2026 - 12:00 PM</strong></div>
-                    <div class="d-flex gap-2 border-top pt-2">
-                        <button type="button" class="btn btn-sm btn-outline-danger w-50" data-bs-toggle="modal" data-bs-target="#declineModal">
-                            <i class="bi bi-x-circle me-1"></i> Decline
-                        </button>
-                        <button type="button" class="btn btn-sm dash-btn-reserve w-50" data-bs-toggle="modal" data-bs-target="#approveModal">
-                            <i class="bi bi-check-circle me-1"></i> Approve Request
-                        </button>
-                    </div>
-                </div>
+                }
+                @if (!Model.Approved.Any())
+                {
+                    <div class="text-center text-muted py-3">Nothing waiting for pickup.</div>
+                }
             </div>
         </div>
     </div>
@@ -88,25 +125,41 @@
         <div class="dash-card h-100">
             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h4 class="dash fs-5 fw-bold m-0"><i class="bi bi-box-arrow-up-right text-success me-1"></i> Active Borrowings (Out on Loan)</h4>
-                <span class="badge bg-success rounded-pill">1 Active</span>
+                <span class="badge bg-success rounded-pill">@Model.Active.Count Active</span>
             </div>
 
             <div class="d-flex flex-column gap-3">
-                <div class="p-3 bg-white rounded border border-success">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h5 class="fw-bold mb-0">Epson EB-E01 Projector</h5>
-                            <span class="text-muted small">Code: EQ-PRJ-004</span>
+                @foreach (var t in Model.Active)
+                {
+                    var due = t.Reservation?.EstimatedReturnDate;
+                    var overdue = due.HasValue && due.Value < DateTime.Now;
+                    <div class="p-3 bg-white rounded border @(overdue ? "border-danger" : "border-success")">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="fw-bold mb-0">@t.EquipmentItem.BrandModel</h5>
+                                <span class="text-muted small">Code: @t.EquipmentItem.ItemCode</span>
+                            </div>
+                            @if (overdue)
+                            {
+                                <span class="badge bg-danger">Overdue</span>
+                            }
+                            else
+                            {
+                                <span class="dash-pill is-borrowed">Borrowed</span>
+                            }
                         </div>
-                        <span class="dash-pill is-borrowed">Borrowed</span>
+                        <div class="small text-muted mb-2"><i class="bi bi-person-check me-1"></i> Issued To: <strong>@t.Borrower.FirstName @t.Borrower.LastName</strong> (@t.Borrower.UserId)</div>
+                        <div class="small text-muted mb-2"><i class="bi bi-box-arrow-right me-1"></i> Handover Time: <strong>@($"{t.ActualPickupTime:MMM d, yyyy - h:mm tt}")</strong></div>
+                        <div class="small text-muted mb-3"><i class="bi bi-alarm me-1"></i> Due Return: <strong class="@(overdue ? "text-danger" : "")">@($"{due:MMM d, yyyy - h:mm tt}")</strong></div>
+                        <button type="button" class="btn btn-sm btn-outline-success w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#returnModal" data-id="@t.Id">
+                            <i class="bi bi-box-arrow-in-down me-1"></i> Inspect & Mark as Returned
+                        </button>
                     </div>
-                    <div class="small text-muted mb-2"><i class="bi bi-person-check me-1"></i> Issued To: <strong>Kien Berdida</strong> (BSIT-4A)</div>
-                    <div class="small text-muted mb-2"><i class="bi bi-box-arrow-right me-1"></i> Handover Time: <strong>Sep 28, 2026 - 8:30 AM</strong></div>
-                    <div class="small text-muted mb-3"><i class="bi bi-alarm me-1"></i> Due Return: <strong class="text-danger">Sep 28, 2026 - 4:30 PM</strong></div>
-                    <button type="button" class="btn btn-sm btn-outline-success w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#returnModal">
-                        <i class="bi bi-box-arrow-in-down me-1"></i> Inspect & Mark as Returned
-                    </button>
-                </div>
+                }
+                @if (!Model.Active.Any())
+                {
+                    <div class="text-center text-muted py-3">No items are currently out on loan.</div>
+                }
             </div>
         </div>
     </div>
@@ -120,11 +173,12 @@
                     <h5 class="modal-title dash fw-bold text-danger">Decline Borrow Request</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="post" action="/Custodian/DeclineRequest">
+                <form method="post" asp-controller="Custodian" asp-action="DeclineRequest">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" class="modal-id" />
                     <div class="modal-body">
                         <p class="small text-muted mb-2">Please specify a reason for declining this reservation request:</p>
-                        <textarea name="DeclineReason" class="form-control dash-search-input" rows="3" placeholder="e.g. Equipment scheduled for maintenance during requested period..." required></textarea>
+                        <textarea name="declineReason" class="form-control dash-search-input" rows="3" placeholder="e.g. Equipment scheduled for maintenance during requested period..." required></textarea>
                     </div>
                     <div class="modal-footer border-top border-secondary">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -142,11 +196,12 @@
                     <h5 class="modal-title dash fw-bold">Approve Borrow Request</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="post" action="/Custodian/ApproveRequest">
+                <form method="post" asp-controller="Custodian" asp-action="ApproveRequest">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" class="modal-id" />
                     <div class="modal-body">
                         <p class="small text-muted mb-2">Optionally add a note for the borrower (pickup instructions, reminders):</p>
-                        <textarea name="ReviewNotes" class="form-control dash-search-input" rows="3" placeholder="e.g. Please bring your school ID at pickup."></textarea>
+                        <textarea name="reviewNotes" class="form-control dash-search-input" rows="3" placeholder="e.g. Please bring your school ID at pickup."></textarea>
                     </div>
                     <div class="modal-footer border-top border-secondary">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -164,20 +219,21 @@
                     <h5 class="modal-title dash fw-bold text-success">Inspect & Mark as Returned</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form method="post" action="/Custodian/ReturnItem">
+                <form method="post" asp-controller="Custodian" asp-action="ReturnItem">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" class="modal-id" />
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="dash-stat-label mb-1">Return Condition</label>
-                            <select name="ReturnCondition" class="form-select dash-search-input" required>
+                            <select name="returnCondition" class="form-select dash-search-input" required>
                                 <option value="good" selected>Good Condition</option>
                                 <option value="minor_wear">Minor Wear & Tear</option>
-                                <option value="damaged">Damaged</option>
+                                <option value="needs_maintenance">Needs Maintenance</option>
                             </select>
                         </div>
                         <div>
                             <label class="dash-stat-label mb-1">Damage / Inspection Notes</label>
-                            <textarea name="DamageNotes" class="form-control dash-search-input" rows="3" placeholder="Optional notes about the item's condition..."></textarea>
+                            <textarea name="damageNotes" class="form-control dash-search-input" rows="3" placeholder="Optional notes about the item's condition..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer border-top border-secondary">
@@ -188,4 +244,14 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.querySelectorAll('.modal').forEach(function (modal) {
+            modal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var field = modal.querySelector('.modal-id');
+                if (button && field) { field.value = button.getAttribute('data-id'); }
+            });
+        });
+    </script>
 }

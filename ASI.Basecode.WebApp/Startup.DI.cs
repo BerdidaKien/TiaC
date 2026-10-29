@@ -35,7 +35,7 @@ namespace ASI.Basecode.WebApp
             // Services
             this._services.TryAddSingleton<TokenValidationParametersFactory>();
             this._services.AddScoped<IUserService, UserService>();
-          
+
 
             // Repositories
             this._services.AddScoped<IUserRepository, UserRepository>();
@@ -43,6 +43,10 @@ namespace ASI.Basecode.WebApp
             // Equipment Master Data Dependency Injection
             this._services.AddScoped<IEquipmentRepository, EquipmentRepository>();
             this._services.AddScoped<IEquipmentService, EquipmentService>();
+            this._services.AddScoped<IHistoryService, HistoryService>();
+            this._services.AddScoped<IReportService, ReportService>();
+            this._services.AddScoped<IReservationRepository, ReservationRepository>();
+            this._services.AddScoped<IReservationService, ReservationService>();
 
             // Manager Class
             this._services.AddScoped<SignInManager>();

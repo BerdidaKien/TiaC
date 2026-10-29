@@ -1,74 +1,432 @@
-﻿@{
+﻿@using ASI.Basecode.Services.ServiceModels
+@model ReportsPageViewModel
+@{
     ViewData["Title"] = "Reports & Analytics";
+    string from = Model.From.ToString("yyyy-MM-dd");
+    string to = Model.To.ToString("yyyy-MM-dd");
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .cal-scroll { overflow-x: auto; }
+        .cal-inner { min-width: 760px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+        .cal-dow { text-align: center; font-weight: 600; font-size: .8rem; padding: 4px 0; }
+        .cal-cell { background: #fff; border: 1px solid #e5d3c8; border-radius: 8px; min-height: 100px; padding: 4px; cursor: pointer; overflow: hidden; }
+        .cal-cell:hover { border-color: #800000; }
+        .cal-cell.is-week { min-height: 240px; }
+        .cal-cell.is-out { opacity: .45; }
+        .cal-cell.is-today { border-color: #800000; box-shadow: 0 0 0 1px #800000 inset; }
+        .cal-daynum { font-weight: 700; font-size: .85rem; }
+        .cal-free { font-size: .7rem; color: #198754; }
+        .cal-free.none { color: #dc3545; }
+        .cal-chip { font-size: .7rem; border-radius: 4px; padding: 1px 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+        .cal-more { font-size: .7rem; color: #6c757d; margin-top: 2px; }
+        .cal-pending { background: #f0ad4e; color: #000; }
+        .cal-approved { background: #0d6efd; }
+        .cal-borrowed { background: #198754; }
+        .cal-overdue { background: #dc3545; }
+        .cal-returned { background: #6c757d; }
+        .cal-legend span.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+    </style>
 }
 
 <div class="dash-header mb-4 d-flex justify-content-between align-items-center">
     <div>
         <h1 class="dash dash-name m-0">Reports & Analytics</h1>
-        <p class="dash-sub">Monitor inventory utilization, damage logs, overdue metrics, and generate audit reports.</p>
+        <p class="dash-sub">Monitor inventory utilization, overdue metrics, and equipment availability.</p>
     </div>
-    <div class="d-flex gap-2">
-        <button class="btn btn-outline-danger btn-sm fw-bold"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV Summary</button>
-        <button class="btn dash-btn-reserve btn-sm fw-bold"><i class="bi bi-file-earmark-pdf me-1"></i> Generate Full PDF Report</button>
-    </div>
+    <a class="btn dash-btn-reserve btn-sm fw-bold" asp-controller="Custodian" asp-action="History">
+        <i class="bi bi-clock-history me-1"></i> Borrowing History & Export
+    </a>
 </div>
 
+<!-- Date range for the analytics -->
+<form method="get" asp-controller="Custodian" asp-action="Reports" class="dash-card mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="dash-stat-label mb-1">From</label>
+            <input type="date" name="from" value="@from" class="form-control dash-search-input" />
+        </div>
+        <div class="col-md-3">
+            <label class="dash-stat-label mb-1">To</label>
+            <input type="date" name="to" value="@to" class="form-control dash-search-input" />
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn dash-btn-reserve w-100">Apply</button>
+        </div>
+        <div class="col-md-4 text-muted small">
+            Showing borrowings handed over between <strong>@Model.From.ToString("MMM d, yyyy")</strong> and <strong>@Model.To.ToString("MMM d, yyyy")</strong>.
+        </div>
+    </div>
+</form>
+
+<!-- Metric cards -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Total Transactions Logged</div><div class="dash-stat-count">142</div></div></div>
-    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Overdue Items Flagged</div><div class="dash-stat-count text-danger">8</div></div></div>
-    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Damaged Asset Logs</div><div class="dash-stat-count text-warning">2</div></div></div>
-    <div class="col-md-3"><div class="dash-card"><div class="dash-stat-label">Utilization Rate</div><div class="dash-stat-count text-success">74%</div></div></div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Total Transactions</div>
+            <div class="dash-stat-count">@Model.TotalTransactions</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Overdue Items Flagged</div>
+            <div class="dash-stat-count text-danger">@Model.OverdueFlagged</div>
+            <div class="small text-muted">@Model.TotalDelayHours total delay hrs</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Damaged Asset Logs</div>
+            <div class="dash-stat-count text-warning">@Model.DamagedLogs</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Utilization Rate</div>
+            <div class="dash-stat-count text-success">@Model.UtilizationRate%</div>
+            <div class="small text-muted">of @Model.TotalItems items borrowed at least once</div>
+        </div>
+    </div>
 </div>
 
+<!-- Analytics breakdowns -->
 <div class="row g-4 mb-4">
     <div class="col-md-6">
         <div class="dash-card h-100">
             <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-trophy me-1"></i> Top Requested Equipment</h5>
             <ul class="list-group list-group-flush bg-transparent">
-                <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
-                    <div><div class="fw-bold">Canon EOS 2000D</div><div class="text-muted small">Category: Multimedia</div></div>
-                    <span class="badge bg-danger rounded-pill">48 Borrows</span>
-                </li>
-                <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
-                    <div><div class="fw-bold">Epson EB-E01 Projector</div><div class="text-muted small">Category: Projector</div></div>
-                    <span class="badge bg-danger rounded-pill">36 Borrows</span>
-                </li>
-                <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
-                    <div><div class="fw-bold">Manfrotto Compact Tripod</div><div class="text-muted small">Category: Accessories</div></div>
-                    <span class="badge bg-danger rounded-pill">29 Borrows</span>
-                </li>
+                @foreach (var t in Model.TopItems)
+                {
+                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <div class="fw-bold">@t.BrandModel</div>
+                            <div class="text-muted small">@t.ItemCode - @t.CategoryName</div>
+                        </div>
+                        <span class="badge bg-danger rounded-pill">@t.Requests @(t.Requests == 1 ? "Request" : "Requests")</span>
+                    </li>
+                }
+                @if (!Model.TopItems.Any())
+                {
+                    <li class="list-group-item bg-transparent text-center text-muted px-0">No requests in this period.</li>
+                }
             </ul>
         </div>
     </div>
 
     <div class="col-md-6">
         <div class="dash-card h-100">
-            <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-exclamation-triangle me-1"></i> Recent Penalty & Overdue Summary</h5>
-            <div class="table-responsive">
-                <table class="table dash-table table-sm align-middle">
-                    <thead>
-                        <tr><th>Borrower</th><th>Item</th><th>Overdue Duration</th><th>Penalty Flag</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Kien Berdida</td>
-                            <td>Projector (Epson)</td>
-                            <td>+1 Day</td>
-                            <td><span class="badge bg-warning text-dark">Overdue Fine</span></td>
-                        </tr>
-                        <tr>
-                            <td>Juan Dela Cruz</td>
-                            <td>Canon EOS 2000D</td>
-                            <td>+3 Hours</td>
-                            <td><span class="badge bg-info text-dark">Warning Flag</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-bar-chart me-1"></i> Borrowings by Category</h5>
+            @foreach (var c in Model.CategoryUsage)
+            {
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="fw-semibold">@c.CategoryName</span>
+                        <span class="text-muted">@c.Borrows (@c.Percent%)</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: @(c.Percent)%"></div>
+                    </div>
+                </div>
+            }
+            @if (!Model.CategoryUsage.Any())
+            {
+                <div class="text-center text-muted py-3">No borrowings in this period.</div>
+            }
         </div>
     </div>
 </div>
+
+<!-- Availability Calendar -->
+<div class="dash-card mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom pb-2 mb-3">
+        <h5 class="dash fw-bold m-0"><i class="bi bi-calendar3 me-1"></i> Availability Calendar</h5>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <select id="calCategory" class="form-select form-select-sm dash-search-input" style="width: auto;">
+                <option value="">All Categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id">@c.CategoryName</option>
+                }
+            </select>
+            <select id="calItem" class="form-select form-select-sm dash-search-input" style="width: auto; max-width: 240px;">
+                <option value="" data-cat="">All Items</option>
+                @foreach (var i in Model.ItemOptions)
+                {
+                    <option value="@i.Id" data-cat="@i.CategoryId">@i.Label</option>
+                }
+            </select>
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" id="calViewMonth" class="btn btn-danger">Month</button>
+                <button type="button" id="calViewWeek" class="btn btn-outline-danger">Week</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="btn-group btn-group-sm">
+            <button type="button" id="calPrev" class="btn btn-outline-secondary"><i class="bi bi-chevron-left"></i></button>
+            <button type="button" id="calToday" class="btn btn-outline-secondary">Today</button>
+            <button type="button" id="calNext" class="btn btn-outline-secondary"><i class="bi bi-chevron-right"></i></button>
+        </div>
+        <h6 id="calTitle" class="dash fw-bold m-0"></h6>
+        <span class="small text-muted" id="calLoading"></span>
+    </div>
+
+    <div class="cal-legend small mb-3">
+        <span class="me-3"><span class="sw cal-pending"></span>Pending</span>
+        <span class="me-3"><span class="sw cal-approved"></span>Approved</span>
+        <span class="me-3"><span class="sw cal-borrowed"></span>Borrowed</span>
+        <span class="me-3"><span class="sw cal-overdue"></span>Overdue</span>
+        <span class="me-3"><span class="sw cal-returned"></span>Returned</span>
+        <span class="text-muted">"free" = items not approved, borrowed or overdue that day</span>
+    </div>
+
+    <div id="calError" class="alert alert-danger d-none">Could not load the calendar. Please refresh the page.</div>
+
+    <div class="cal-scroll">
+        <div class="cal-inner">
+            <div id="calHead" class="cal-grid"></div>
+            <div id="calBody" class="cal-grid"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Day details -->
+    <div class="modal fade" id="calDayModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold" id="calDayTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="calDaySummary" class="small text-muted mb-3"></div>
+                    <div id="calDayList"></div>
+                </div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var dataUrl = '@Url.Action("CalendarData", "Custodian")';
+            var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+                          'August', 'September', 'October', 'November', 'December'];
+            var STATUS_LABEL = { pending: 'Pending', approved: 'Approved', borrowed: 'Borrowed', overdue: 'Overdue', returned: 'Returned' };
+
+            var state = { view: 'month', cursor: startOfDay(new Date()), events: [], totalItems: 0 };
+
+            var catSel = document.getElementById('calCategory');
+            var itemSel = document.getElementById('calItem');
+            var bodyEl = document.getElementById('calBody');
+            var headEl = document.getElementById('calHead');
+            var titleEl = document.getElementById('calTitle');
+            var loadingEl = document.getElementById('calLoading');
+            var errorEl = document.getElementById('calError');
+
+            function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+            function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+            function pad(n) { return (n < 10 ? '0' : '') + n; }
+            function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+            function el(tag, cls, text) {
+                var e = document.createElement(tag);
+                if (cls) e.className = cls;
+                if (text !== undefined) e.textContent = text;
+                return e;
+            }
+            function fmtDateTime(d) {
+                var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM';
+                h = h % 12; if (h === 0) h = 12;
+                return MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getDate() + ', ' + d.getFullYear() +
+                       ' ' + h + ':' + pad(d.getMinutes()) + ' ' + ap;
+            }
+
+            function getRange() {
+                var c = state.cursor, from;
+                if (state.view === 'month') {
+                    var first = new Date(c.getFullYear(), c.getMonth(), 1);
+                    from = addDays(first, -first.getDay());
+                    return { from: from, to: addDays(from, 42) };
+                }
+                from = addDays(c, -c.getDay());
+                return { from: from, to: addDays(from, 7) };
+            }
+
+            function eventsOn(day) {
+                var ds = day.getTime(), de = addDays(day, 1).getTime();
+                return state.events.filter(function (ev) { return ev.s.getTime() < de && ev.e.getTime() >= ds; });
+            }
+
+            function blockedItems(list) {
+                var set = {};
+                list.forEach(function (ev) {
+                    if (ev.status === 'approved' || ev.status === 'borrowed' || ev.status === 'overdue') set[ev.itemId] = true;
+                });
+                return Object.keys(set).length;
+            }
+
+            function load() {
+                var r = getRange();
+                var qs = 'start=' + iso(r.from) + '&end=' + iso(r.to);
+                if (catSel.value) qs += '&categoryId=' + encodeURIComponent(catSel.value);
+                if (itemSel.value) qs += '&itemId=' + encodeURIComponent(itemSel.value);
+
+                loadingEl.textContent = 'Loading...';
+                errorEl.classList.add('d-none');
+
+                fetch(dataUrl + '?' + qs, { credentials: 'same-origin' })
+                    .then(function (res) { if (!res.ok) throw new Error('bad response'); return res.json(); })
+                    .then(function (data) {
+                        state.totalItems = data.totalItems || 0;
+                        state.events = (data.events || []).map(function (ev) {
+                            ev.s = new Date(ev.start);
+                            ev.e = new Date(ev.end);
+                            return ev;
+                        });
+                        loadingEl.textContent = '';
+                        render();
+                    })
+                    .catch(function () {
+                        loadingEl.textContent = '';
+                        errorEl.classList.remove('d-none');
+                    });
+            }
+
+            function render() {
+                var r = getRange();
+                var today = startOfDay(new Date());
+                var isWeek = state.view === 'week';
+
+                if (isWeek) {
+                    var last = addDays(r.to, -1);
+                    titleEl.textContent = MONTHS[r.from.getMonth()].slice(0, 3) + ' ' + r.from.getDate() + ' - ' +
+                        MONTHS[last.getMonth()].slice(0, 3) + ' ' + last.getDate() + ', ' + last.getFullYear();
+                } else {
+                    titleEl.textContent = MONTHS[state.cursor.getMonth()] + ' ' + state.cursor.getFullYear();
+                }
+
+                headEl.innerHTML = '';
+                DOW.forEach(function (d) { headEl.appendChild(el('div', 'cal-dow', d)); });
+
+                bodyEl.innerHTML = '';
+                var days = isWeek ? 7 : 42;
+                var maxChips = isWeek ? 12 : 3;
+
+                for (var i = 0; i < days; i++) {
+                    (function (day) {
+                        var list = eventsOn(day);
+                        var free = Math.max(state.totalItems - blockedItems(list), 0);
+
+                        var cls = 'cal-cell' + (isWeek ? ' is-week' : '');
+                        if (!isWeek && day.getMonth() !== state.cursor.getMonth()) cls += ' is-out';
+                        if (day.getTime() === today.getTime()) cls += ' is-today';
+                        var cell = el('div', cls);
+
+                        var top = el('div', 'd-flex justify-content-between align-items-center');
+                        top.appendChild(el('span', 'cal-daynum', String(day.getDate())));
+                        top.appendChild(el('span', 'cal-free' + (free === 0 ? ' none' : ''), free + ' free'));
+                        cell.appendChild(top);
+
+                        list.slice(0, maxChips).forEach(function (ev) {
+                            var chip = el('div', 'cal-chip cal-' + ev.status, ev.itemCode + ' - ' + ev.borrower);
+                            chip.title = ev.brand + ' | ' + ev.borrower + ' | ' + STATUS_LABEL[ev.status];
+                            cell.appendChild(chip);
+                        });
+                        if (list.length > maxChips) {
+                            cell.appendChild(el('div', 'cal-more', '+' + (list.length - maxChips) + ' more'));
+                        }
+
+                        cell.addEventListener('click', function () { openDay(day, list, free); });
+                        bodyEl.appendChild(cell);
+                    })(addDays(r.from, i));
+                }
+            }
+
+            function openDay(day, list, free) {
+                document.getElementById('calDayTitle').textContent =
+                    DOW[day.getDay()] + ', ' + MONTHS[day.getMonth()] + ' ' + day.getDate() + ', ' + day.getFullYear();
+                document.getElementById('calDaySummary').textContent =
+                    free + ' of ' + state.totalItems + ' items free  |  ' + list.length + ' booking(s) on this day';
+
+                var box = document.getElementById('calDayList');
+                box.innerHTML = '';
+
+                if (!list.length) {
+                    box.appendChild(el('div', 'text-center text-muted py-3', 'No bookings on this day.'));
+                } else {
+                    var table = el('table', 'table table-sm align-middle');
+                    var thead = el('thead');
+                    var hr = el('tr');
+                    ['Item', 'Borrower', 'Status', 'Slot'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+                    thead.appendChild(hr);
+                    table.appendChild(thead);
+
+                    var tbody = el('tbody');
+                    list.forEach(function (ev) {
+                        var tr = el('tr');
+                        var tdItem = el('td');
+                        tdItem.appendChild(el('div', 'fw-bold', ev.brand));
+                        tdItem.appendChild(el('div', 'text-muted small', ev.itemCode));
+                        var tdBor = el('td');
+                        tdBor.appendChild(el('div', null, ev.borrower));
+                        tdBor.appendChild(el('div', 'text-muted small', 'ID: ' + ev.borrowerCode));
+                        var tdStatus = el('td');
+                        tdStatus.appendChild(el('span', 'badge cal-' + ev.status, STATUS_LABEL[ev.status]));
+                        var tdSlot = el('td', 'small', fmtDateTime(ev.s) + ' - ' + fmtDateTime(ev.e));
+                        [tdItem, tdBor, tdStatus, tdSlot].forEach(function (td) { tr.appendChild(td); });
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    box.appendChild(table);
+                }
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('calDayModal')).show();
+            }
+
+            function setView(v) {
+                state.view = v;
+                document.getElementById('calViewMonth').className = 'btn ' + (v === 'month' ? 'btn-danger' : 'btn-outline-danger');
+                document.getElementById('calViewWeek').className = 'btn ' + (v === 'week' ? 'btn-danger' : 'btn-outline-danger');
+                load();
+            }
+
+            function shift(dir) {
+                var c = state.cursor;
+                state.cursor = state.view === 'month'
+                    ? new Date(c.getFullYear(), c.getMonth() + dir, 1)
+                    : addDays(c, 7 * dir);
+                load();
+            }
+
+            document.getElementById('calPrev').addEventListener('click', function () { shift(-1); });
+            document.getElementById('calNext').addEventListener('click', function () { shift(1); });
+            document.getElementById('calToday').addEventListener('click', function () {
+                state.cursor = startOfDay(new Date());
+                load();
+            });
+            document.getElementById('calViewMonth').addEventListener('click', function () { setView('month'); });
+            document.getElementById('calViewWeek').addEventListener('click', function () { setView('week'); });
+
+            catSel.addEventListener('change', function () {
+                // Only offer items from the chosen category
+                Array.prototype.forEach.call(itemSel.options, function (opt) {
+                    var cat = opt.getAttribute('data-cat');
+                    opt.hidden = !!catSel.value && !!cat && cat !== catSel.value;
+                });
+                itemSel.value = '';
+                load();
+            });
+            itemSel.addEventListener('change', load);
+
+            load();
+        })();
+    </script>
+}
