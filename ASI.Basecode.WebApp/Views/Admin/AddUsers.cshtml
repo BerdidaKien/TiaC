@@ -1,0 +1,277 @@
+﻿@model ASI.Basecode.Services.ServiceModels.AddUsersPostModel
+@{
+    ViewData["Title"] = "Add Users";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .role-option-card { cursor: pointer; transition: all 0.2s ease-in-out; }
+        .role-option-card:hover { border-color: #800000 !important; background-color: #fdf8f8; }
+        .role-option-card.selected { border-color: #800000 !important; background-color: #fcf0f0; box-shadow: 0 0 0 1px #800000; }
+        .border-dashed { border-style: dashed !important; }
+    </style>
+}
+
+<div class="dash-header mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Users" class="text-decoration-none text-secondary">User Management</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Add Users</li>
+        </ol>
+    </nav>
+    <h1 class="dash-name m-0">Add Users</h1>
+    <p class="dash-sub">Create one or multiple accounts with complete user information.</p>
+</div>
+
+<form asp-controller="Admin" asp-action="AddUsers" method="post" id="addUsersForm">
+    @Html.AntiForgeryToken()
+
+    <div class="row g-4">
+        <div class="col-lg-9">
+            <!-- Role selection -->
+            <div class="dash-card mb-4 p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-people-fill text-danger fs-4 me-2"></i>
+                    <div>
+                        <h6 class="fw-bold m-0">User Details & Role Assignment</h6>
+                        <small class="text-muted">Select a role to apply to every account in this batch.</small>
+                    </div>
+                </div>
+
+                <label class="form-label fw-bold mb-2">Select Role for These Users</label>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card p-3 border role-option-card" data-role="Admin" onclick="selectRole('Admin')">
+                            <div class="form-check m-0 pe-none">
+                                <input class="form-check-input" type="radio" name="Role" id="roleAdmin" value="Admin" />
+                                <label class="form-check-label w-100 ps-2" for="roleAdmin">
+                                    <strong class="d-block text-dark"><i class="bi bi-shield-lock me-1"></i> Admin</strong>
+                                    <small class="text-muted">Manage system settings and users</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-3 border role-option-card selected" data-role="User" onclick="selectRole('User')">
+                            <div class="form-check m-0 pe-none">
+                                <input class="form-check-input" type="radio" name="Role" id="roleUser" value="User" checked />
+                                <label class="form-check-label w-100 ps-2" for="roleUser">
+                                    <strong class="d-block text-dark"><i class="bi bi-mortarboard me-1"></i> User / Student</strong>
+                                    <small class="text-muted">Borrow and reserve school equipment</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-3 border role-option-card" data-role="Custodian" onclick="selectRole('Custodian')">
+                            <div class="form-check m-0 pe-none">
+                                <input class="form-check-input" type="radio" name="Role" id="roleCustodian" value="Custodian" />
+                                <label class="form-check-label w-100 ps-2" for="roleCustodian">
+                                    <strong class="d-block text-dark"><i class="bi bi-person-badge me-1"></i> Custodian</strong>
+                                    <small class="text-muted">Manage item inventory and transactions</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk entry table -->
+            <div class="dash-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold m-0"><i class="bi bi-pencil-square me-1"></i> Bulk Entry Method</h6>
+                    <small class="text-muted">Maximum 100 users per batch</small>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table align-middle text-nowrap" id="usersTable">
+                        <thead class="table-light small">
+                            <tr>
+                                <th style="width: 3%;">#</th>
+                                <th id="idHeaderLabel">Student ID *</th>
+                                <th>First Name *</th>
+                                <th>Middle Name</th>
+                                <th>Last Name *</th>
+                                <th>Email *</th>
+                                <th>Contact No.</th>
+                                <th>Temp Password</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rowsContainer"></tbody>
+                    </table>
+                </div>
+
+                <button type="button" id="addRowBtn" class="btn btn-outline-secondary w-100 py-2 border-dashed mt-3">
+                    <i class="bi bi-plus-circle me-1"></i> Add another row
+                </button>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="col-lg-3">
+            <div class="dash-card p-4 mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="fw-bold m-0"><i class="bi bi-gear-fill me-1"></i> Settings</h6>
+                    <span class="badge bg-danger-subtle text-danger" id="userCountBadge">1 user</span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small m-0">Temporary Password</label>
+                    <small class="text-muted d-block mb-2">Generate a secure random password for each account.</small>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" asp-for="AutoGeneratePassword" id="autoPass" />
+                        <label class="form-check-label fw-semibold small" for="autoPass">Auto-generate</label>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small m-0">Initial Account Status</label>
+                    <small class="text-muted d-block mb-2">Inactive accounts cannot log in.</small>
+                    <div class="form-check mb-1">
+                        <input class="form-check-input" type="radio" asp-for="IsActive" value="true" id="activeTrue" />
+                        <label class="form-check-label small" for="activeTrue"><strong>Active</strong></label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="IsActive" value="false" id="activeFalse" />
+                        <label class="form-check-label small" for="activeFalse"><strong>Inactive</strong></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-card p-3 bg-light border">
+                <h6 class="fw-bold mb-2 small"><i class="bi bi-shield-check me-1"></i> Permissions (<span id="roleLabel">Student</span>)</h6>
+                <ul class="list-unstyled mb-0 text-secondary" id="permList" style="font-size: 0.825rem;"></ul>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn dash-btn-reserve py-2 text-white fw-bold" id="submitBtn">+ Create 1 User</button>
+                <a asp-controller="Admin" asp-action="Users" class="btn btn-outline-secondary py-2">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        var ROLE_INFO = {
+            User: {
+                label: 'Student', idLabel: 'Student ID *', idPh: '2023-1001',
+                perms: ['Search available items', 'Submit reservation requests', 'Borrow assigned items', 'View personal logs']
+            },
+            Custodian: {
+                label: 'Custodian', idLabel: 'Employee ID *', idPh: 'EMP-2026-100',
+                perms: ['Manage equipment inventory', 'Approve or decline requests', 'Release and receive items', 'View history and reports']
+            },
+            Admin: {
+                label: 'Administrator', idLabel: 'Employee ID *', idPh: 'EMP-2026-001',
+                perms: ['Create and manage user accounts', 'Activate or deactivate accounts', 'View all reservations and reports', 'Configure system settings']
+            }
+        };
+
+        var selectedRole = 'User';
+
+        function selectRole(role) {
+            selectedRole = role;
+            var info = ROLE_INFO[role];
+
+            document.getElementById('roleUser').checked = role === 'User';
+            document.getElementById('roleCustodian').checked = role === 'Custodian';
+            document.getElementById('roleAdmin').checked = role === 'Admin';
+
+            document.querySelectorAll('.role-option-card').forEach(function (card) {
+                card.classList.toggle('selected', card.getAttribute('data-role') === role);
+            });
+
+            document.getElementById('idHeaderLabel').textContent = info.idLabel;
+            document.getElementById('roleLabel').textContent = info.label;
+            document.querySelectorAll('.id-input').forEach(function (i) { i.placeholder = info.idPh; });
+
+            var list = document.getElementById('permList');
+            list.innerHTML = '';
+            info.perms.forEach(function (text) {
+                var li = document.createElement('li');
+                li.className = 'mb-1';
+                var icon = document.createElement('i');
+                icon.className = 'bi bi-check2 text-success me-1';
+                li.appendChild(icon);
+                li.appendChild(document.createTextNode(text));
+                list.appendChild(li);
+            });
+        }
+
+        function rowHtml(i) {
+            var ph = ROLE_INFO[selectedRole].idPh;
+            return '' +
+                '<td class="row-number fw-bold text-muted"></td>' +
+                '<td><input type="text" name="UserRows[' + i + '].StudentEmployeeId" class="form-control form-control-sm id-input" placeholder="' + ph + '" maxlength="50" required /></td>' +
+                '<td><input type="text" name="UserRows[' + i + '].FirstName" class="form-control form-control-sm" placeholder="First Name" maxlength="50" required /></td>' +
+                '<td><input type="text" name="UserRows[' + i + '].MiddleName" class="form-control form-control-sm" placeholder="Middle Name" maxlength="50" /></td>' +
+                '<td><input type="text" name="UserRows[' + i + '].LastName" class="form-control form-control-sm" placeholder="Last Name" maxlength="50" required /></td>' +
+                '<td><input type="email" name="UserRows[' + i + '].Email" class="form-control form-control-sm" placeholder="Email" maxlength="100" required /></td>' +
+                '<td><input type="text" name="UserRows[' + i + '].ContactNumber" class="form-control form-control-sm" placeholder="Contact No." maxlength="20" /></td>' +
+                '<td><input type="text" name="UserRows[' + i + '].Password" class="form-control form-control-sm pass-input" autocomplete="off" /></td>' +
+                '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-trash"></i></button></td>';
+        }
+
+        // Renumber the rows AND their input names, so there are never gaps
+        // (ASP.NET stops binding a list at the first missing index).
+        function reindexRows() {
+            var rows = document.querySelectorAll('.user-row');
+            rows.forEach(function (row, i) {
+                row.querySelector('.row-number').textContent = i + 1;
+                row.querySelectorAll('input[name^="UserRows["]').forEach(function (inp) {
+                    inp.name = inp.name.replace(/^UserRows\[\d+\]/, 'UserRows[' + i + ']');
+                });
+            });
+            var count = rows.length;
+            document.getElementById('userCountBadge').textContent = count + ' user' + (count > 1 ? 's' : '');
+            document.getElementById('submitBtn').textContent = '+ Create ' + count + ' User' + (count > 1 ? 's' : '');
+        }
+
+        function toggleAutoPass() {
+            var auto = document.getElementById('autoPass').checked;
+            document.querySelectorAll('.pass-input').forEach(function (input) {
+                input.readOnly = auto;
+                input.required = !auto;
+                input.placeholder = auto ? 'Auto-generated' : 'Min. 8 characters';
+                if (auto) input.value = '';
+            });
+        }
+
+        function addRow() {
+            var container = document.getElementById('rowsContainer');
+            var tr = document.createElement('tr');
+            tr.className = 'user-row';
+            tr.innerHTML = rowHtml(container.querySelectorAll('.user-row').length);
+            container.appendChild(tr);
+            reindexRows();
+            toggleAutoPass();
+        }
+
+        document.getElementById('addRowBtn').addEventListener('click', addRow);
+        document.getElementById('autoPass').addEventListener('change', toggleAutoPass);
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.remove-row');
+            if (btn && document.querySelectorAll('.user-row').length > 1) {
+                btn.closest('tr').remove();
+                reindexRows();
+            }
+        });
+
+        document.getElementById('addUsersForm').addEventListener('submit', function (e) {
+            var n = document.querySelectorAll('.user-row').length;
+            if (selectedRole === 'Admin' &&
+                !confirm('You are about to create ' + n + ' administrator account(s) with full system access. Continue?')) {
+                e.preventDefault();
+            }
+        });
+
+        selectRole('User');
+        addRow();
+    </script>
+}

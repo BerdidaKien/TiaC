@@ -47,6 +47,8 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IReportService, ReportService>();
             this._services.AddScoped<IReservationRepository, ReservationRepository>();
             this._services.AddScoped<IReservationService, ReservationService>();
+            this._services.AddScoped<IUserAdminRepository, UserAdminRepository>();
+            this._services.AddScoped<IAdminUserService, AdminUserService>();
 
             // Manager Class
             this._services.AddScoped<SignInManager>();

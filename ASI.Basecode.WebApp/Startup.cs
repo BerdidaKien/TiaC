@@ -152,6 +152,9 @@ namespace ASI.Basecode.WebApp
 
             this._app.UseAuthentication();
             this._app.UseAuthorization();
+
+            // CALL SEEDER HERE AFTER AUTHENTICATION IS CONFIGURED
+            DbSeeder.Seed(app.ApplicationServices);
         }
     }
 }

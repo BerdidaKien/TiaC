@@ -1,0 +1,124 @@
+﻿@model ASI.Basecode.Services.ServiceModels.UserManagementViewModel
+@{
+    ViewData["Title"] = "User Management";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
+<div class="dash-header mb-4">
+    <h1 class="dash dash-name m-0">User Management</h1>
+    <p class="dash-sub">Create and manage user accounts, update their information, and assign roles and permissions.</p>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Total Users</div>
+            <div class="dash-stat-count">@Model.TotalUsers</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Borrowers</div>
+            <div class="dash-stat-count">@Model.TotalBorrowers</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Custodians</div>
+            <div class="dash-stat-count">@Model.TotalCustodians</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="dash-stat-label">Administrators</div>
+            <div class="dash-stat-count">@Model.TotalAdministrators</div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="dash-card mb-4">
+    <form method="get" asp-controller="Admin" asp-action="Users" class="row g-2 align-items-center">
+        <div class="col-md-5">
+            <input type="text" name="search" value="@Model.SearchTerm" class="form-control dash-search-input" placeholder="Search by name, email, or ID..." />
+        </div>
+        <div class="col-md-3">
+            <select name="role" class="form-select dash-search-input">
+                <option value="">All Roles</option>
+                <option value="User" selected="@(Model.SelectedRole == "User")">Borrower</option>
+                <option value="Custodian" selected="@(Model.SelectedRole == "Custodian")">Custodian</option>
+                <option value="Admin" selected="@(Model.SelectedRole == "Admin")">Administrator</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="status" class="form-select dash-search-input">
+                <option value="">All Status</option>
+                <option value="Active" selected="@(Model.SelectedStatus == "Active")">Active</option>
+                <option value="Inactive" selected="@(Model.SelectedStatus == "Inactive")">Inactive</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <a asp-controller="Admin" asp-action="AddUsers" class="btn dash-btn-reserve w-100 text-center text-white text-decoration-none">
+                <i class="bi bi-person-plus me-1"></i> Add User
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Table Data -->
+<div class="dash-card p-0 overflow-hidden">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th class="ps-4">User</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Date Created</th>
+                <th class="text-end pe-4">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model.Users)
+            {
+                <tr>
+                    <td class="ps-4">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle me-2 bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; font-weight:bold;">
+                                @user.Initials
+                            </div>
+                            <div>
+                                <div class="fw-bold">@user.FullName</div>
+                                <div class="text-muted small">@user.UserId</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>@user.Email</td>
+                    <td>
+                        <span class="badge @(user.Role == "Admin" ? "bg-purple" : user.Role == "Custodian" ? "bg-warning text-dark" : "bg-danger")">
+                            @(user.Role == "User" ? "Borrower" : user.Role)
+                        </span>
+                    </td>
+                    <td>
+                        @if (user.IsActive)
+                        {
+                            <span class="text-success fw-bold"><i class="bi bi-circle-fill fs-6 me-1"></i> Active</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger fw-bold"><i class="bi bi-circle-fill fs-6 me-1"></i> Inactive</span>
+                        }
+                    </td>
+                    <td>@user.DateCreated.ToString("MMM dd, yyyy")</td>
+                    <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

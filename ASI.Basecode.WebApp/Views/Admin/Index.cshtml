@@ -1,0 +1,259 @@
+﻿@model IEnumerable<ASI.Basecode.Data.Models.User>
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
+<div class="dash-header mb-4">
+    <h1 class="dash-name m-0">Dashboard</h1>
+    <p class="dash-sub">Overview of your inventory and reservation management system.</p>
+</div>
+
+<!-- 1. Top Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="dash-stat-label">Total Reservations</span>
+                <div class="stat-icon-bg bg-danger-subtle text-danger p-2 rounded">
+                    <i class="bi bi-calendar-event fs-5"></i>
+                </div>
+            </div>
+            <div class="dash-stat-count">@(ViewBag.PendingReservations ?? 128)</div>
+            <div class="small text-success mt-1"><i class="bi bi-arrow-up-short"></i> +12% from last month</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="dash-stat-label">Total Items</span>
+                <div class="stat-icon-bg bg-primary-subtle text-primary p-2 rounded">
+                    <i class="bi bi-box-seam fs-5"></i>
+                </div>
+            </div>
+            <div class="dash-stat-count">128</div>
+            <div class="small text-success mt-1"><i class="bi bi-arrow-up-short"></i> +5% from last month</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="dash-stat-label">Total Users</span>
+                <div class="stat-icon-bg bg-warning-subtle text-warning p-2 rounded">
+                    <i class="bi bi-people fs-5"></i>
+                </div>
+            </div>
+            <div class="dash-stat-count">@(ViewBag.TotalUsers ?? 50)</div>
+            <div class="small text-success mt-1"><i class="bi bi-arrow-up-short"></i> +8% from last month</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dash-card">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="dash-stat-label">Available Items</span>
+                <div class="stat-icon-bg bg-success-subtle text-success p-2 rounded">
+                    <i class="bi bi-check-circle fs-5"></i>
+                </div>
+            </div>
+            <div class="dash-stat-count">76</div>
+            <div class="small text-muted mt-1">60% of total items</div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Recent Activity Tables (Side by Side) -->
+<div class="row g-3 mb-4">
+    <!-- Left: Recent Added Users -->
+    <div class="col-md-6">
+        <div class="dash-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="fw-bold m-0"><i class="bi bi-person-plus me-1"></i> Recent Added Users</h6>
+                    <small class="text-muted">Latest registered accounts.</small>
+                </div>
+                <a asp-controller="Admin" asp-action="Users" class="btn btn-sm btn-outline-secondary">View All <i class="bi bi-chevron-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int userIdx = 1;
+                        }
+                        @foreach (var u in Model.Take(5))
+                        {
+                            <tr>
+                                <td>@(userIdx++)</td>
+                                <td class="fw-bold">@u.FirstName @u.LastName</td>
+                                <td>
+                                    <span class="badge @(u.Role == "Admin" ? "bg-purple" : u.Role == "Custodian" ? "bg-warning text-dark" : "bg-danger")">
+                                        @(u.Role == "User" ? "Borrower" : u.Role)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (u.IsActive)
+                                    {
+                                        <span class="text-success fw-bold"><i class="bi bi-circle-fill fs-6 me-1"></i>Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger fw-bold"><i class="bi bi-circle-fill fs-6 me-1"></i>Inactive</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Recent Added Items -->
+    <div class="col-md-6">
+        <div class="dash-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="fw-bold m-0"><i class="bi bi-box me-1"></i> Recent Added Items</h6>
+                    <small class="text-muted">Latest added inventory items.</small>
+                </div>
+                <a asp-controller="Admin" asp-action="Reports" class="btn btn-sm btn-outline-secondary">View All <i class="bi bi-chevron-right"></i></a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td class="fw-bold">Laptop</td>
+                            <td>Electronics</td>
+                            <td><span class="badge bg-success">Available</span></td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td class="fw-bold">Projector</td>
+                            <td>Electronics</td>
+                            <td><span class="badge bg-success">Available</span></td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td class="fw-bold">Camera</td>
+                            <td>Multimedia</td>
+                            <td><span class="badge bg-success">Available</span></td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td class="fw-bold">Tablet</td>
+                            <td>Electronics</td>
+                            <td><span class="badge bg-success">Available</span></td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td class="fw-bold">Office Chair</td>
+                            <td>Furniture</td>
+                            <td><span class="badge bg-success">Available</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Recent Reservations Table -->
+<div class="dash-card p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h6 class="fw-bold m-0"><i class="bi bi-calendar-check me-1"></i> Recent Reservations</h6>
+            <small class="text-muted">Latest reservation requests.</small>
+        </div>
+        <a asp-controller="Admin" asp-action="Reservations" class="btn btn-sm btn-outline-secondary">View All <i class="bi bi-chevron-right"></i></a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Student / Employee</th>
+                    <th>Item</th>
+                    <th>Reservation Date</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td class="fw-bold">Juan Dela Cruz</td>
+                    <td>Laptop</td>
+                    <td>Oct 20, 2026</td>
+                    <td><span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td class="fw-bold">Maria Santos</td>
+                    <td>Projector</td>
+                    <td>Oct 19, 2026</td>
+                    <td><span class="badge bg-success"><i class="bi bi-check me-1"></i>Approved</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td class="fw-bold">Kyle Mendoza</td>
+                    <td>Camera</td>
+                    <td>Oct 18, 2026</td>
+                    <td><span class="badge bg-danger"><i class="bi bi-x me-1"></i>Rejected</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td class="fw-bold">Ana Reyes</td>
+                    <td>Tablet</td>
+                    <td>Oct 17, 2026</td>
+                    <td><span class="badge bg-info text-dark"><i class="bi bi-bookmark me-1"></i>Reserved</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td class="fw-bold">Liam Torres</td>
+                    <td>Office Chair</td>
+                    <td>Oct 15, 2026</td>
+                    <td><span class="badge bg-secondary"><i class="bi bi-check-all me-1"></i>Completed</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
