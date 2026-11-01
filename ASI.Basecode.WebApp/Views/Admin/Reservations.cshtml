@@ -1,0 +1,377 @@
+﻿@using ASI.Basecode.Services.ServiceModels
+@model AdminReservationsPageViewModel
+@{
+    ViewData["Title"] = "Reservations";
+    var f = Model.Filter;
+    string dFrom = f.DateFrom?.ToString("yyyy-MM-dd");
+    string dTo = f.DateTo?.ToString("yyyy-MM-dd");
+
+    // Builds a link that keeps the current filters
+    string Link(string status, int? page = null) =>
+        Url.Action("Reservations", "Admin", new
+        {
+            search = f.Search,
+            status = status,
+            categoryId = f.CategoryId,
+            dateFrom = dFrom,
+            dateTo = dTo,
+            page = page
+        });
+
+    string ShortDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "-";
+    string LongDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy h:mm tt") : "-";
+
+    string IconFor(string categoryCode) => (categoryCode ?? "") switch
+    {
+        "AV-MEDIA"   => "bi-camera",
+        "IT-TECH"    => "bi-laptop",
+        "EVENT-SUP"  => "bi-megaphone",
+        "LAB-SCI"    => "bi-eyedropper",
+        "SPORTS-REC" => "bi-trophy",
+        "GEN-TOOLS"  => "bi-tools",
+        _            => "bi-box-seam"
+    };
+
+    (string Text, string Css, string Icon) Badge(string s) => s switch
+    {
+        "pending"   => ("Pending",   "bg-warning-subtle text-warning-emphasis",   "bi-clock"),
+        "approved"  => ("Approved",  "bg-success-subtle text-success-emphasis",   "bi-check-lg"),
+        "borrowed"  => ("Borrowed",  "bg-primary-subtle text-primary-emphasis",   "bi-box-arrow-up-right"),
+        "overdue"   => ("Overdue",   "bg-danger text-white",                      "bi-exclamation-triangle"),
+        "completed" => ("Completed", "bg-secondary-subtle text-secondary-emphasis", "bi-check2-all"),
+        "rejected"  => ("Rejected",  "bg-danger-subtle text-danger-emphasis",     "bi-x-lg"),
+        "cancelled" => ("Cancelled", "bg-secondary-subtle text-secondary-emphasis", "bi-slash-circle"),
+        _           => (s ?? "-",    "bg-light text-dark",                        "bi-dot")
+    };
+
+    string Stage(string s) => s switch
+    {
+        "pending"   => "Waiting for the custodian's decision",
+        "approved"  => "Approved - waiting for the borrower to pick up the item",
+        "borrowed"  => "Item is currently out on loan",
+        "overdue"   => "Item is overdue and has not been returned",
+        "completed" => "Item was returned",
+        "rejected"  => "Declined by the custodian",
+        "cancelled" => "Cancelled",
+        _           => "-"
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .res-card { border: 2px solid transparent; transition: all .15s ease-in-out; }
+        a:hover > .res-card { border-color: #800000; }
+        .res-card.is-active { border-color: #800000; box-shadow: 0 0 0 1px #800000; background-color: #fcf0f0; }
+        .res-card-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+        .res-avatar { width: 36px; height: 36px; border-radius: 50%; background: #f3d9d9; color: #800000; font-weight: 700; font-size: .8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .res-table td, .res-table th { white-space: nowrap; }
+        .page-link { color: #800000; }
+        .page-item.active .page-link { background-color: #800000; border-color: #800000; color: #fff; }
+    </style>
+}
+
+<div class="dash-header mb-4">
+    <h1 class="dash dash-name m-0">Reservations</h1>
+    <p class="dash-sub">Manage and monitor item reservation requests.</p>
+</div>
+
+<!-- Clickable summary cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <a href="@Link(null)" class="text-decoration-none">
+            <div class="dash-card res-card @(string.IsNullOrEmpty(f.Status) ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-calendar3"></i></div>
+                    <div>
+                        <div class="dash-stat-label">Total Reservations</div>
+                        <div class="dash-stat-count">@Model.TotalCount</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("pending")" class="text-decoration-none">
+            <div class="dash-card res-card @(f.Status == "pending" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-warning-subtle text-warning"><i class="bi bi-clock"></i></div>
+                    <div>
+                        <div class="dash-stat-label">Pending</div>
+                        <div class="dash-stat-count">@Model.PendingCount</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("approved")" class="text-decoration-none">
+            <div class="dash-card res-card @(f.Status == "approved" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-success-subtle text-success"><i class="bi bi-check-lg"></i></div>
+                    <div>
+                        <div class="dash-stat-label">Approved</div>
+                        <div class="dash-stat-count">@Model.ApprovedCount</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("rejected")" class="text-decoration-none">
+            <div class="dash-card res-card @(f.Status == "rejected" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-x-lg"></i></div>
+                    <div>
+                        <div class="dash-stat-label">Rejected</div>
+                        <div class="dash-stat-count">@Model.RejectedCount</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" asp-controller="Admin" asp-action="Reservations" class="dash-card mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-lg-3">
+            <label class="dash-stat-label mb-1">Search</label>
+            <input type="text" name="search" value="@f.Search" class="form-control dash-search-input"
+                   placeholder="Borrower, item, or RES-2026-0001" />
+        </div>
+        <div class="col-lg-2">
+            <label class="dash-stat-label mb-1">Status</label>
+            <select name="status" class="form-select dash-search-input">
+                <option value="">All Statuses</option>
+                <option value="pending" selected="@(f.Status == "pending")">Pending</option>
+                <option value="approved" selected="@(f.Status == "approved")">Approved (all)</option>
+                <option value="awaiting" selected="@(f.Status == "awaiting")">Approved - awaiting pickup</option>
+                <option value="borrowed" selected="@(f.Status == "borrowed")">Borrowed / Overdue</option>
+                <option value="completed" selected="@(f.Status == "completed")">Completed</option>
+                <option value="rejected" selected="@(f.Status == "rejected")">Rejected</option>
+            </select>
+        </div>
+        <div class="col-lg-2">
+            <label class="dash-stat-label mb-1">Category</label>
+            <select name="categoryId" class="form-select dash-search-input">
+                <option value="">All Categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id" selected="@(f.CategoryId == c.Id)">@c.CategoryName</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-lg-2">
+            <label class="dash-stat-label mb-1">Reserved from</label>
+            <input type="date" name="dateFrom" value="@dFrom" class="form-control dash-search-input" />
+        </div>
+        <div class="col-6 col-lg-2">
+            <label class="dash-stat-label mb-1">Reserved to</label>
+            <input type="date" name="dateTo" value="@dTo" class="form-control dash-search-input" />
+        </div>
+        <div class="col-lg-1 d-grid">
+            <button type="submit" class="btn dash-btn-reserve">Apply</button>
+        </div>
+    </div>
+    <div class="mt-2">
+        <a asp-controller="Admin" asp-action="Reservations" class="small text-muted"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset filters</a>
+    </div>
+</form>
+
+<!-- Table -->
+<div class="dash-card">
+    <div class="table-responsive">
+        <table class="table res-table table-hover align-middle mb-0">
+            <thead>
+                <tr class="small text-muted">
+                    <th>Reservation ID</th>
+                    <th>Borrower</th>
+                    <th>Item</th>
+                    <th>Reservation Date</th>
+                    <th>Borrow Date</th>
+                    <th>Expected Return</th>
+                    <th>Status</th>
+                    <th class="text-center">View</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    var b = Badge(r.Status);
+                    <tr>
+                        <td class="fw-semibold">@r.Code</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="res-avatar">@r.Initials</div>
+                                <div>
+                                    <div class="fw-semibold">@r.BorrowerName</div>
+                                    <div class="text-muted small">@r.BorrowerCode</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi @IconFor(r.CategoryCode) fs-4 text-secondary"></i>
+                                <div>
+                                    <div class="fw-semibold">@r.ItemName</div>
+                                    <div class="text-muted small">@r.ItemCode &middot; @r.CategoryName</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>@ShortDate(r.ReservationDate)</td>
+                        <td>@ShortDate(r.PickupDate)</td>
+                        <td>@ShortDate(r.ReturnDate)</td>
+                        <td><span class="badge @b.Css"><i class="bi @b.Icon me-1"></i>@b.Text</span></td>
+                        <td class="text-center">
+                            <button type="button" class="btn dash-btn-view btn-sm" title="View details"
+                                    data-bs-toggle="modal" data-bs-target="#resModal"
+                                    data-code="@r.Code"
+                                    data-statustext="@b.Text"
+                                    data-statuscss="@b.Css"
+                                    data-stage="@Stage(r.Status)"
+                                    data-borrower="@r.BorrowerName"
+                                    data-bcode="@r.BorrowerCode"
+                                    data-bemail="@r.BorrowerEmail"
+                                    data-bcontact="@r.BorrowerContact"
+                                    data-item="@r.ItemName"
+                                    data-icode="@r.ItemCode"
+                                    data-category="@r.CategoryName"
+                                    data-resdate="@LongDate(r.ReservationDate)"
+                                    data-pickup="@LongDate(r.PickupDate)"
+                                    data-ret="@LongDate(r.ReturnDate)"
+                                    data-reviewedby="@r.ReviewedBy"
+                                    data-reviewedat="@LongDate(r.ReviewedAt)"
+                                    data-notes="@r.ReviewNotes"
+                                    data-releasedby="@r.ReleasedBy"
+                                    data-handover="@LongDate(r.HandoverTime)"
+                                    data-returnedto="@r.ReturnedTo"
+                                    data-returnedat="@LongDate(r.ReturnedTime)"
+                                    data-condition="@r.ReturnCondition"
+                                    data-delay="@(r.IsOverdue ? r.DelayHours + " hour(s) late" : "None")"
+                                    data-damage="@r.DamageNotes">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No reservations match your filters.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <div class="text-danger small">
+            Showing @Model.FirstShown - @Model.LastShown of @Model.TotalRows reservations
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Reservation pages">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Link(f.Status, Model.Page - 1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></a>
+                    </li>
+                    @foreach (var p in Model.PageWindow())
+                    {
+                        if (p == 0)
+                        {
+                            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                        }
+                        else
+                        {
+                            <li class="page-item @(p == Model.Page ? "active" : "")">
+                                <a class="page-link" href="@Link(f.Status, p)">@p</a>
+                            </li>
+                        }
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Link(f.Status, Model.Page + 1)" aria-label="Next"><i class="bi bi-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <div class="modal fade" id="resModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold">
+                        <span id="m-code"></span>
+                        <span id="m-statusbadge" class="badge ms-2"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body small">
+                    <div class="text-muted mb-3" id="m-stage"></div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="fw-bold mb-1"><i class="bi bi-person-circle me-1"></i> Borrower</div>
+                            <div id="m-borrower"></div>
+                            <div class="text-muted">ID: <span id="m-bcode"></span></div>
+                            <div class="text-muted"><span id="m-bemail"></span></div>
+                            <div class="text-muted"><span id="m-bcontact"></span></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="fw-bold mb-1"><i class="bi bi-box-seam me-1"></i> Item</div>
+                            <div id="m-item"></div>
+                            <div class="text-muted">Code: <span id="m-icode"></span></div>
+                            <div class="text-muted">Category: <span id="m-category"></span></div>
+                        </div>
+                    </div>
+
+                    <hr />
+                    <div class="fw-bold mb-2"><i class="bi bi-clock-history me-1"></i> Timeline</div>
+                    <div class="row g-2">
+                        <div class="col-md-6"><strong>Requested on:</strong> <span id="m-resdate"></span></div>
+                        <div class="col-md-6"><strong>Borrow date:</strong> <span id="m-pickup"></span></div>
+                        <div class="col-md-6"><strong>Expected return:</strong> <span id="m-ret"></span></div>
+                        <div class="col-md-6"><strong>Reviewed by:</strong> <span id="m-reviewedby"></span></div>
+                        <div class="col-md-6"><strong>Reviewed on:</strong> <span id="m-reviewedat"></span></div>
+                        <div class="col-md-6"><strong>Review notes:</strong> <span id="m-notes"></span></div>
+                        <div class="col-md-6"><strong>Handed over:</strong> <span id="m-handover"></span></div>
+                        <div class="col-md-6"><strong>Released by:</strong> <span id="m-releasedby"></span></div>
+                        <div class="col-md-6"><strong>Returned:</strong> <span id="m-returnedat"></span></div>
+                        <div class="col-md-6"><strong>Received by:</strong> <span id="m-returnedto"></span></div>
+                        <div class="col-md-6"><strong>Return condition:</strong> <span id="m-condition"></span></div>
+                        <div class="col-md-6"><strong>Delay:</strong> <span id="m-delay"></span></div>
+                        <div class="col-12"><strong>Damage notes:</strong> <span id="m-damage"></span></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('resModal').addEventListener('show.bs.modal', function (event) {
+            var b = event.relatedTarget;
+            var keys = ['code', 'borrower', 'bcode', 'bemail', 'bcontact', 'item', 'icode', 'category',
+                        'resdate', 'pickup', 'ret', 'reviewedby', 'reviewedat', 'notes',
+                        'releasedby', 'handover', 'returnedto', 'returnedat', 'condition', 'delay', 'damage'];
+            keys.forEach(function (k) {
+                var el = document.getElementById('m-' + k);
+                if (el) { el.textContent = b.getAttribute('data-' + k) || '-'; }
+            });
+            var badge = document.getElementById('m-statusbadge');
+            badge.textContent = b.getAttribute('data-statustext');
+            badge.className = 'badge ms-2 ' + b.getAttribute('data-statuscss');
+            document.getElementById('m-stage').textContent = b.getAttribute('data-stage');
+        });
+    </script>
+}

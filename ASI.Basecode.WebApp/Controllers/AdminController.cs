@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using ASI.Basecode.Data;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
@@ -8,7 +9,6 @@ using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +19,8 @@ namespace ASI.Basecode.WebApp.Controllers
     {
         private readonly IUserService _userService;
         private readonly IAdminUserService _adminUserService;
+        private readonly IAdminReservationService _adminReservationService;
+        private readonly IItemReportService _itemReportService;
         private readonly TiaCContext _context;
 
         public AdminController(
@@ -28,16 +30,18 @@ namespace ASI.Basecode.WebApp.Controllers
             IMapper mapper,
             IUserService userService,
             IAdminUserService adminUserService,
+            IAdminReservationService adminReservationService,
+            IItemReportService itemReportService,
             TiaCContext context) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
             _userService = userService;
             _adminUserService = adminUserService;
+            _adminReservationService = adminReservationService;
+            _itemReportService = itemReportService;
             _context = context;
         }
 
-        /// <summary>
-        /// Main Admin Dashboard
-        /// </summary>
+        /// <summary>Main Admin Dashboard</summary>
         public IActionResult Index()
         {
             ViewBag.TotalUsers = _context.Users.Count();
@@ -53,9 +57,7 @@ namespace ASI.Basecode.WebApp.Controllers
             return View(recentUsers);
         }
 
-        /// <summary>
-        /// User Management Overview Screen
-        /// </summary>
+        /// <summary>User Management Overview Screen</summary>
         [HttpGet]
         public IActionResult Users(string search, string role, string status)
         {
@@ -63,19 +65,14 @@ namespace ASI.Basecode.WebApp.Controllers
             return View(model);
         }
 
-        /// <summary>
-        /// Batch Account Creation Form
-        /// </summary>
+        /// <summary>Batch Account Creation Form</summary>
         [HttpGet]
         public IActionResult AddUsers()
         {
             return View(new AddUsersPostModel());
         }
 
-        /// <summary>
-        /// Handle Batch Account Creation Form Submission.
-        /// Shows a one-time results page with the temporary passwords.
-        /// </summary>
+        /// <summary>Batch creation; shows a one-time results page with temporary passwords</summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult AddUsers(AddUsersPostModel model)
@@ -88,34 +85,48 @@ namespace ASI.Basecode.WebApp.Controllers
             var adminCode = _session.GetString("UserId") ?? "Admin";
             var result = _adminUserService.CreateUsers(model, adminCode);
 
-            // The result page shows temporary passwords once, so it must never be cached
             Response.Headers["Cache-Control"] = "no-store";
             return View("AddUsersResult", result);
         }
 
-        /// <summary>
-        /// System-wide Reservations Oversight
-        /// </summary>
-        public IActionResult Reservations()
+        /// <summary>System-wide reservations oversight (read-only)</summary>
+        [HttpGet]
+        public IActionResult Reservations(AdminReservationFilter filter)
         {
-            var reservations = _context.Reservations
-                .Include(r => r.EquipmentItem)
-                .OrderByDescending(r => r.CreatedTime)
-                .ToList();
-            return View(reservations);
+            return View(_adminReservationService.GetPage(filter));
         }
 
-        /// <summary>
-        /// Reports & History
-        /// </summary>
-        public IActionResult Reports()
+        // ---------- Item Reports ----------
+        [HttpGet]
+        public IActionResult Reports(ItemReportFilter filter)
         {
-            return View();
+            return View(_itemReportService.GetPage(filter));
         }
 
-        /// <summary>
-        /// System Settings
-        /// </summary>
+        // JSON for the item details popup
+        [HttpGet]
+        public IActionResult ItemDetails(int id)
+        {
+            var details = _itemReportService.GetItemDetails(id);
+            if (details == null) return NotFound();
+            return Json(details);
+        }
+
+        [HttpGet]
+        public IActionResult ExportItemsCsv(ItemReportFilter filter)
+        {
+            var bytes = _itemReportService.ExportCsv(filter);
+            return File(bytes, "text/csv", $"item-report-{DateTime.Now:yyyyMMdd-HHmm}.csv");
+        }
+
+        // Print-ready page: the browser's print dialog saves it as PDF
+        [HttpGet]
+        public IActionResult ItemReportPrint(ItemReportFilter filter)
+        {
+            return View(_itemReportService.GetAll(filter));
+        }
+
+        /// <summary>System Settings</summary>
         public IActionResult Settings()
         {
             return View();
