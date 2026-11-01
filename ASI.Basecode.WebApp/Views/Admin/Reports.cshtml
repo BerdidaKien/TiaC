@@ -1,0 +1,450 @@
+﻿@using ASI.Basecode.Services.ServiceModels
+@model ItemReportsPageViewModel
+@{
+    ViewData["Title"] = "Item Reports";
+    var f = Model.Filter;
+
+    // Builds a link that keeps the current filters
+    string Link(string status, int? page = null) =>
+        Url.Action("Reports", "Admin", new
+        {
+            search = f.Search,
+            status = status,
+            condition = f.Condition,
+            categoryId = f.CategoryId,
+            page = page
+        });
+
+    var exportRoute = new { search = f.Search, status = f.Status, condition = f.Condition, categoryId = f.CategoryId };
+
+    string ShortDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "-";
+
+    string IconFor(string categoryCode) => (categoryCode ?? "") switch
+    {
+        "AV-MEDIA"   => "bi-camera",
+        "IT-TECH"    => "bi-laptop",
+        "EVENT-SUP"  => "bi-megaphone",
+        "LAB-SCI"    => "bi-eyedropper",
+        "SPORTS-REC" => "bi-trophy",
+        "GEN-TOOLS"  => "bi-tools",
+        _            => "bi-box-seam"
+    };
+
+    (string Css, string Icon) StatusBadge(string s) => s switch
+    {
+        "available"   => ("bg-success-subtle text-success-emphasis", "bi-check-lg"),
+        "borrowed"    => ("bg-warning-subtle text-warning-emphasis", "bi-clock"),
+        "maintenance" => ("bg-danger-subtle text-danger-emphasis",   "bi-wrench"),
+        _             => ("bg-light text-dark", "bi-dot")
+    };
+
+    string ConditionCss(string c) => c switch
+    {
+        "excellent" or "good" => "bg-success-subtle text-success-emphasis",
+        "minor_wear"          => "bg-warning-subtle text-warning-emphasis",
+        "needs_maintenance"   => "bg-danger-subtle text-danger-emphasis",
+        _                     => "bg-light text-dark"
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .res-card { border: 2px solid transparent; transition: all .15s ease-in-out; }
+        a:hover > .res-card { border-color: #800000; }
+        .res-card.is-active { border-color: #800000; box-shadow: 0 0 0 1px #800000; background-color: #fcf0f0; }
+        .res-card-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+        .res-avatar { width: 34px; height: 34px; border-radius: 50%; background: #f3d9d9; color: #800000; font-weight: 700; font-size: .75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .res-table td, .res-table th { white-space: nowrap; }
+        .page-link { color: #800000; }
+        .page-item.active .page-link { background-color: #800000; border-color: #800000; color: #fff; }
+    </style>
+}
+
+<div class="dash-header mb-4">
+    <h1 class="dash dash-name m-0">Item Reports</h1>
+    <p class="dash-sub">View the status and usage of items, including who borrowed them, their current status, and condition.</p>
+</div>
+
+<!-- Clickable summary cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <a href="@Link(null)" class="text-decoration-none">
+            <div class="dash-card res-card @(string.IsNullOrEmpty(f.Status) ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-box-seam"></i></div>
+                    <div>
+                        <div class="dash-stat-label">Total Items</div>
+                        <div class="dash-stat-count">@Model.TotalItems</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("available")" class="text-decoration-none">
+            <div class="dash-card res-card @(f.Status == "available" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-success-subtle text-success"><i class="bi bi-check-lg"></i></div>
+                    <div>
+                        <div class="dash-stat-label">Available</div>
+                        <div class="dash-stat-count">@Model.AvailableCount</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("borrowed")" class="text-decoration-none">
+            <div class="dash-card res-card @(f.Status == "borrowed" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-warning-subtle text-warning"><i class="bi bi-clock"></i></div>
+                    <div>
+                        <div class="dash-stat-label">Borrowed</div>
+                        <div class="dash-stat-count">@Model.BorrowedCount</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("maintenance")" class="text-decoration-none">
+            <div class="dash-card res-card @(f.Status == "maintenance" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-wrench"></i></div>
+                    <div>
+                        <div class="dash-stat-label">For Maintenance</div>
+                        <div class="dash-stat-count">@Model.MaintenanceCount</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="get" asp-controller="Admin" asp-action="Reports" class="dash-card mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-lg-3">
+            <label class="dash-stat-label mb-1">Search</label>
+            <input type="text" name="search" value="@f.Search" class="form-control dash-search-input"
+                   placeholder="Item name, code, serial, borrower..." />
+        </div>
+        <div class="col-6 col-lg-2">
+            <label class="dash-stat-label mb-1">Status</label>
+            <select name="status" class="form-select dash-search-input">
+                <option value="">All Statuses</option>
+                <option value="available" selected="@(f.Status == "available")">Available</option>
+                <option value="borrowed" selected="@(f.Status == "borrowed")">Borrowed</option>
+                <option value="maintenance" selected="@(f.Status == "maintenance")">For Maintenance</option>
+            </select>
+        </div>
+        <div class="col-6 col-lg-2">
+            <label class="dash-stat-label mb-1">Condition</label>
+            <select name="condition" class="form-select dash-search-input">
+                <option value="">All Conditions</option>
+                <option value="excellent" selected="@(f.Condition == "excellent")">Excellent</option>
+                <option value="good" selected="@(f.Condition == "good")">Good</option>
+                <option value="minor_wear" selected="@(f.Condition == "minor_wear")">Minor Wear</option>
+                <option value="needs_maintenance" selected="@(f.Condition == "needs_maintenance")">Needs Maintenance</option>
+            </select>
+        </div>
+        <div class="col-6 col-lg-2">
+            <label class="dash-stat-label mb-1">Category</label>
+            <select name="categoryId" class="form-select dash-search-input">
+                <option value="">All Categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id" selected="@(f.CategoryId == c.Id)">@c.CategoryName</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-lg-1 d-grid">
+            <button type="submit" class="btn dash-btn-reserve">Apply</button>
+        </div>
+        <div class="col-12 col-lg-2 d-grid">
+            <div class="dropdown">
+                <button class="btn dash-btn-reserve w-100 dropdown-toggle fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-bar-chart-fill me-1"></i> Generate Report
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="@Url.Action("ExportItemsCsv", "Admin", exportRoute)">
+                            <i class="bi bi-file-earmark-spreadsheet me-2"></i>Download CSV
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" target="_blank" href="@Url.Action("ItemReportPrint", "Admin", exportRoute)">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Print / Save as PDF
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="mt-2">
+        <a asp-controller="Admin" asp-action="Reports" class="small text-muted"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset filters</a>
+    </div>
+</form>
+
+<!-- Table -->
+<div class="dash-card">
+    <div class="table-responsive">
+        <table class="table res-table table-hover align-middle mb-0">
+            <thead>
+                <tr class="small text-muted">
+                    <th>Item ID</th>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Borrowed By</th>
+                    <th>Borrow Date</th>
+                    <th>Expected Return</th>
+                    <th>Status</th>
+                    <th>Condition / State</th>
+                    <th class="text-center">View</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    var sb = StatusBadge(r.Status);
+                    <tr>
+                        <td class="fw-semibold">@r.ItemCode</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi @IconFor(r.CategoryCode) fs-4 text-secondary"></i>
+                                <div>
+                                    <div class="fw-semibold">@r.ItemName</div>
+                                    @if (!string.IsNullOrWhiteSpace(r.SerialNumber))
+                                    {
+                                        <div class="text-muted small">SN: @r.SerialNumber</div>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td>@r.CategoryName</td>
+                        <td>
+                            @if (r.BorrowerName != null)
+                            {
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="res-avatar">@r.BorrowerInitials</div>
+                                    <div>
+                                        <div class="fw-semibold">@r.BorrowerName</div>
+                                        <div class="text-muted small">@r.BorrowerCode</div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>@ShortDate(r.BorrowDate)</td>
+                        <td>
+                            @if (r.IsOverdue)
+                            {
+                                <span class="text-danger fw-semibold">@ShortDate(r.ExpectedReturn)</span>
+                                <span class="badge bg-danger ms-1">Overdue</span>
+                            }
+                            else
+                            {
+                                @ShortDate(r.ExpectedReturn)
+                            }
+                        </td>
+                        <td><span class="badge @sb.Css"><i class="bi @sb.Icon me-1"></i>@ItemLabels.Status(r.Status)</span></td>
+                        <td><span class="badge @ConditionCss(r.Condition)">@ItemLabels.Condition(r.Condition)</span></td>
+                        <td class="text-center">
+                            <button type="button" class="btn dash-btn-view btn-sm" title="View details"
+                                    data-bs-toggle="modal" data-bs-target="#itemModal"
+                                    data-id="@r.Id" data-name="@r.ItemName">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No items match your filters.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <div class="text-danger small">
+            Showing @Model.FirstShown to @Model.LastShown of @Model.TotalRows items
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Item pages">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Link(f.Status, Model.Page - 1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></a>
+                    </li>
+                    @foreach (var p in Model.PageWindow())
+                    {
+                        if (p == 0)
+                        {
+                            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                        }
+                        else
+                        {
+                            <li class="page-item @(p == Model.Page ? "active" : "")">
+                                <a class="page-link" href="@Link(f.Status, p)">@p</a>
+                            </li>
+                        }
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Link(f.Status, Model.Page + 1)" aria-label="Next"><i class="bi bi-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold" id="itemTitle">Item details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body small" id="itemBody"></div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var detailsUrl = '@Url.Action("ItemDetails", "Admin")';
+            var STATUS_CSS = {
+                available: 'bg-success-subtle text-success-emphasis',
+                borrowed: 'bg-warning-subtle text-warning-emphasis',
+                maintenance: 'bg-danger-subtle text-danger-emphasis'
+            };
+
+            function el(tag, cls, text) {
+                var e = document.createElement(tag);
+                if (cls) e.className = cls;
+                if (text !== undefined && text !== null) e.textContent = text;
+                return e;
+            }
+
+            function field(label, value) {
+                var col = el('div', 'col-md-6');
+                col.appendChild(el('strong', null, label + ': '));
+                col.appendChild(document.createTextNode(value || '-'));
+                return col;
+            }
+
+            function render(d) {
+                var body = document.getElementById('itemBody');
+                body.innerHTML = '';
+
+                document.getElementById('itemTitle').textContent = d.name + ' (' + d.itemCode + ')';
+
+                // Status and condition
+                var head = el('div', 'mb-3');
+                head.appendChild(el('span', 'badge me-2 ' + (STATUS_CSS[d.statusKey] || 'bg-light text-dark'), d.statusText));
+                head.appendChild(el('span', 'badge bg-light text-dark border', 'Condition: ' + d.conditionText));
+                body.appendChild(head);
+
+                // Item info
+                var info = el('div', 'row g-2 mb-3');
+                info.appendChild(field('Category', d.category));
+                info.appendChild(field('Serial number', d.serialNumber));
+                info.appendChild(field('Storage location', d.storageLocation));
+                info.appendChild(field('Added on', d.addedOn));
+                info.appendChild(field('Total times borrowed', String(d.totalBorrows)));
+                body.appendChild(info);
+
+                // Current loan
+                body.appendChild(el('hr'));
+                body.appendChild(el('div', 'fw-bold mb-2', 'Current loan'));
+                if (d.current) {
+                    var c = d.current;
+                    var box = el('div', 'p-3 bg-white rounded border ' + (c.overdueNow ? 'border-danger' : 'border-warning'));
+                    var row = el('div', 'row g-2');
+                    row.appendChild(field('Borrower', c.borrower + ' (' + c.borrowerCode + ')'));
+                    row.appendChild(field('Released by', c.releasedBy));
+                    row.appendChild(field('Handed over', c.handover));
+                    var due = field('Expected return', c.due);
+                    if (c.overdueNow) {
+                        due.appendChild(el('span', 'badge bg-danger ms-2', 'Overdue'));
+                    }
+                    row.appendChild(due);
+                    box.appendChild(row);
+                    body.appendChild(box);
+                } else {
+                    body.appendChild(el('div', 'text-muted', 'This item is not currently out on loan.'));
+                }
+
+                // History
+                body.appendChild(el('hr'));
+                body.appendChild(el('div', 'fw-bold mb-2', 'Recent borrowing history'));
+                if (!d.history || d.history.length === 0) {
+                    body.appendChild(el('div', 'text-muted', 'No completed borrowings yet.'));
+                } else {
+                    var wrap = el('div', 'table-responsive');
+                    var table = el('table', 'table table-sm align-middle');
+                    var thead = el('thead');
+                    var hr = el('tr');
+                    ['Borrower', 'Handed over', 'Returned', 'Condition', 'Late', 'Notes'].forEach(function (h) {
+                        hr.appendChild(el('th', null, h));
+                    });
+                    thead.appendChild(hr);
+                    table.appendChild(thead);
+
+                    var tbody = el('tbody');
+                    d.history.forEach(function (h) {
+                        var tr = el('tr');
+                        var who = el('td');
+                        who.appendChild(el('div', 'fw-semibold', h.borrower));
+                        who.appendChild(el('div', 'text-muted', h.borrowerCode));
+                        tr.appendChild(who);
+                        tr.appendChild(el('td', null, h.handover || '-'));
+                        tr.appendChild(el('td', null, h.returned || '-'));
+                        tr.appendChild(el('td', null, h.returnCondition || '-'));
+                        tr.appendChild(el('td', null, h.lateHours > 0 ? '+' + h.lateHours + ' h' : '-'));
+                        tr.appendChild(el('td', null, h.notes || '-'));
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    wrap.appendChild(table);
+                    body.appendChild(wrap);
+                }
+            }
+
+            document.getElementById('itemModal').addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                var body = document.getElementById('itemBody');
+                document.getElementById('itemTitle').textContent = trigger.getAttribute('data-name') || 'Item details';
+                body.innerHTML = '';
+                body.appendChild(el('div', 'text-center text-muted py-4', 'Loading...'));
+
+                fetch(detailsUrl + '?id=' + encodeURIComponent(trigger.getAttribute('data-id')), { credentials: 'same-origin' })
+                    .then(function (res) {
+                        if (!res.ok) { throw new Error('bad response'); }
+                        return res.json();
+                    })
+                    .then(render)
+                    .catch(function () {
+                        body.innerHTML = '';
+                        body.appendChild(el('div', 'alert alert-danger', 'Could not load the item details. Please try again.'));
+                    });
+            });
+        })();
+    </script>
+}
