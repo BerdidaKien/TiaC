@@ -11,32 +11,33 @@
 }
 
 <nav class="side-nav" aria-label="Student navigation">
-    <a class="side-nav__brand" asp-controller="Home" asp-action="Index" aria-label="Go to home page">
+    <a class="side-nav__brand" asp-controller="Student" asp-action="Index" aria-label="Go to dashboard">
         TiaC
     </a>
 
     <ul class="side-nav__links">
         <li>
-            <a class="side-nav__link @(IsActive("Home", "Index") ? "is-active" : "")"
-               asp-controller="Home" asp-action="Index">
+            <a class="side-nav__link @(IsActive("Student", "Index") ? "is-active" : "")"
+               asp-controller="Student" asp-action="Index">
                 <i class="fa-solid fa-house"></i>
                 <span class="side-nav__text">Dashboard</span>
             </a>
         </li>
         <li>
-            <a class="side-nav__link @(IsActive("Student", "Equipment") ? "is-active" : "")"
-               asp-controller="Student" asp-action="Equipment">
+            @* The dashboard already lists and filters all equipment *@
+            <a class="side-nav__link" asp-controller="Student" asp-action="Equipment">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <span class="side-nav__text">Search Equipments</span>
             </a>
         </li>
         <li>
-            <a class="side-nav__link @(IsActive("Student", "Reservations") ? "is-active" : "")"
-               asp-controller="Student" asp-action="Reservations">
+            <a class="side-nav__link @(IsActive("Student", "MyReservations") ? "is-active" : "")"
+               asp-controller="Student" asp-action="MyReservations">
                 <i class="fa-solid fa-calendar"></i>
                 <span class="side-nav__text">My Reservations</span>
             </a>
         </li>
+        @* History: re-enable once Student/History exists
         <li>
             <a class="side-nav__link @(IsActive("Student", "History") ? "is-active" : "")"
                asp-controller="Student" asp-action="History">
@@ -44,6 +45,7 @@
                 <span class="side-nav__text">History</span>
             </a>
         </li>
+        *@
         <li>
             <a class="side-nav__link @(IsActive("Account", "Profile") ? "is-active" : "")"
                asp-controller="Account" asp-action="Profile">
@@ -51,18 +53,19 @@
                 <span class="side-nav__text">Profile</span>
             </a>
         </li>
-        <li>
-            <a class="side-nav__link" asp-controller="Account" asp-action="SignOutUser">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span class="side-nav__text">Logout</span>
-            </a>
-        </li>
+       
     </ul>
 
     <p class="side-nav__quote">“Better days are ahead, keep going.”</p>
 
     <div class="side-nav__user">
-        <img src="~/img/profile-logo.png" alt="Profile picture" />
-        <span class="side-nav__username">@userName</span>
+        
+            
+                <a class="side-nav__link" asp-controller="Account" asp-action="SignOutUser">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="side-nav__text">Logout</span>
+                </a>
+            
+       
     </div>
 </nav>

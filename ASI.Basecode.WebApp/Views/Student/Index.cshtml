@@ -1,0 +1,257 @@
+﻿@* Location: ASI.Basecode.WebApp/Views/Student/Index.cshtml *@
+@model ASI.Basecode.Services.ServiceModels.StudentDashboardViewModel
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Student Dashboard";
+
+    var userName = HttpContextAccessor.HttpContext.Session.GetString("UserName");
+    var fullName = string.IsNullOrWhiteSpace(userName) ? "Guest" : userName;
+    var cat = Model.Catalog;
+
+    string IconFor(string categoryCode) => (categoryCode ?? "") switch
+    {
+        "AV-MEDIA" => "bi-camera",
+        "IT-TECH" => "bi-laptop",
+        "EVENT-SUP" => "bi-megaphone",
+        "LAB-SCI" => "bi-eyedropper",
+        "SPORTS-REC" => "bi-trophy",
+        "GEN-TOOLS" => "bi-tools",
+        _ => "bi-box-seam"
+    };
+}
+
+@section Styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
+<div class="dash">
+
+    @* ===== Welcome header ===== *@
+    <div class="dash-header d-flex align-items-start justify-content-between pb-3 mb-4">
+        <div>
+            <p class="dash-welcome mb-0">Welcome Back,</p>
+            <h1 class="dash-name mb-1">@fullName</h1>
+            <p class="dash-sub mb-0">Browse available equipment and track your reservations.</p>
+        </div>
+
+        <div class="d-flex align-items-center">
+            <button type="button" class="dash-bell btn" aria-label="Notifications">
+                <i class="fa-regular fa-bell"></i>
+            </button>
+        </div>
+    </div>
+
+    @* ===== Stat cards ===== *@
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="dash-card h-100">
+                <div class="dash-stat-label">Total Equipment</div>
+                <div class="dash-stat-count">@cat.TotalEquipment</div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="dash-card h-100">
+                <div class="dash-stat-label">Available Now</div>
+                <div class="dash-stat-count">@cat.AvailableItems</div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <a asp-controller="Student" asp-action="MyReservations" class="text-decoration-none">
+                <div class="dash-card h-100">
+                    <div class="dash-stat-label">My Active Borrowings</div>
+                    <div class="dash-stat-count">@Model.MyActiveBorrowings</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-xl-3">
+            <a asp-controller="Student" asp-action="MyReservations" class="text-decoration-none">
+                <div class="dash-card h-100">
+                    <div class="dash-stat-label">My Pending Requests</div>
+                    <div class="dash-stat-count">@Model.MyPendingRequests</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row dash-bottom">
+
+        @* ===== Available equipment ===== *@
+        <div class="col-lg-8 mb-4 dash-col">
+            <div class="dash-card">
+                <h2 class="dash-section-title mb-3">Available Equipment</h2>
+
+                <form method="get" asp-controller="Student" asp-action="Index" class="mb-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-5">
+                            <input type="text" name="search" value="@cat.Search" class="form-control dash-search-input"
+                                   placeholder="Search by name, code, or serial..." />
+                        </div>
+                        <div class="col-md-3">
+                            <select name="categoryId" class="form-select dash-search-input">
+                                <option value="">All Categories</option>
+                                @foreach (var c in cat.Categories)
+                                {
+                                    <option value="@c.Id" selected="@(cat.CategoryId == c.Id)">@c.CategoryName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select name="status" class="form-select dash-search-input">
+                                <option value="">All</option>
+                                <option value="available" selected="@(cat.Status == "available")">Available</option>
+                                <option value="borrowed" selected="@(cat.Status == "borrowed")">Borrowed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn dash-btn-reserve w-100">Search</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive dash-scroll">
+                    <table class="table dash-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Equipment Name</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.PagedItems)
+                            {
+                                var isBorrowed = cat.BorrowedItemIds.Contains(item.Id);
+                                var available = !isBorrowed && item.Status == "available";
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            @if (!string.IsNullOrEmpty(item.ImagePath))
+                                            {
+                                                <img src="@item.ImagePath" alt="@item.BrandModel" loading="lazy"
+                                                     style="width:2.6rem;height:2.6rem;object-fit:cover;border-radius:8px;flex:0 0 auto;" />
+                                            }
+                                            else
+                                            {
+                                                <span class="dash-icon-circle dash-icon-sm d-inline-flex align-items-center justify-content-center">
+                                                    <i class="bi @IconFor(item.Category?.CategoryCode)"></i>
+                                                </span>
+                                            }
+                                            <span class="ms-2">@item.BrandModel</span>
+                                        </div>
+                                    </td>
+                                    <td>@(item.Category?.CategoryName ?? "General")</td>
+                                    <td>
+                                        <span class="dash-pill @(available ? "is-available" : "is-borrowed")">
+                                            @(isBorrowed ? "Currently Borrowed" : (available ? "Available" : item.Status))
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a asp-controller="Student" asp-action="EquipmentDetails" asp-route-id="@item.Id"
+                                           class="btn dash-btn @(available ? "dash-btn-reserve" : "dash-btn-view")">
+                                            @(available ? "Reserve" : "View")
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!Model.PagedItems.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center dash-muted py-4">No equipment found. Try different filters.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.TotalFiltered > 0)
+                {
+                    var firstShown = (Model.Page - 1) * Model.PageSize + 1;
+                    var lastShown = Math.Min(Model.Page * Model.PageSize, Model.TotalFiltered);
+                    var winStart = Math.Max(1, Model.Page - 2);
+                    var winEnd = Math.Min(Model.TotalPages, winStart + 4);
+                    winStart = Math.Max(1, winEnd - 4);
+
+                    <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2">
+                        <span class="dash-muted small">Showing @firstShown–@lastShown of @Model.TotalFiltered</span>
+
+                        @if (Model.TotalPages > 1)
+                        {
+                            <nav aria-label="Equipment pages">
+                                <ul class="pagination dash-pagination mb-0">
+                                    <li class="page-item @(Model.Page == 1 ? "disabled" : "")">
+                                        <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page - 1)"
+                                           asp-route-search="@cat.Search" asp-route-categoryId="@cat.CategoryId" asp-route-status="@cat.Status">&laquo;</a>
+                                    </li>
+                                    @for (var p = winStart; p <= winEnd; p++)
+                                    {
+                                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                                            <a class="page-link" asp-action="Index" asp-route-page="@p"
+                                               asp-route-search="@cat.Search" asp-route-categoryId="@cat.CategoryId" asp-route-status="@cat.Status">@p</a>
+                                        </li>
+                                    }
+                                    <li class="page-item @(Model.Page == Model.TotalPages ? "disabled" : "")">
+                                        <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page + 1)"
+                                           asp-route-search="@cat.Search" asp-route-categoryId="@cat.CategoryId" asp-route-status="@cat.Status">&raquo;</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ===== Recent reservations ===== *@
+        <div class="col-lg-4 mb-4 dash-col">
+            <div class="dash-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="dash-section-title mb-0">Recent Reservations</h2>
+                    <a asp-controller="Student" asp-action="MyReservations" class="dash-link">
+                        View all <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                @if (!Model.RecentReservations.Any())
+                {
+                    <p class="dash-muted text-center mb-0 py-4">No reservations yet.</p>
+                }
+
+                <ul class="dash-reservations dash-scroll list-unstyled mb-0">
+                    @foreach (var r in Model.RecentReservations)
+                    {
+                        var bt = r.BorrowingTransaction;
+                        var statusText = bt != null
+                            ? (bt.ActualReturnTime == null ? "borrowed" : "returned")
+                            : r.Status;
+                        var pillClass = statusText switch
+                        {
+                            "borrowed" or "approved" => "is-available",
+                            "pending" => "is-borrowed",
+                            _ => "is-completed"
+                        };
+                        <li class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <span class="dash-icon-circle dash-icon-sm d-inline-flex align-items-center justify-content-center">
+                                    <i class="bi @IconFor(r.EquipmentItem?.Category?.CategoryCode)"></i>
+                                </span>
+                                <div class="ms-2">
+                                    <div class="dash-res-name">@r.EquipmentItem?.BrandModel</div>
+                                    <div class="dash-res-date">
+                                        <i class="fa-regular fa-calendar"></i>
+                                        @($"{r.RequestedPickupDate:MMM d}") – @($"{r.EstimatedReturnDate:MMM d}")
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="dash-pill @pillClass text-capitalize">@statusText</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

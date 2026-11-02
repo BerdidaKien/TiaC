@@ -1,4 +1,5 @@
-﻿@model ASI.Basecode.Services.ServiceModels.DashboardViewModel
+﻿@* Location: ASI.Basecode.WebApp/Views/Custodian/Index.cshtml *@
+@model ASI.Basecode.Services.ServiceModels.DashboardViewModel
 @{
     ViewData["Title"] = "Custodian Dashboard";
 
@@ -16,6 +17,55 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        /* Equipment card image: category icon by default, uploaded photo on hover */
+        .cd-media {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 9rem;
+            margin-bottom: 1rem;
+            background: #fff;
+            border-radius: .375rem;
+        }
+
+            .cd-media i {
+                transition: opacity .25s ease;
+            }
+
+            .cd-media img {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                opacity: 0;
+                transition: opacity .25s ease;
+            }
+
+            .cd-media.has-photo:hover img,
+            .cd-media.has-photo:focus img {
+                opacity: 1;
+            }
+
+            .cd-media.has-photo:hover i,
+            .cd-media.has-photo:focus i {
+                opacity: 0;
+            }
+
+        /* Touch screens have no hover, so always show the photo there */
+        @@media (hover: none) {
+            .cd-media.has-photo img {
+                opacity: 1;
+            }
+
+            .cd-media.has-photo i {
+                opacity: 0;
+            }
+        }
+    </style>
 }
 
 <div class="dash-header mb-4">
@@ -94,11 +144,16 @@
         @foreach (var item in Model.Items)
         {
             var isBorrowed = Model.BorrowedItemIds.Contains(item.Id);
+            var hasPhoto = !string.IsNullOrEmpty(item.ImagePath);
             <div class="col-md-4">
                 <div class="dash-card h-100 d-flex flex-column justify-content-between">
                     <div>
-                        <div class="text-center p-3 mb-3 bg-white rounded">
+                        <div class="cd-media @(hasPhoto ? "has-photo" : "")" tabindex="@(hasPhoto ? "0" : null)">
                             <i class="bi @IconFor(item.Category?.CategoryCode) fs-1 text-secondary"></i>
+                            @if (hasPhoto)
+                            {
+                                <img src="@item.ImagePath" alt="@item.BrandModel" loading="lazy" />
+                            }
                         </div>
                         <h4 class="dash fs-5 fw-bold mb-1">@item.BrandModel</h4>
                         <div class="small text-muted mb-1">Code: @item.ItemCode</div>

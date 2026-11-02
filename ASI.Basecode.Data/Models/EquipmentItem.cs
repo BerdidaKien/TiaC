@@ -29,6 +29,8 @@ public partial class EquipmentItem
 
     public string UpdatedBy { get; set; }
 
+    public string ImagePath { get; set; }
+
     public virtual ICollection<BorrowingTransaction> BorrowingTransactions { get; set; } = new List<BorrowingTransaction>();
 
     public virtual EquipmentCategory Category { get; set; }

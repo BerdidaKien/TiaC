@@ -29,12 +29,21 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         /// <summary>
-        /// Returns Home View.
+        /// Returns Home View, or sends the user to their own dashboard.
         /// </summary>
         /// <returns> Home View </returns>
         public IActionResult Index()
         {
-            return View();
+            if (User.IsInRole("Custodian"))
+                return RedirectToAction("Index", "Custodian");
+
+            if (User.IsInRole("Student") || User.IsInRole("user"))
+                return RedirectToAction("Index", "Student");
+
+            if (User.IsInRole("Admin"))
+                return RedirectToAction("Index", "Admin");
+
+            return RedirectToAction("Login", "Account");
         }
     }
 }
