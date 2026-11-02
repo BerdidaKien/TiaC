@@ -1,0 +1,192 @@
+﻿@* Location: ASI.Basecode.WebApp/Views/Student/Equipment.cshtml *@
+@model IEnumerable<ASI.Basecode.Data.Models.EquipmentItem>
+@{
+    ViewData["Title"] = "Search Equipment";
+
+    string search = ViewBag.Search as string;
+    string status = ViewBag.Status as string;
+    string sort = ViewBag.Sort as string;
+
+    var items = (Model ?? new List<ASI.Basecode.Data.Models.EquipmentItem>()).ToList();
+
+    int currentPage = ViewBag.Page is int pg1 ? pg1 : 1;
+    int totalPages = ViewBag.TotalPages is int pg2 ? pg2 : 1;
+    int pageSize = ViewBag.PageSize is int pg3 ? pg3 : 6;
+    int totalItems = ViewBag.TotalItems is int pg4 ? pg4 : items.Count;
+    int? categoryId = ViewBag.CategoryId as int?;
+
+    string IconFor(string categoryCode) => (categoryCode ?? "") switch
+    {
+        "AV-MEDIA" => "bi-camera",
+        "IT-TECH" => "bi-laptop",
+        "EVENT-SUP" => "bi-megaphone",
+        "LAB-SCI" => "bi-eyedropper",
+        "SPORTS-REC" => "bi-trophy",
+        "GEN-TOOLS" => "bi-tools",
+        _ => "bi-box-seam"
+    };
+}
+
+@section Styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/equipment.css" asp-append-version="true" />
+}
+
+<div class="dash">
+
+    @* ===== Page header ===== *@
+    <div class="dash-header pb-3 mb-4">
+        <h1 class="dash-name mb-1">Search Equipment</h1>
+        <p class="dash-sub mb-0">Find and reserve the equipment you need.</p>
+    </div>
+
+    @* ===== Search & filters ===== *@
+    <form id="equipmentFilterForm" method="get" asp-controller="Student" asp-action="Equipment" class="eq-filter mb-4">
+        <input type="hidden" name="status" value="@status" />
+
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-7">
+                <div class="position-relative">
+                    <i class="bi bi-search eq-search-icon"></i>
+                    <input type="text" name="search" value="@search"
+                           class="form-control dash-search-input eq-search-input"
+                           placeholder="Search for equipment..." />
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <label class="eq-label" for="categoryId">Category</label>
+                <select id="categoryId" name="categoryId" class="form-select dash-search-input">
+                    <option value="">All Categories</option>
+                    @if (ViewBag.CategoryList != null)
+                    {
+                        foreach (var c in (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.CategoryList)
+                        {
+                            <option value="@c.Value" selected="@c.Selected">@c.Text</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2">
+                <button type="submit" class="btn dash-btn-reserve w-100 eq-search-btn">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+            </div>
+        </div>
+
+        <div class="eq-pills mt-3">
+            <a class="eq-pill @(string.IsNullOrEmpty(status) ? "is-active" : "")"
+               asp-action="Equipment" asp-route-search="@search" asp-route-categoryId="@categoryId" asp-route-sort="@sort">All</a>
+            <a class="eq-pill @(status == "available" ? "is-active" : "")"
+               asp-action="Equipment" asp-route-search="@search" asp-route-categoryId="@categoryId" asp-route-sort="@sort" asp-route-status="available">Available</a>
+            <a class="eq-pill @(status == "borrowed" ? "is-active" : "")"
+               asp-action="Equipment" asp-route-search="@search" asp-route-categoryId="@categoryId" asp-route-sort="@sort" asp-route-status="borrowed">Currently Borrowed</a>
+        </div>
+    </form>
+
+    @* ===== Catalog header ===== *@
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <h2 class="eq-catalog-title m-0">Equipment Catalog</h2>
+            <span class="eq-count">@totalItems items found</span>
+        </div>
+
+        <select name="sort" form="equipmentFilterForm" class="form-select dash-search-input eq-sort"
+                onchange="this.form.submit()" aria-label="Sort equipment">
+            <option value="name" selected="@(sort != "category")">Equipment Name</option>
+            <option value="category" selected="@(sort == "category")">Category</option>
+        </select>
+    </div>
+
+    @* ===== Catalog grid ===== *@
+    @if (items.Any())
+    {
+        <div class="row g-4">
+            @foreach (var item in items)
+            {
+                var available = item.Status == "available";
+                var statusLabel = available ? "Available" : (item.Status == "borrowed" ? "Currently Borrowed" : item.Status);
+                <div class="col-md-6 col-xl-4">
+                    <article class="eq-card h-100">
+                        <div class="d-flex gap-3">
+                            @{ var hasPhoto = !string.IsNullOrEmpty(item.ImagePath); }
+                            <div class="eq-card__media @(hasPhoto ? "has-photo" : "")" tabindex="@(hasPhoto ? "0" : null)">
+                                <i class="bi @IconFor(item.Category?.CategoryCode)"></i>
+                                @if (hasPhoto)
+                                {
+                                    <img src="@item.ImagePath" alt="@item.BrandModel" loading="lazy" />
+                                }
+                            </div>
+                            <div class="eq-card__info">
+                                <h3 class="eq-card__title">
+                                    @(item.Category?.CategoryName ?? "Equipment")
+                                    <span class="eq-card__brand">(@item.BrandModel)</span>
+                                </h3>
+                                <div class="eq-card__line"><i class="bi bi-upc-scan"></i> @item.ItemCode</div>
+                                <div class="eq-card__line"><i class="bi bi-patch-check"></i> <span class="text-capitalize">@item.ConditionRating?.Replace("_", " ")</span></div>
+                                <div class="eq-card__line"><i class="bi bi-geo-alt"></i> @item.StorageLocation</div>
+                            </div>
+                        </div>
+
+                        <div class="eq-card__status">
+                            <span class="dash-pill @(available ? "is-available" : "is-borrowed")">@statusLabel</span>
+                        </div>
+
+                        <hr class="eq-card__divider" />
+
+                        <a asp-controller="Student" asp-action="EquipmentDetails" asp-route-id="@item.Id"
+                           class="btn w-100 @(available ? "dash-btn-reserve" : "dash-btn-view") eq-card__btn">
+                            @(available ? "Reserve" : "View")
+                        </a>
+                    </article>
+                </div>
+            }
+        </div>
+
+        var firstShown = (currentPage - 1) * pageSize + 1;
+        var lastShown = Math.Min(currentPage * pageSize, totalItems);
+        var winStart = Math.Max(1, currentPage - 2);
+        var winEnd = Math.Min(totalPages, winStart + 4);
+        winStart = Math.Max(1, winEnd - 4);
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between mt-4 gap-2">
+            <span class="eq-showing">Showing @firstShown–@lastShown of @totalItems</span>
+
+            @if (totalPages > 1)
+            {
+                <nav aria-label="Equipment pages">
+                    <ul class="pagination eq-pagination mb-0">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="Equipment" asp-route-page="@(currentPage - 1)"
+                               asp-route-search="@search" asp-route-categoryId="@categoryId"
+                               asp-route-status="@status" asp-route-sort="@sort">&laquo;</a>
+                        </li>
+                        @for (var n = winStart; n <= winEnd; n++)
+                        {
+                            <li class="page-item @(n == currentPage ? "active" : "")">
+                                <a class="page-link" asp-action="Equipment" asp-route-page="@n"
+                                   asp-route-search="@search" asp-route-categoryId="@categoryId"
+                                   asp-route-status="@status" asp-route-sort="@sort">@n</a>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="Equipment" asp-route-page="@(currentPage + 1)"
+                               asp-route-search="@search" asp-route-categoryId="@categoryId"
+                               asp-route-status="@status" asp-route-sort="@sort">&raquo;</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="eq-empty">
+            <i class="bi bi-inbox"></i>
+            <h3>No equipment currently available</h3>
+            <p>There is nothing to show right now. Please check back later.</p>
+        </div>
+    }
+</div>

@@ -7,10 +7,6 @@ namespace ASI.Basecode.Data;
 
 public partial class TiaCContext : DbContext
 {
-    public TiaCContext()
-    {
-    }
-
     public TiaCContext(DbContextOptions<TiaCContext> options)
         : base(options)
     {
@@ -26,17 +22,23 @@ public partial class TiaCContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Addr=(localdb)\\MSSQLLocalDB; database=TiaC; Trusted_Connection=True; MultipleActiveResultSets=true; TrustServerCertificate=True");
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<BorrowingTransaction>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Borrowin__3213E83F58D0F761");
 
-            entity.HasIndex(e => e.ReservationId, "UQ_Transaction_Reservation").IsUnique();
+            entity.HasIndex(e => e.BorrowerId, "IX_BorrowingTransactions_borrower_id");
+
+            entity.HasIndex(e => e.EquipmentItemId, "IX_BorrowingTransactions_equipment_item_id");
+
+            entity.HasIndex(e => e.ReleasedBy, "IX_BorrowingTransactions_released_by");
+
+            entity.HasIndex(e => e.ReturnedTo, "IX_BorrowingTransactions_returned_to");
+
+            entity.HasIndex(e => e.ReservationId, "UQ_Transaction_Reservation")
+                .IsUnique()
+                .HasFilter("([reservation_id] IS NOT NULL)");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ActualPickupTime).HasColumnName("actual_pickup_time");
@@ -125,9 +127,13 @@ public partial class TiaCContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Equipmen__3213E83F8AE4C201");
 
+            entity.HasIndex(e => e.CategoryId, "IX_EquipmentItems_category_id");
+
             entity.HasIndex(e => e.ItemCode, "UQ_Item_Code").IsUnique();
 
-            entity.HasIndex(e => e.SerialNumber, "UQ_Item_Serial").IsUnique();
+            entity.HasIndex(e => e.SerialNumber, "UQ_Item_Serial")
+                .IsUnique()
+                .HasFilter("([serial_number] IS NOT NULL)");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.BrandModel)
@@ -148,6 +154,10 @@ public partial class TiaCContext : DbContext
             entity.Property(e => e.CreatedTime)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnName("created_time");
+            entity.Property(e => e.ImagePath)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("image_path");
             entity.Property(e => e.ItemCode)
                 .IsRequired()
                 .HasMaxLength(50)
@@ -184,6 +194,12 @@ public partial class TiaCContext : DbContext
         modelBuilder.Entity<Reservation>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Reservat__3213E83F95CD2E81");
+
+            entity.HasIndex(e => e.BorrowerId, "IX_Reservations_borrower_id");
+
+            entity.HasIndex(e => e.EquipmentItemId, "IX_Reservations_equipment_item_id");
+
+            entity.HasIndex(e => e.ReviewedBy, "IX_Reservations_reviewed_by");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.BorrowerId).HasColumnName("borrower_id");

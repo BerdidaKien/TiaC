@@ -81,6 +81,14 @@ namespace ASI.Basecode.WebApp.Authentication
             var token = _configuration.GetTokenAuthentication();
             var fullName = $"{user.FirstName} {user.LastName}".Trim();
 
+            // Normalize the student role so it always matches [Authorize(Roles = "Student")]
+            var role = user.Role ?? "user";
+            if (role.Equals("student", StringComparison.OrdinalIgnoreCase) ||
+                role.Equals("user", StringComparison.OrdinalIgnoreCase))
+            {
+                role = "Student";
+            }
+
             var claims = new List<Claim>()
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
@@ -88,7 +96,7 @@ namespace ASI.Basecode.WebApp.Authentication
 
                 new Claim("UserId", user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
                 new Claim("UserName", fullName, ClaimValueTypes.String, Const.Issuer),
-                new Claim(ClaimTypes.Role, user.Role ?? "user", ClaimValueTypes.String, Const.Issuer)
+                new Claim(ClaimTypes.Role, role, ClaimValueTypes.String, Const.Issuer)
             };
             return new ClaimsIdentity(claims, Const.AuthenticationScheme);
         }

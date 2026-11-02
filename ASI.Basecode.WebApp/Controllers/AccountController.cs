@@ -109,7 +109,7 @@ namespace ASI.Basecode.WebApp.Controllers
                     case "student":
                     case "user":
                     default:
-                        return RedirectToAction("Index", "Home");
+                        return RedirectToAction("Index", "Student");
                 }
             }
             else

@@ -1,0 +1,264 @@
+﻿/* wwwroot/css/equipment.css
+   New file for the Student "Search Equipment" page only.
+   Uses the colour variables already defined in dashboard.css. */
+
+/* ----- Search & filter card ----- */
+.eq-filter {
+    background: var(--d-card);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 3px 8px rgba(90, 0, 0, .12);
+    border: 1px solid rgba(90, 0, 0, 0.08);
+}
+
+.eq-label {
+    display: block;
+    font-size: .8rem;
+    color: #7a4a3a;
+    margin-bottom: .25rem;
+}
+
+.eq-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    transform: translateY(-50%);
+    color: var(--d-maroon);
+    pointer-events: none;
+}
+
+.eq-search-input {
+    padding-left: 2.6rem;
+}
+
+.eq-search-btn {
+    height: 2.6rem;
+}
+
+/* ----- Filter pills ----- */
+.eq-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+}
+
+.eq-pill {
+    display: inline-block;
+    padding: .2rem 1rem;
+    border: 1px solid var(--d-red);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--d-red);
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .75rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+    .eq-pill:hover {
+        background: rgba(168, 48, 15, .1);
+        color: var(--d-red);
+    }
+
+    .eq-pill.is-active {
+        background: var(--d-orange);
+        border-color: var(--d-orange);
+        color: #fff;
+    }
+
+/* ----- Catalog header ----- */
+.eq-catalog-title {
+    font-family: var(--d-serif);
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--d-maroon);
+}
+
+.eq-count {
+    padding-left: 1rem;
+    border-left: 2px solid var(--d-maroon);
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .8rem;
+    color: var(--d-red);
+}
+
+.eq-sort {
+    width: auto;
+    min-width: 11rem;
+}
+
+/* ----- Equipment cards ----- */
+.eq-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--d-card);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 3px 4px 0 rgba(90, 0, 0, .35);
+    border: 1px solid rgba(90, 0, 0, .12);
+    color: var(--d-maroon);
+}
+
+.eq-card__media {
+    position: relative;
+    overflow: hidden;
+    flex: 0 0 6rem;
+    height: 6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 8px;
+    font-size: 2.6rem;
+    color: var(--d-maroon);
+}
+
+    .eq-card__media i {
+        transition: opacity .25s ease;
+    }
+
+    /* The custodian's uploaded photo sits on top, hidden until hover/focus */
+    .eq-card__media img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 8px;
+        opacity: 0;
+        transition: opacity .25s ease;
+    }
+
+    .eq-card__media.has-photo:hover img,
+    .eq-card__media.has-photo:focus img {
+        opacity: 1;
+    }
+
+    .eq-card__media.has-photo:hover i,
+    .eq-card__media.has-photo:focus i {
+        opacity: 0;
+    }
+
+/* Touch screens have no hover, so always show the photo there */
+@media (hover: none) {
+    .eq-card__media.has-photo img {
+        opacity: 1;
+    }
+
+    .eq-card__media.has-photo i {
+        opacity: 0;
+    }
+}
+
+.eq-card__info {
+    min-width: 0;
+    flex: 1;
+}
+
+.eq-card__title {
+    font-family: var(--d-serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: .4rem;
+}
+
+.eq-card__brand {
+    color: var(--d-orange);
+}
+
+.eq-card__line {
+    font-size: .78rem;
+    margin-bottom: .2rem;
+    word-break: break-word;
+}
+
+    .eq-card__line i {
+        margin-right: .35rem;
+        color: var(--d-red);
+    }
+
+.eq-card__status {
+    margin-top: auto;
+    padding-top: .8rem;
+}
+
+.eq-card__divider {
+    border-color: var(--d-maroon);
+    opacity: .6;
+    margin: .6rem 0;
+}
+
+.eq-card__btn {
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .85rem;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+/* ----- Empty state ----- */
+.eq-empty {
+    text-align: center;
+    padding: 3.5rem 1rem;
+    background: var(--d-card);
+    border-radius: 14px;
+    border: 1px dashed rgba(90, 0, 0, .35);
+    color: #7a4a3a;
+}
+
+    .eq-empty i {
+        font-size: 2.8rem;
+        color: var(--d-red);
+    }
+
+    .eq-empty h3 {
+        font-family: var(--d-serif);
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--d-maroon);
+        margin: .6rem 0 .25rem;
+    }
+
+    .eq-empty p {
+        margin: 0;
+        font-size: .88rem;
+    }
+
+
+/* ----- Pagination ----- */
+.eq-showing {
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .8rem;
+    color: #7a4a3a;
+}
+
+.eq-pagination .page-link {
+    color: var(--d-maroon);
+    background: #f6e6da;
+    border: 1px solid var(--d-red);
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    min-width: 2.2rem;
+    text-align: center;
+}
+
+    .eq-pagination .page-link:hover {
+        background: #efc4ae;
+        color: var(--d-maroon);
+    }
+
+    .eq-pagination .page-link:focus {
+        box-shadow: 0 0 0 .2rem rgba(179, 45, 14, .2);
+    }
+
+.eq-pagination .page-item.active .page-link {
+    background: var(--d-orange);
+    border-color: var(--d-orange);
+    color: #fff;
+}
+
+.eq-pagination .page-item.disabled .page-link {
+    background: #f1e4da;
+    border-color: rgba(90, 0, 0, .25);
+    color: #a58c80;
+}

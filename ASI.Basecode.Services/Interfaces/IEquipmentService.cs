@@ -14,5 +14,10 @@ namespace ASI.Basecode.Services.Interfaces
         IEnumerable<EquipmentCategory> GetCategories();
         void AddEquipment(EquipmentItem item);
         DashboardViewModel GetDashboardSummary(string search, int? categoryId, string status);
+
+        // ---- Edit / archive (custodian) ----
+        EquipmentItem GetEquipmentById(int id);
+        ServiceResult UpdateEquipment(EquipmentItem edited);
+        ServiceResult ArchiveEquipment(int id, string updatedBy);
     }
 }

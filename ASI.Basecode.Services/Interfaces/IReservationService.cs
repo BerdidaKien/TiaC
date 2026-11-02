@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.ServiceModels;
 
 namespace ASI.Basecode.Services.Interfaces
@@ -14,5 +15,10 @@ namespace ASI.Basecode.Services.Interfaces
         ServiceResult Decline(int reservationId, string reason, string custodianCode);
         ServiceResult Release(int reservationId, string custodianCode);
         ServiceResult Return(int transactionId, string condition, string notes, string custodianCode);
+
+        // ---- Student side ----
+        List<Reservation> GetForUser(string userCode);
+        int CountActiveForUser(string userCode);
+        int CountPendingForUser(string userCode);
     }
 }

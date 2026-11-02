@@ -62,6 +62,36 @@ namespace ASI.Basecode.Services.Services
             };
         }
 
+        // ---------- Student side ----------
+
+        // All reservations of one borrower (userCode = Borrower.UserId, i.e. the session "UserId"), newest first
+        public List<Reservation> GetForUser(string userCode)
+        {
+            return _repo.GetReservations()
+                .Where(r => r.Borrower.UserId == userCode)
+                .OrderByDescending(r => r.CreatedTime)
+                .ToList();
+        }
+
+        // Items the student has picked up and not yet returned
+        public int CountActiveForUser(string userCode)
+        {
+            return _repo.GetReservations().Count(r =>
+                r.Borrower.UserId == userCode &&
+                r.BorrowingTransaction != null &&
+                r.BorrowingTransaction.ActualReturnTime == null);
+        }
+
+        // Requests still waiting for the custodian's decision
+        public int CountPendingForUser(string userCode)
+        {
+            return _repo.GetReservations().Count(r =>
+                r.Borrower.UserId == userCode &&
+                r.Status == "pending");
+        }
+
+        // ---------- Custodian actions ----------
+
         public ServiceResult Approve(int reservationId, string notes, string custodianCode)
         {
             var custodianId = _repo.GetUserDbId(custodianCode);

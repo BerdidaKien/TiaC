@@ -1,5 +1,4 @@
-﻿/* Dashboard (Home/Index). Bootstrap handles layout; this adds the TiaC look. */
-:root {
+﻿:root {
     --d-bg: #fdf0e6;
     --d-card: #fbe5d6;
     --d-circle: #efc4ae;
@@ -291,4 +290,47 @@
     .dash-stat-count {
         font-size: 1.8rem;
     }
+}
+
+.dash-pagination .page-link {
+    color: var(--d-maroon);
+    background: #f6e6da;
+    border: 1px solid var(--d-red);
+    font-family: Inter, system-ui, sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    min-width: 2.2rem;
+    text-align: center;
+}
+
+    .dash-pagination .page-link:hover {
+        background: #efc4ae;
+        color: var(--d-maroon);
+    }
+
+    .dash-pagination .page-link:focus {
+        box-shadow: 0 0 0 .2rem rgba(179, 45, 14, .2);
+    }
+
+.dash-pagination .page-item.active .page-link {
+    background: var(--d-orange);
+    border-color: var(--d-orange);
+    color: #fff;
+}
+
+.dash-pagination .page-item.disabled .page-link {
+    background: #f1e4da;
+    border-color: rgba(90, 0, 0, .25);
+    color: #a58c80;
+}
+
+/* ----- Remove the extra blank space under the footer ----- */
+body {
+    margin-bottom: 0 !important;
+}
+
+.app-content .footer {
+    position: static;
+    line-height: normal;
+    padding: 1rem 0;
 }
