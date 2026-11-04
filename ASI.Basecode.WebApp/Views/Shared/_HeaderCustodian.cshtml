@@ -13,77 +13,86 @@
 @if (ViewBag.LoginView != true)
 {
     <aside class="app-sidebar d-flex flex-column h-100">
-        <!-- Brand Header -->
-        <div class="sidebar-header p-3 text-center border-bottom border-secondary-subtle">
-            <h3 class="fw-bold m-0 text-white">TiaC</h3>
-            <small class="text-white-50">Equipment Custodian</small>
+        <!-- Logo Header -->
+        <div class="sidebar-header p-4 text-center">
+            <a asp-controller="Custodian" asp-action="Index" class="text-decoration-none">
+                <div class="d-flex justify-content-center mb-1">
+                    <i class="bi bi-mortarboard-fill text-white fs-1"></i>
+                </div>
+                <h2 class="fw-bold m-0 text-white font-serif tracking-wide">TiaC</h2>
+            </a>
         </div>
 
         <!-- Navigation Links -->
-        <ul class="nav flex-column p-3 gap-1 flex-grow-1 overflow-y-auto">
+        <ul class="nav flex-column px-3 gap-2 flex-grow-1 overflow-y-auto">
             <li class="nav-item">
-                <a class="nav-link text-white d-flex align-items-center gap-2 @(IsActive("Custodian", "Index") ? "fw-bold text-warning active" : "")"
+                <a class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2-5 rounded-3 @(IsActive("Custodian", "Index") ? "sidebar-pill-active" : "")"
                    asp-controller="Custodian" asp-action="Index">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>Dashboard</span>
+                    <i class="bi bi-house-door fs-5"></i>
+                    <span class="fs-6 font-serif">Dashboard</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-white d-flex align-items-center gap-2 @(IsActive("Custodian", "Equipment") ? "fw-bold text-warning active" : "")"
+                <a class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2-5 rounded-3 @(IsActive("Custodian", "Equipment") ? "sidebar-pill-active" : "")"
                    asp-controller="Custodian" asp-action="Equipment">
-                    <i class="bi bi-box-seam"></i>
-                    <span>Equipment</span>
+                    <i class="bi bi-search fs-5"></i>
+                    <span class="fs-6 font-serif">Search Equipments</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-white d-flex align-items-center gap-2 @(IsActive("Custodian", "Reservations") ? "fw-bold text-warning active" : "")"
+                <a class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2-5 rounded-3 @(IsActive("Custodian", "Reservations") ? "sidebar-pill-active" : "")"
                    asp-controller="Custodian" asp-action="Reservations">
-                    <i class="bi bi-calendar-check"></i>
-                    <span>Reservations</span>
+                    <i class="bi bi-calendar-event fs-5"></i>
+                    <span class="fs-6 font-serif">All Reservation</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-white d-flex align-items-center gap-2 @(IsActive("Custodian", "History") ? "fw-bold text-warning active" : "")"
+                <a class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2-5 rounded-3 @(IsActive("Custodian", "History") ? "sidebar-pill-active" : "")"
                    asp-controller="Custodian" asp-action="History">
-                    <i class="bi bi-clock-history"></i>
-                    <span>History</span>
+                    <i class="bi bi-clock-history fs-5"></i>
+                    <span class="fs-6 font-serif">History</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-white d-flex align-items-center gap-2 @(IsActive("Custodian", "Reports") ? "fw-bold text-warning active" : "")"
+                <a class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2-5 rounded-3 @(IsActive("Custodian", "Reports") ? "sidebar-pill-active" : "")"
                    asp-controller="Custodian" asp-action="Reports">
-                    <i class="bi bi-bar-chart-line"></i>
-                    <span>Reports</span>
-                </a>
-            </li>
-            <li>
-                @* Profile now uses the shared page with the working photo upload *@
-                <a asp-controller="Account" asp-action="Profile"
-                   class="side-nav__link @(IsActive("Account", "Profile") ? "is-active" : "")">
-                    <i class="bi bi-person"></i>
-                    <span class="side-nav__text">Profile</span>
+                    <i class="bi bi-download fs-5"></i>
+                    <span class="fs-6 font-serif">Reports</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-white d-flex align-items-center gap-2 @(IsActive("Custodian", "Settings") ? "fw-bold text-warning active" : "")"
+                <a class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2-5 rounded-3 @(IsActive("Custodian", "Profile") ? "sidebar-pill-active" : "")"
+                   asp-controller="Custodian" asp-action="Profile">
+                    <i class="bi bi-person fs-5"></i>
+                    <span class="fs-6 font-serif">Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2-5 rounded-3 @(IsActive("Custodian", "Settings") ? "sidebar-pill-active" : "")"
                    asp-controller="Custodian" asp-action="Settings">
-                    <i class="bi bi-gear"></i>
-                    <span>Settings</span>
+                    <i class="bi bi-gear fs-5"></i>
+                    <span class="fs-6 font-serif">Settings</span>
                 </a>
             </li>
         </ul>
 
-        
-        <p class="side-nav__quote">
-            “Better days are ahead,<br />keep going”
+        <!-- Quote & Star Emblem Footer -->
+        <div class="px-3 pt-3 text-center">
+            <hr class="border-secondary opacity-50 my-2" />
+            <div class="text-white-50 small font-serif fst-italic lh-sm">
+                “Better days are ahead,<br />keep going”
+            </div>
+            <div class="text-white opacity-75 my-2 fs-5">✦</div>
+            <hr class="border-secondary opacity-50 my-2" />
         </div>
 
-        <!-- Pinned Bottom Logout -->
-        <div class="sidebar-footer p-3 border-top border-secondary-subtle">
-            <a asp-controller="Account" asp-action="SignOutUser" class="btn btn-outline-light w-100 btn-sm d-flex align-items-center justify-content-center gap-2">
-                <i class="bi bi-box-arrow-left fs-6"></i>
-                <span>Logout</span>
+        <!-- Logout Link (Enlarged) -->
+        <div class="sidebar-footer p-3 pb-4">
+            <a asp-controller="Account" asp-action="SignOutUser"
+               class="nav-link text-white d-flex align-items-center gap-3 px-3 py-2 text-decoration-none">
+                <i class="bi bi-box-arrow-left fs-4"></i>
+                <span class="fs-5 font-serif fw-medium">Logout</span>
             </a>
         </div>
-    </div>
+    </aside>
 }

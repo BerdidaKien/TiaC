@@ -15,10 +15,12 @@ namespace ASI.Basecode.Services.Interfaces
         // Admin User Management
         UserManagementViewModel GetUserManagementData(string search, string role, string status);
 
-        // Get logged-in user's profile
-        ProfileViewModel GetProfile(string userId);
+        // Custodian Profile Methods
+        CustodianProfileViewModel GetCustodianProfile(string userIdStr);
+        bool UpdateCustodianProfile(int id, string firstName, string lastName, string contactNumber);
 
-        // Profile photo / editable profile fields
+        // Shared / Student Profile Methods
+        ProfileViewModel GetProfile(string userId);
         string GetProfileImagePath(string userId);
         ServiceResult UpdateProfile(string userId, string contactNumber, string email, string newImagePath);
     }
