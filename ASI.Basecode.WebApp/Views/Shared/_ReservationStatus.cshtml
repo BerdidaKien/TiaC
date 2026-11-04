@@ -1,0 +1,64 @@
+@* Location: ASI.Basecode.WebApp/Views/Shared/_ReservationStatus.cshtml
+   Shows where a student's reservation is in its life cycle. *@
+@model ASI.Basecode.Data.Models.Reservation
+@{
+    var bt = Model.BorrowingTransaction;
+    var showCaption = ViewData["ShowCaption"] is bool b && b;
+
+    string label;
+    string css;
+    string caption;
+
+    if (bt != null && bt.ActualReturnTime != null)
+    {
+        label = "Returned";
+        css = "is-completed";
+        caption = $"Returned {bt.ActualReturnTime:MMM d, h:mm tt}";
+    }
+    else if (bt != null)
+    {
+        // The custodian handed the item over and it is not back yet
+        var overdue = Model.EstimatedReturnDate < DateTime.Now;
+        label = overdue ? "Overdue" : "Active borrow";
+        css = overdue ? "is-overdue" : "is-available";
+        caption = overdue
+            ? $"Approved · was due {Model.EstimatedReturnDate:MMM d, h:mm tt}"
+            : $"Approved · return by {Model.EstimatedReturnDate:MMM d, h:mm tt}";
+    }
+    else
+    {
+        switch (Model.Status)
+        {
+            case "pending":
+                label = "Pending";
+                css = "is-borrowed";
+                caption = "Waiting for the custodian to review";
+                break;
+            case "approved":
+                label = "Waiting for pickup";
+                css = "is-pickup";
+                caption = $"Approved · pick up {Model.RequestedPickupDate:MMM d, h:mm tt}";
+                break;
+            case "declined":
+                label = "Declined";
+                css = "is-declined";
+                caption = "Declined by the custodian";
+                break;
+            case "cancelled":
+                label = "Cancelled";
+                css = "is-completed";
+                caption = "You cancelled this request";
+                break;
+            default:
+                label = Model.Status;
+                css = "is-completed";
+                caption = null;
+                break;
+        }
+    }
+}
+<span class="dash-pill @css text-capitalize">@label</span>
+@if (showCaption && !string.IsNullOrEmpty(caption))
+{
+    <div class="rs-caption">@caption</div>
+}

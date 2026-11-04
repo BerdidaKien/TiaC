@@ -26,6 +26,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reservation-status.css" asp-append-version="true" />
 }
 
 <div class="dash">
@@ -225,15 +226,6 @@
                     @foreach (var r in Model.RecentReservations)
                     {
                         var bt = r.BorrowingTransaction;
-                        var statusText = bt != null
-                            ? (bt.ActualReturnTime == null ? "borrowed" : "returned")
-                            : r.Status;
-                        var pillClass = statusText switch
-                        {
-                            "borrowed" or "approved" => "is-available",
-                            "pending" => "is-borrowed",
-                            _ => "is-completed"
-                        };
                         <li class="d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center">
                                 <span class="dash-icon-circle dash-icon-sm d-inline-flex align-items-center justify-content-center">
@@ -247,7 +239,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <span class="dash-pill @pillClass text-capitalize">@statusText</span>
+                            <partial name="_ReservationStatus" model="r" />
                         </li>
                     }
                 </ul>

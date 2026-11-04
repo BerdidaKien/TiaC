@@ -1,4 +1,5 @@
-﻿using ASI.Basecode.Data.Interfaces;
+﻿
+using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.Manager;
@@ -26,8 +27,11 @@ namespace ASI.Basecode.Services.Services
         public LoginResult AuthenticateUser(string userId, string password, ref User user)
         {
             user = new User();
+
             var passwordKey = PasswordManager.EncryptPassword(password);
-            user = _repository.GetUsers().FirstOrDefault(x => x.UserId == userId && x.PasswordHash == passwordKey);
+
+            user = _repository.GetUsers()
+                .FirstOrDefault(x => x.UserId == userId && x.PasswordHash == passwordKey);
 
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
@@ -35,6 +39,7 @@ namespace ASI.Basecode.Services.Services
         public void AddUser(UserViewModel model)
         {
             var user = new User();
+
             if (!_repository.UserExists(model.UserId))
             {
                 _mapper.Map(model, user);
@@ -53,8 +58,8 @@ namespace ASI.Basecode.Services.Services
 
                 user.CreatedTime = DateTime.Now;
                 user.UpdatedTime = DateTime.Now;
-                user.CreatedBy = System.Environment.UserName;
-                user.UpdatedBy = System.Environment.UserName;
+                user.CreatedBy = Environment.UserName;
+                user.UpdatedBy = Environment.UserName;
 
                 _repository.AddUser(user);
             }
@@ -66,16 +71,21 @@ namespace ASI.Basecode.Services.Services
 
         public bool ChangePassword(string userId, string currentPassword, string newPassword)
         {
-            var user = _repository.GetUsers().FirstOrDefault(x => x.UserId == userId);
-            if (user == null) return false;
+            var user = _repository.GetUsers()
+                .FirstOrDefault(x => x.UserId == userId);
 
-            if (user.PasswordHash != PasswordManager.EncryptPassword(currentPassword)) return false;
+            if (user == null)
+                return false;
+
+            if (user.PasswordHash != PasswordManager.EncryptPassword(currentPassword))
+                return false;
 
             user.PasswordHash = PasswordManager.EncryptPassword(newPassword);
             user.UpdatedTime = DateTime.Now;
-            user.UpdatedBy = System.Environment.UserName;
+            user.UpdatedBy = Environment.UserName;
 
             _repository.UpdateUser(user);
+
             return true;
         }
 
@@ -91,10 +101,12 @@ namespace ASI.Basecode.Services.Services
             if (!string.IsNullOrWhiteSpace(search))
             {
                 search = search.Trim().ToLower();
-                query = query.Where(u => u.FirstName.ToLower().Contains(search) ||
-                                         u.LastName.ToLower().Contains(search) ||
-                                         u.Email.ToLower().Contains(search) ||
-                                         u.UserId.ToLower().Contains(search));
+
+                query = query.Where(u =>
+                    (u.FirstName ?? "").ToLower().Contains(search) ||
+                    (u.LastName ?? "").ToLower().Contains(search) ||
+                    (u.Email ?? "").ToLower().Contains(search) ||
+                    (u.UserId ?? "").ToLower().Contains(search));
             }
 
             if (!string.IsNullOrWhiteSpace(role))
@@ -119,8 +131,9 @@ namespace ASI.Basecode.Services.Services
                     Role = u.Role,
                     IsActive = u.IsActive,
                     DateCreated = u.CreatedTime,
-                    Initials = ((!string.IsNullOrEmpty(u.FirstName) ? u.FirstName[0].ToString() : "") +
-                               (!string.IsNullOrEmpty(u.LastName) ? u.LastName[0].ToString() : "")).ToUpper()
+                    Initials =
+                        ((!string.IsNullOrEmpty(u.FirstName) ? u.FirstName[0].ToString() : "") +
+                         (!string.IsNullOrEmpty(u.LastName) ? u.LastName[0].ToString() : "")).ToUpper()
                 })
                 .ToList();
 
@@ -134,6 +147,32 @@ namespace ASI.Basecode.Services.Services
                 SelectedRole = role,
                 SelectedStatus = status,
                 Users = userList
+            };
+        }
+
+        // Get logged-in user's profile
+        public ProfileViewModel GetProfile(string userId)
+        {
+            var user = _repository.GetUsers()
+                .FirstOrDefault(u => u.UserId == userId);
+
+            if (user == null)
+            {
+                return null;
+            }
+
+            return new ProfileViewModel
+            {
+                UserId = user.UserId,
+                FirstName = user.FirstName,
+                MiddleName = user.MiddleName,
+                LastName = user.LastName,
+                FullName = $"{user.FirstName} {user.MiddleName} {user.LastName}".Trim(),
+                ContactNumber = user.ContactNumber,
+                Email = user.Email,
+                Role = user.Role,
+                BorrowerStatus = user.BorrowerStatus,
+                IsActive = user.IsActive
             };
         }
     }
