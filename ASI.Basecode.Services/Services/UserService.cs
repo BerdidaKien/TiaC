@@ -1,5 +1,4 @@
-﻿
-using ASI.Basecode.Data.Interfaces;
+﻿using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.Manager;
@@ -172,8 +171,60 @@ namespace ASI.Basecode.Services.Services
                 Email = user.Email,
                 Role = user.Role,
                 BorrowerStatus = user.BorrowerStatus,
-                IsActive = user.IsActive
+                IsActive = user.IsActive,
+                ProfileImagePath = user.ProfileImagePath
             };
+        }
+
+        // Current photo path (used to delete the old file after a new one is saved)
+        public string GetProfileImagePath(string userId)
+        {
+            return _repository.GetUsers()
+                .Where(u => u.UserId == userId)
+                .Select(u => u.ProfileImagePath)
+                .FirstOrDefault();
+        }
+
+        // Saves the editable profile fields and, when given, the new photo path
+        public ServiceResult UpdateProfile(string userId, string contactNumber, string email, string newImagePath)
+        {
+            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userId);
+            if (user == null)
+                return ServiceResult.Fail("Your account was not found. Please log in again.");
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                var cleanEmail = email.Trim();
+                try
+                {
+                    _ = new System.Net.Mail.MailAddress(cleanEmail);
+                }
+                catch (FormatException)
+                {
+                    return ServiceResult.Fail("Please enter a valid email address.");
+                }
+                user.Email = cleanEmail;
+            }
+
+            if (!string.IsNullOrWhiteSpace(contactNumber))
+                user.ContactNumber = contactNumber.Trim();
+
+            if (!string.IsNullOrEmpty(newImagePath))
+                user.ProfileImagePath = newImagePath;
+
+            user.UpdatedTime = DateTime.Now;
+            user.UpdatedBy = userId;
+
+            try
+            {
+                _repository.UpdateUser(user);
+            }
+            catch (Exception)
+            {
+                return ServiceResult.Fail("Could not save your profile. Please try again.");
+            }
+
+            return ServiceResult.Ok("Your profile was updated.");
         }
     }
 }

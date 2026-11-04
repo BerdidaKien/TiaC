@@ -35,6 +35,8 @@ public partial class User
 
     public string UpdatedBy { get; set; }
 
+    public string ProfileImagePath { get; set; }
+
     public virtual ICollection<BorrowingTransaction> BorrowingTransactionBorrowers { get; set; } = new List<BorrowingTransaction>();
 
     public virtual ICollection<BorrowingTransaction> BorrowingTransactionReleasedByNavigations { get; set; } = new List<BorrowingTransaction>();

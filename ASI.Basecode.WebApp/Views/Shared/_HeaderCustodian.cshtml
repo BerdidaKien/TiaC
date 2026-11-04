@@ -52,8 +52,9 @@
                 </a>
             </li>
             <li>
-                <a asp-controller="Custodian" asp-action="Profile"
-                   class="side-nav__link @(IsActive("Custodian", "Profile") ? "is-active" : "")">
+                @* Profile now uses the shared page with the working photo upload *@
+                <a asp-controller="Account" asp-action="Profile"
+                   class="side-nav__link @(IsActive("Account", "Profile") ? "is-active" : "")">
                     <i class="bi bi-person"></i>
                     <span class="side-nav__text">Profile</span>
                 </a>
@@ -67,6 +68,7 @@
             </li>
         </ul>
 
+        
         <p class="side-nav__quote">
             “Better days are ahead,<br />keep going”
         </p>

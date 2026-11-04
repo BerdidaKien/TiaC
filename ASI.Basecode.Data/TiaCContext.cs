@@ -292,6 +292,10 @@ public partial class TiaCContext : DbContext
                 .HasMaxLength(255)
                 .IsUnicode(false)
                 .HasColumnName("password_hash");
+            entity.Property(e => e.ProfileImagePath)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("profile_image_path");
             entity.Property(e => e.Role)
                 .IsRequired()
                 .HasMaxLength(20)
