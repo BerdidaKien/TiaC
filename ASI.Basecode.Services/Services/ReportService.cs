@@ -28,7 +28,7 @@ namespace ASI.Basecode.Services.Services
             var endExclusive = end.AddDays(1);
             var now = DateTime.Now;
 
-            var items = _equipRepo.GetEquipmentItems();
+            var items = _equipRepo.GetEquipmentItems().Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
             var totalItems = items.Count();
 
             // Borrowings that started in the selected range
@@ -56,7 +56,7 @@ namespace ASI.Basecode.Services.Services
                                    .Select(i => new CalendarItemOption
                                    {
                                        Id = i.Id,
-                                       CategoryId = i.CategoryId,
+                                       CategoryId = i.CategoryId ?? 0,
                                        Label = i.ItemCode + " - " + i.BrandModel
                                    })
                                    .ToList()
@@ -109,7 +109,8 @@ namespace ASI.Basecode.Services.Services
             var now = DateTime.Now;
 
             // Items that can be booked (maintenance items are left out of the "free" count)
-            var items = _equipRepo.GetEquipmentItems().Where(i => i.Status != "maintenance");
+            var items = _equipRepo.GetEquipmentItems()
+                .Where(i => i.Status != "maintenance" && !ItemStatuses.AwaitingCategory.Contains(i.Status));
             if (categoryId.HasValue) items = items.Where(i => i.CategoryId == categoryId.Value);
             if (itemId.HasValue) items = items.Where(i => i.Id == itemId.Value);
 

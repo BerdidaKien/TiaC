@@ -1,4 +1,6 @@
 ﻿@* Location: ASI.Basecode.WebApp/Views/Custodian/Equipment.cshtml *@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using SelectListItem = Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
 @model IEnumerable<ASI.Basecode.Data.Models.EquipmentItem>
 @{
     ViewData["Title"] = "Equipment Item Management";
@@ -10,25 +12,42 @@
     int pageSize = ViewBag.PageSize is int pg3 ? pg3 : 5;
     int totalItems = ViewBag.TotalItems is int pg4 ? pg4 : items.Count;
 
-    var categoryOptions = (ViewBag.CategoryList as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)
-                          ?? new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+    var categoryOptions = (ViewBag.CategoryList as IEnumerable<SelectListItem>) ?? new List<SelectListItem>();
+    var editCategoryOptions = (ViewBag.EditCategoryList as IEnumerable<SelectListItem>) ?? new List<SelectListItem>();
+
+    string Na(string value) => string.IsNullOrWhiteSpace(value) ? "N/A" : value;
+
+    (string Text, string Css) StatusBadge(string s) => s switch
+    {
+        "available" => ("AVAILABLE", "bg-success"),
+        "borrowed" => ("BORROWED", "bg-warning text-dark"),
+        "maintenance" => ("MAINTENANCE", "bg-secondary"),
+        "pending_category" => ("PENDING REVIEW", "bg-info text-dark"),
+        "category_rejected" => ("CATEGORY REJECTED", "bg-danger"),
+        _ => ((s ?? "").ToUpper(), "bg-warning text-dark")
+    };
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" />
     <style>
-        .eq-pager .page-link { color: var(--d-maroon, #800000); }
+        .eq-pager .page-link {
+            color: var(--d-maroon, #800000);
+        }
+
         .eq-pager .page-item.active .page-link {
             background-color: var(--d-maroon, #800000);
             border-color: var(--d-maroon, #800000);
             color: #fff;
         }
-        .eq-pager .page-link:focus { box-shadow: 0 0 0 .2rem rgba(128, 0, 0, .2); }
+
+        .eq-pager .page-link:focus {
+            box-shadow: 0 0 0 .2rem rgba(128, 0, 0, .2);
+        }
     </style>
 }
 
 <div class="dash-container">
-    <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="dash-title">Equipment Item Management</h1>
@@ -55,7 +74,6 @@
         </div>
     }
 
-    <!-- Equipment List Table -->
     <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -78,6 +96,7 @@
                             foreach (var item in items)
                             {
                                 var isBorrowed = item.Status == "borrowed";
+                                var badge = StatusBadge(item.Status);
                                 <tr>
                                     <td class="ps-4 fw-semibold">@item.ItemCode</td>
                                     <td>
@@ -97,14 +116,31 @@
                                             <div class="fw-bold text-dark">@item.BrandModel</div>
                                         </div>
                                     </td>
-                                    <td>@(item.Category != null ? item.Category.CategoryName : "General")</td>
-                                    <td><code>@item.SerialNumber</code></td>
-                                    <td>@item.StorageLocation</td>
                                     <td>
-                                        <span class="badge @(item.Status == "available" ? "bg-success" : "bg-warning text-dark")">
-                                            @item.Status.ToUpper()
-                                        </span>
+                                        @if (item.Category != null)
+                                        {
+                                            @item.Category.CategoryName
+                                            @if (!item.Category.IsActive)
+                                            {
+                                                <span class="text-muted small">(disabled)</span>
+                                            }
+                                        }
+                                        else if (item.Status == "pending_category")
+                                        {
+                                            <span class="text-muted fst-italic">Other: @item.SuggestedCategory</span>
+                                        }
+                                        else if (item.Status == "category_rejected")
+                                        {
+                                            <span class="text-danger small">Rejected: @item.CategoryReviewNote</span>
+                                        }
+                                        else
+                                        {
+                                            <span>General</span>
+                                        }
                                     </td>
+                                    <td><code>@Na(item.SerialNumber)</code></td>
+                                    <td>@Na(item.StorageLocation)</td>
+                                    <td><span class="badge @badge.Css">@badge.Text</span></td>
                                     <td>
                                         <span class="badge bg-info text-dark">
                                             @item.ConditionRating
@@ -117,6 +153,8 @@
                                                     data-id="@item.Id"
                                                     data-itemcode="@item.ItemCode"
                                                     data-category="@item.CategoryId"
+                                                    data-suggested="@item.SuggestedCategory"
+                                                    data-note="@item.CategoryReviewNote"
                                                     data-brand="@item.BrandModel"
                                                     data-serial="@item.SerialNumber"
                                                     data-location="@item.StorageLocation"
@@ -203,7 +241,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="dash-stat-label mb-1">ITEM CODE / ASSET TAG *</label>
-                            <input type="text" name="ItemCode" class="form-control dash-search-input" placeholder="e.g. EQ-CAM-005" required />
+                            <input type="text" name="ItemCode" class="form-control dash-search-input" placeholder="e.g. EQ-CAM-005" maxlength="50" required />
                         </div>
 
                         <div class="col-md-6">
@@ -214,22 +252,30 @@
                                 {
                                     <option value="@c.Value">@c.Text</option>
                                 }
+                                <option value="0">Other (needs admin approval)</option>
                             </select>
+                        </div>
+
+                        <div class="col-12 d-none" id="suggestedWrap">
+                            <label class="dash-stat-label mb-1">WHAT CATEGORY DOES THIS ITEM NEED? *</label>
+                            <input type="text" name="SuggestedCategory" id="suggestedInput" class="form-control dash-search-input"
+                                   placeholder="e.g. Sewing & Garments" maxlength="100" />
+                            <div class="form-text">An admin will review this and create the category. The item stays hidden from students until then.</div>
                         </div>
 
                         <div class="col-md-6">
                             <label class="dash-stat-label mb-1">BRAND & MODEL NAME *</label>
-                            <input type="text" name="BrandModel" class="form-control dash-search-input" placeholder="e.g. Canon EOS 2000D" required />
+                            <input type="text" name="BrandModel" class="form-control dash-search-input" placeholder="e.g. Canon EOS 2000D" maxlength="100" required />
                         </div>
 
                         <div class="col-md-6">
-                            <label class="dash-stat-label mb-1">SERIAL NUMBER *</label>
-                            <input type="text" name="SerialNumber" class="form-control dash-search-input" placeholder="e.g. SN-99401294" required />
+                            <label class="dash-stat-label mb-1">SERIAL NUMBER</label>
+                            <input type="text" name="SerialNumber" class="form-control dash-search-input" placeholder="Leave blank if not applicable" maxlength="100" />
                         </div>
 
                         <div class="col-md-6">
-                            <label class="dash-stat-label mb-1">STORAGE LOCATION *</label>
-                            <input type="text" name="StorageLocation" class="form-control dash-search-input" placeholder="e.g. Cabinet A - Shelf 2" required />
+                            <label class="dash-stat-label mb-1">STORAGE LOCATION</label>
+                            <input type="text" name="StorageLocation" class="form-control dash-search-input" placeholder="e.g. Cabinet A - Shelf 2 (optional)" maxlength="100" />
                         </div>
 
                         <div class="col-md-6">
@@ -279,35 +325,45 @@
                 <input type="hidden" name="page" value="@currentPage" />
 
                 <div class="modal-body p-4">
+                    <div class="alert alert-danger d-none" id="editRejectNote"></div>
+
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="dash-stat-label mb-1">ITEM CODE / ASSET TAG *</label>
-                            <input type="text" name="ItemCode" id="editItemCode" class="form-control dash-search-input" required />
+                            <input type="text" name="ItemCode" id="editItemCode" class="form-control dash-search-input" maxlength="50" required />
                         </div>
 
                         <div class="col-md-6">
                             <label class="dash-stat-label mb-1">CATEGORY *</label>
                             <select name="CategoryId" id="editCategoryId" class="form-select dash-search-input" required>
-                                @foreach (var c in categoryOptions)
+                                @foreach (var c in editCategoryOptions)
                                 {
                                     <option value="@c.Value">@c.Text</option>
                                 }
+                                <option value="0">Other (needs admin approval)</option>
                             </select>
+                        </div>
+
+                        <div class="col-12 d-none" id="editSuggestedWrap">
+                            <label class="dash-stat-label mb-1">WHAT CATEGORY DOES THIS ITEM NEED? *</label>
+                            <input type="text" name="SuggestedCategory" id="editSuggestedInput" class="form-control dash-search-input"
+                                   placeholder="e.g. Sewing & Garments" maxlength="100" />
+                            <div class="form-text">An admin will review this and create the category.</div>
                         </div>
 
                         <div class="col-md-6">
                             <label class="dash-stat-label mb-1">BRAND & MODEL NAME *</label>
-                            <input type="text" name="BrandModel" id="editBrandModel" class="form-control dash-search-input" required />
+                            <input type="text" name="BrandModel" id="editBrandModel" class="form-control dash-search-input" maxlength="100" required />
                         </div>
 
                         <div class="col-md-6">
-                            <label class="dash-stat-label mb-1">SERIAL NUMBER *</label>
-                            <input type="text" name="SerialNumber" id="editSerialNumber" class="form-control dash-search-input" required />
+                            <label class="dash-stat-label mb-1">SERIAL NUMBER</label>
+                            <input type="text" name="SerialNumber" id="editSerialNumber" class="form-control dash-search-input" placeholder="Leave blank if not applicable" maxlength="100" />
                         </div>
 
                         <div class="col-md-6">
-                            <label class="dash-stat-label mb-1">STORAGE LOCATION *</label>
-                            <input type="text" name="StorageLocation" id="editStorageLocation" class="form-control dash-search-input" required />
+                            <label class="dash-stat-label mb-1">STORAGE LOCATION</label>
+                            <input type="text" name="StorageLocation" id="editStorageLocation" class="form-control dash-search-input" placeholder="Optional" maxlength="100" />
                         </div>
 
                         <div class="col-md-6">
@@ -326,7 +382,7 @@
                                 <option value="available">Available</option>
                                 <option value="maintenance">Under maintenance (hidden from students)</option>
                             </select>
-                            <div class="form-text d-none" id="editStatusNote">This item is currently borrowed, so its availability can't be changed.</div>
+                            <div class="form-text d-none" id="editStatusNote"></div>
                         </div>
 
                         <div class="col-md-6">
@@ -388,7 +444,7 @@
 
 @section Scripts {
     <script>
-        (function () {
+        (function() {
             var MAX_BYTES = 5 * 1024 * 1024;
 
             // Photo picker with 5 MB check + live preview
@@ -397,7 +453,7 @@
                 var preview = document.getElementById(previewId);
                 if (!input) return;
 
-                input.addEventListener('change', function () {
+                input.addEventListener('change', function() {
                     var file = input.files && input.files[0];
                     if (!file) { preview.classList.add('d-none'); return; }
 
@@ -414,29 +470,75 @@
             wirePhoto('photoInput', 'photoPreview');
             wirePhoto('editPhotoInput', 'editPhotoPreview');
 
+            // "Other" category: show and require the suggested-name field (category value 0 = Other)
+            function wireOther(selectId, wrapId, inputId) {
+                var sel = document.getElementById(selectId);
+                var wrap = document.getElementById(wrapId);
+                var input = document.getElementById(inputId);
+
+                function sync() {
+                    var other = sel.value === '0';
+                    wrap.classList.toggle('d-none', !other);
+                    input.required = other;
+                    if (!other) { input.value = ''; }
+                }
+                sel.addEventListener('change', sync);
+                sync();
+                return sync;
+            }
+            wireOther('CategoryId', 'suggestedWrap', 'suggestedInput');
+            var syncEdit = wireOther('editCategoryId', 'editSuggestedWrap', 'editSuggestedInput');
+
             // Fill the Edit modal from the clicked row's data-* attributes
             var editModal = document.getElementById('editEquipmentModal');
-            editModal.addEventListener('show.bs.modal', function (ev) {
+            editModal.addEventListener('show.bs.modal', function(ev) {
                 var b = ev.relatedTarget;
                 if (!b) return;
 
+                var awaiting = b.dataset.status === 'pending_category' || b.dataset.status === 'category_rejected';
+                var hasCategory = !!b.dataset.category;
+
                 document.getElementById('editId').value = b.dataset.id || '';
                 document.getElementById('editItemCode').value = b.dataset.itemcode || '';
-                document.getElementById('editCategoryId').value = b.dataset.category || '';
                 document.getElementById('editBrandModel').value = b.dataset.brand || '';
                 document.getElementById('editSerialNumber').value = b.dataset.serial || '';
                 document.getElementById('editStorageLocation').value = b.dataset.location || '';
                 document.getElementById('editCondition').value = b.dataset.condition || 'good';
 
+                // "Other" is only available while the item has no category yet
+                var catSel = document.getElementById('editCategoryId');
+                var otherOpt = catSel.querySelector('option[value="0"]');
+                otherOpt.hidden = hasCategory;
+                otherOpt.disabled = hasCategory;
+                catSel.value = hasCategory ? b.dataset.category : '0';
+                syncEdit();
+                if (!hasCategory) {
+                    document.getElementById('editSuggestedInput').value = b.dataset.suggested || '';
+                }
+
+                var rej = document.getElementById('editRejectNote');
+                if (b.dataset.status === 'category_rejected') {
+                    rej.textContent = 'The admin did not approve the suggested category: ' +
+                        (b.dataset.note || 'no reason given') +
+                        '. Choose an existing category or suggest another one.';
+                    rej.classList.remove('d-none');
+                } else {
+                    rej.classList.add('d-none');
+                }
+
                 var status = document.getElementById('editStatus');
                 var note = document.getElementById('editStatusNote');
                 var borrowed = b.dataset.status === 'borrowed';
                 status.value = b.dataset.status === 'maintenance' ? 'maintenance' : 'available';
-                status.disabled = borrowed;
-                note.classList.toggle('d-none', !borrowed);
+                status.disabled = borrowed || awaiting;
+                if (borrowed) {
+                    note.textContent = "This item is currently borrowed, so its availability can't be changed.";
+                } else if (awaiting) {
+                    note.textContent = 'Availability is set automatically once the category is approved.';
+                }
+                note.classList.toggle('d-none', !(borrowed || awaiting));
 
-                var fileInput = document.getElementById('editPhotoInput');
-                fileInput.value = '';
+                document.getElementById('editPhotoInput').value = '';
                 var preview = document.getElementById('editPhotoPreview');
                 if (b.dataset.image) {
                     preview.src = b.dataset.image;
@@ -449,7 +551,7 @@
 
             // Fill the Archive confirmation modal
             var archiveModal = document.getElementById('archiveEquipmentModal');
-            archiveModal.addEventListener('show.bs.modal', function (ev) {
+            archiveModal.addEventListener('show.bs.modal', function(ev) {
                 var b = ev.relatedTarget;
                 if (!b) return;
                 document.getElementById('archiveId').value = b.dataset.id || '';

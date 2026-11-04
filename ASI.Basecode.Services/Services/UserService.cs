@@ -15,12 +15,14 @@ namespace ASI.Basecode.Services.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _repository;
+        private readonly IReservationRepository _reservationRepository;
         private readonly IMapper _mapper;
 
-        public UserService(IUserRepository repository, IMapper mapper)
+        public UserService(IUserRepository repository, IReservationRepository reservationRepository, IMapper mapper)
         {
             _mapper = mapper;
             _repository = repository;
+            _reservationRepository = reservationRepository;
         }
 
         public LoginResult AuthenticateUser(string userId, string password, ref User user)
