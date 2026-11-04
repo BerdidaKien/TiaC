@@ -37,7 +37,7 @@
                 <span class="side-nav__text">My Reservations</span>
             </a>
         </li>
-        @* History: re-enable once Student/History exists
+       
         <li>
             <a class="side-nav__link @(IsActive("Student", "History") ? "is-active" : "")"
                asp-controller="Student" asp-action="History">
@@ -45,7 +45,7 @@
                 <span class="side-nav__text">History</span>
             </a>
         </li>
-        *@
+       
         <li>
             <a class="side-nav__link @(IsActive("Account", "Profile") ? "is-active" : "")"
                asp-controller="Account" asp-action="Profile">

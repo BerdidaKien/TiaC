@@ -65,6 +65,19 @@ namespace ASI.Basecode.Data.Repositories
             _context.BorrowingTransactions.Add(transaction);
         }
 
+        public EquipmentItem GetEquipmentItemById(int id)
+        {
+            return _context.EquipmentItems
+                           .Include(e => e.Category)
+                           .FirstOrDefault(e => e.Id == id);
+        }
+
+        // Added to the context only; the service calls SaveChanges()
+        public void AddReservation(Reservation reservation)
+        {
+            _context.Reservations.Add(reservation);
+        }
+
         // One call saves every change made on tracked entities (atomic)
         public void SaveChanges()
         {

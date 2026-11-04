@@ -16,6 +16,11 @@ namespace ASI.Basecode.Data.Interfaces
         BorrowingTransaction GetTransactionById(int id);
         int GetUserDbId(string userCode);
         void AddTransaction(BorrowingTransaction transaction);
+
+        // ---- Student reservation requests ----
+        EquipmentItem GetEquipmentItemById(int id);
+        void AddReservation(Reservation reservation);
+
         void SaveChanges();
     }
 }

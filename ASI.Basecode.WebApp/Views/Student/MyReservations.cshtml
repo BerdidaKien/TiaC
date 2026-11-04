@@ -1,0 +1,102 @@
+﻿@* Location: ASI.Basecode.WebApp/Views/Student/MyReservations.cshtml *@
+@model System.Collections.Generic.List<ASI.Basecode.Data.Models.Reservation>
+@{
+    ViewData["Title"] = "My Reservations";
+
+    string IconFor(string categoryCode) => (categoryCode ?? "") switch
+    {
+        "AV-MEDIA" => "bi-camera",
+        "IT-TECH" => "bi-laptop",
+        "EVENT-SUP" => "bi-megaphone",
+        "LAB-SCI" => "bi-eyedropper",
+        "SPORTS-REC" => "bi-trophy",
+        "GEN-TOOLS" => "bi-tools",
+        _ => "bi-box-seam"
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reservation-status.css" asp-append-version="true" />
+}
+
+<div class="dash">
+
+    <div class="dash-header pb-3 mb-4">
+        <h1 class="dash-name mb-1">My Reservations</h1>
+        <p class="dash-sub mb-0">Track your requests and the equipment you have borrowed.</p>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="dash-card">
+        <div class="table-responsive">
+            <table class="table dash-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Equipment</th>
+                        <th>Category</th>
+                        <th>Pickup</th>
+                        <th>Return By</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        var bt = r.BorrowingTransaction;
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="dash-icon-circle dash-icon-sm d-inline-flex align-items-center justify-content-center">
+                                        <i class="bi @IconFor(r.EquipmentItem?.Category?.CategoryCode)"></i>
+                                    </span>
+                                    <span class="ms-2">@r.EquipmentItem?.BrandModel</span>
+                                </div>
+                            </td>
+                            <td>@(r.EquipmentItem?.Category?.CategoryName ?? "General")</td>
+                            <td>@r.RequestedPickupDate.ToString("MMM d, yyyy")</td>
+                            <td>@r.EstimatedReturnDate.ToString("MMM d, yyyy")</td>
+                            <td>
+                                <partial name="_ReservationStatus" model="r"
+                                         view-data='@(new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData) { { "ShowCaption", true } })' />
+                            </td>
+                            <td class="small text-muted">@r.ReviewNotes</td>
+                            <td class="text-end">
+                                @if (bt == null && (r.Status == "pending" || r.Status == "approved"))
+                                {
+                                    <form asp-controller="Student" asp-action="CancelReservation" method="post"
+                                          onsubmit="return confirm('Cancel this reservation?');">
+                                        <input type="hidden" name="id" value="@r.Id" />
+                                        <button type="submit" class="btn dash-btn dash-btn-view">Cancel</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center dash-muted py-4">You have no reservations yet.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
