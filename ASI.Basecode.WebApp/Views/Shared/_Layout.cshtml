@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - TiaC</title>
+    <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} - TiaC" : "TiaC - Equipment Custodian")</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,8 +17,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css" />
 
-    <link rel="stylesheet" href="~/css/site.css" />
-    <link rel="stylesheet" href="~/css/sidebar.css" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/sidebar.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
@@ -29,16 +29,18 @@
     else
     {
         <div class="app-shell">
-            <aside class="app-sidebar">
-                @if (User.IsInRole("Custodian"))
-                {
-                    <partial name="_HeaderCustodian" />
-                }
-                else
-                {
-                    <partial name="_Header" />
-                }
-            </aside>
+            @if (User.IsInRole("Admin"))
+            {
+                <partial name="_HeaderAdmin" />
+            }
+            else if (User.IsInRole("Custodian"))
+            {
+                <partial name="_HeaderCustodian" />
+            }
+            else
+            {
+                <partial name="_HeaderStudent" />
+            }
 
             <div class="app-content">
                 <div class="container flex-grow-1">
@@ -47,7 +49,7 @@
                     </main>
                 </div>
                 <footer class="border-top footer text-muted">
-                    <div class="container">
+                    <div class="container text-center py-2">
                         @Copyright
                     </div>
                 </footer>
@@ -64,12 +66,12 @@
 
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
-        toastr.options = {
-            positionClass: "toast-top-center",
-            timeOut: 3000,
-            closeButton: true,
-            progressBar: true
-        };
+            toastr.options = {
+                positionClass: "toast-top-center",
+                timeOut: 3000,
+                closeButton: true,
+                progressBar: true
+            };
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

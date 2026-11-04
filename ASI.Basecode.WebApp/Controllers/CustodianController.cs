@@ -306,7 +306,6 @@ namespace ASI.Basecode.WebApp.Controllers
 
         // ---------- Other pages ----------
         [HttpGet]
-        [HttpGet]
         public IActionResult Profile()
         {
             // Try session first, then fallback to authentication claims
