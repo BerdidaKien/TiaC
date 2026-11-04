@@ -20,5 +20,11 @@ namespace ASI.Basecode.Services.Interfaces
         List<Reservation> GetForUser(string userCode);
         int CountActiveForUser(string userCode);
         int CountPendingForUser(string userCode);
+
+        // Student asks to borrow an item; the custodian approves or declines it
+        ServiceResult CreateReservation(string borrowerCode, int equipmentItemId, DateTime pickup, DateTime returnDate);
+
+        // Student cancels their own request (pending, or approved but not yet picked up)
+        ServiceResult CancelReservation(int reservationId, string borrowerCode);
     }
 }

@@ -28,8 +28,11 @@ namespace ASI.Basecode.Services.Services
         public LoginResult AuthenticateUser(string userId, string password, ref User user)
         {
             user = new User();
+
             var passwordKey = PasswordManager.EncryptPassword(password);
-            user = _repository.GetUsers().FirstOrDefault(x => x.UserId == userId && x.PasswordHash == passwordKey);
+
+            user = _repository.GetUsers()
+                .FirstOrDefault(x => x.UserId == userId && x.PasswordHash == passwordKey);
 
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
@@ -37,6 +40,7 @@ namespace ASI.Basecode.Services.Services
         public void AddUser(UserViewModel model)
         {
             var user = new User();
+
             if (!_repository.UserExists(model.UserId))
             {
                 _mapper.Map(model, user);
@@ -55,8 +59,8 @@ namespace ASI.Basecode.Services.Services
 
                 user.CreatedTime = DateTime.Now;
                 user.UpdatedTime = DateTime.Now;
-                user.CreatedBy = System.Environment.UserName;
-                user.UpdatedBy = System.Environment.UserName;
+                user.CreatedBy = Environment.UserName;
+                user.UpdatedBy = Environment.UserName;
 
                 _repository.AddUser(user);
             }
@@ -68,16 +72,21 @@ namespace ASI.Basecode.Services.Services
 
         public bool ChangePassword(string userId, string currentPassword, string newPassword)
         {
-            var user = _repository.GetUsers().FirstOrDefault(x => x.UserId == userId);
-            if (user == null) return false;
+            var user = _repository.GetUsers()
+                .FirstOrDefault(x => x.UserId == userId);
 
-            if (user.PasswordHash != PasswordManager.EncryptPassword(currentPassword)) return false;
+            if (user == null)
+                return false;
+
+            if (user.PasswordHash != PasswordManager.EncryptPassword(currentPassword))
+                return false;
 
             user.PasswordHash = PasswordManager.EncryptPassword(newPassword);
             user.UpdatedTime = DateTime.Now;
-            user.UpdatedBy = System.Environment.UserName;
+            user.UpdatedBy = Environment.UserName;
 
             _repository.UpdateUser(user);
+
             return true;
         }
 
@@ -93,10 +102,12 @@ namespace ASI.Basecode.Services.Services
             if (!string.IsNullOrWhiteSpace(search))
             {
                 search = search.Trim().ToLower();
-                query = query.Where(u => u.FirstName.ToLower().Contains(search) ||
-                                         u.LastName.ToLower().Contains(search) ||
-                                         u.Email.ToLower().Contains(search) ||
-                                         u.UserId.ToLower().Contains(search));
+
+                query = query.Where(u =>
+                    (u.FirstName ?? "").ToLower().Contains(search) ||
+                    (u.LastName ?? "").ToLower().Contains(search) ||
+                    (u.Email ?? "").ToLower().Contains(search) ||
+                    (u.UserId ?? "").ToLower().Contains(search));
             }
 
             if (!string.IsNullOrWhiteSpace(role))
@@ -121,8 +132,9 @@ namespace ASI.Basecode.Services.Services
                     Role = u.Role,
                     IsActive = u.IsActive,
                     DateCreated = u.CreatedTime,
-                    Initials = ((!string.IsNullOrEmpty(u.FirstName) ? u.FirstName[0].ToString() : "") +
-                               (!string.IsNullOrEmpty(u.LastName) ? u.LastName[0].ToString() : "")).ToUpper()
+                    Initials =
+                        ((!string.IsNullOrEmpty(u.FirstName) ? u.FirstName[0].ToString() : "") +
+                         (!string.IsNullOrEmpty(u.LastName) ? u.LastName[0].ToString() : "")).ToUpper()
                 })
                 .ToList();
 
@@ -139,46 +151,82 @@ namespace ASI.Basecode.Services.Services
             };
         }
 
-        public CustodianProfileViewModel GetCustodianProfile(string userIdStr)
+        // Get logged-in user's profile
+        public ProfileViewModel GetProfile(string userId)
         {
-            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userIdStr);
-            if (user == null) return null;
+            var user = _repository.GetUsers()
+                .FirstOrDefault(u => u.UserId == userId);
 
-            int approvedCount = _reservationRepository.GetReservations()
-                .Count(r => r.Status == "approved" || r.Status == "completed");
-
-            int completedCount = _reservationRepository.GetTransactions()
-                .Count(t => t.ActualReturnTime != null);
-
-            return new CustodianProfileViewModel
+            if (user == null)
             {
-                Id = user.Id,
+                return null;
+            }
+
+            return new ProfileViewModel
+            {
+                UserId = user.UserId,
                 FirstName = user.FirstName,
+                MiddleName = user.MiddleName,
                 LastName = user.LastName,
-                EmployeeId = user.UserId,
-                Email = user.Email,
+                FullName = $"{user.FirstName} {user.MiddleName} {user.LastName}".Trim(),
                 ContactNumber = user.ContactNumber,
-                Role = user.Role == "Custodian" ? "Equipment Custodian" : user.Role,
+                Email = user.Email,
+                Role = user.Role,
+                BorrowerStatus = user.BorrowerStatus,
                 IsActive = user.IsActive,
-                CreatedTime = user.CreatedTime,
-                ApprovedRequestsCount = approvedCount,
-                CompletedBorrowingsCount = completedCount
+                ProfileImagePath = user.ProfileImagePath
             };
         }
 
-        public bool UpdateCustodianProfile(int id, string firstName, string lastName, string contactNumber)
+        // Current photo path (used to delete the old file after a new one is saved)
+        public string GetProfileImagePath(string userId)
         {
-            var user = _repository.GetUsers().FirstOrDefault(u => u.Id == id);
-            if (user == null) return false;
+            return _repository.GetUsers()
+                .Where(u => u.UserId == userId)
+                .Select(u => u.ProfileImagePath)
+                .FirstOrDefault();
+        }
 
-            user.FirstName = firstName;
-            user.LastName = lastName;
-            user.ContactNumber = contactNumber;
+        // Saves the editable profile fields and, when given, the new photo path
+        public ServiceResult UpdateProfile(string userId, string contactNumber, string email, string newImagePath)
+        {
+            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userId);
+            if (user == null)
+                return ServiceResult.Fail("Your account was not found. Please log in again.");
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                var cleanEmail = email.Trim();
+                try
+                {
+                    _ = new System.Net.Mail.MailAddress(cleanEmail);
+                }
+                catch (FormatException)
+                {
+                    return ServiceResult.Fail("Please enter a valid email address.");
+                }
+                user.Email = cleanEmail;
+            }
+
+            if (!string.IsNullOrWhiteSpace(contactNumber))
+                user.ContactNumber = contactNumber.Trim();
+
+            if (!string.IsNullOrEmpty(newImagePath))
+                user.ProfileImagePath = newImagePath;
+
             user.UpdatedTime = DateTime.Now;
-            user.UpdatedBy = System.Environment.UserName;
+            user.UpdatedBy = userId;
 
-            _repository.UpdateUser(user);
-            return true;
+            try
+            {
+                _repository.UpdateUser(user);
+            }
+            catch (Exception)
+            {
+                return ServiceResult.Fail("Could not save your profile. Please try again.");
+            }
+
+            return ServiceResult.Ok("Your profile was updated.");
         }
     }
 }

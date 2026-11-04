@@ -90,6 +90,93 @@ namespace ASI.Basecode.Services.Services
                 r.Status == "pending");
         }
 
+        // Longest loan a student can request (change this number if your policy differs)
+        private const int MaxLoanDays = 14;
+
+        public ServiceResult CreateReservation(string borrowerCode, int equipmentItemId, DateTime pickup, DateTime returnDate)
+        {
+            var borrowerId = _repo.GetUserDbId(borrowerCode);
+            if (borrowerId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+
+            var item = _repo.GetEquipmentItemById(equipmentItemId);
+            if (item == null || item.Status == "archived")
+                return ServiceResult.Fail("This equipment item was not found.");
+            if (item.Status != "available")
+                return ServiceResult.Fail("This item is not available for reservation right now.");
+
+            if (pickup == default || returnDate == default)
+                return ServiceResult.Fail("Please choose both a pickup and a return date and time.");
+            if (pickup < DateTime.Now.AddMinutes(-5))
+                return ServiceResult.Fail("The pickup time must be in the future.");
+            if (returnDate <= pickup)
+                return ServiceResult.Fail("The return time must be after the pickup time.");
+            if ((returnDate - pickup).TotalDays > MaxLoanDays)
+                return ServiceResult.Fail($"Equipment can be borrowed for up to {MaxLoanDays} days.");
+
+            // One open request per student per item
+            var alreadyRequested = _repo.GetReservations().Any(x =>
+                x.BorrowerId == borrowerId &&
+                x.EquipmentItemId == equipmentItemId &&
+                x.Status == "pending");
+            if (alreadyRequested)
+                return ServiceResult.Fail("You already have a pending request for this item.");
+
+            // Not allowed to overlap a reservation the custodian already approved (and that isn't returned yet)
+            var overlapsApproved = _repo.GetReservations().Any(x =>
+                x.EquipmentItemId == equipmentItemId &&
+                x.Status == "approved" &&
+                (x.BorrowingTransaction == null || x.BorrowingTransaction.ActualReturnTime == null) &&
+                x.RequestedPickupDate < returnDate &&
+                x.EstimatedReturnDate > pickup);
+            if (overlapsApproved)
+                return ServiceResult.Fail("This item is already reserved for part of that time. Please choose different dates.");
+
+            var now = DateTime.Now;
+            _repo.AddReservation(new Reservation
+            {
+                BorrowerId = borrowerId,
+                EquipmentItemId = equipmentItemId,
+                RequestedPickupDate = pickup,
+                EstimatedReturnDate = returnDate,
+                Status = "pending",
+                CreatedTime = now,
+                UpdatedTime = now
+            });
+            _repo.SaveChanges();
+
+            return ServiceResult.Ok("Request sent! The custodian will review it and you will see the result here.");
+        }
+
+        public ServiceResult CancelReservation(int reservationId, string borrowerCode)
+        {
+            var borrowerId = _repo.GetUserDbId(borrowerCode);
+            if (borrowerId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+
+            var r = _repo.GetReservationById(reservationId);
+            if (r == null || r.BorrowerId != borrowerId)
+                return ServiceResult.Fail("Reservation not found.");
+
+            // Once the item has been handed over it can no longer be cancelled
+            var canCancel = r.BorrowingTransaction == null &&
+                            (r.Status == "pending" || r.Status == "approved");
+            if (!canCancel)
+                return ServiceResult.Fail("This reservation can no longer be cancelled.");
+
+            r.Status = "cancelled";
+            r.UpdatedTime = DateTime.Now;
+
+            try
+            {
+                _repo.SaveChanges();
+            }
+            catch (Exception)
+            {
+                return ServiceResult.Fail("Could not cancel the reservation. Please try again.");
+            }
+
+            return ServiceResult.Ok("Your reservation was cancelled.");
+        }
+
         // ---------- Custodian actions ----------
 
         public ServiceResult Approve(int reservationId, string notes, string custodianCode)

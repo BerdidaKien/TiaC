@@ -7,9 +7,11 @@ using ASI.Basecode.WebApp.Models;
 using ASI.Basecode.WebApp.Mvc;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
@@ -27,26 +29,15 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IConfiguration _appConfiguration;
         private readonly IUserService _userService;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AccountController"/> class.
-        /// </summary>
-        /// <param name="signInManager">The sign in manager.</param>
-        /// <param name="httpContextAccessor">The HTTP context accessor.</param>
-        /// <param name="loggerFactory">The logger factory.</param>
-        /// <param name="configuration">The configuration.</param>
-        /// <param name="mapper">The mapper.</param>
-        /// <param name="userService">The user service.</param>
-        /// <param name="tokenValidationParametersFactory">The token validation parameters factory.</param>
-        /// <param name="tokenProviderOptionsFactory">The token provider options factory.</param>
         public AccountController(
-                            SignInManager signInManager,
-                            IHttpContextAccessor httpContextAccessor,
-                            ILoggerFactory loggerFactory,
-                            IConfiguration configuration,
-                            IMapper mapper,
-                            IUserService userService,
-                            TokenValidationParametersFactory tokenValidationParametersFactory,
-                            TokenProviderOptionsFactory tokenProviderOptionsFactory) : base(httpContextAccessor, loggerFactory, configuration, mapper)
+            SignInManager signInManager,
+            IHttpContextAccessor httpContextAccessor,
+            ILoggerFactory loggerFactory,
+            IConfiguration configuration,
+            IMapper mapper,
+            IUserService userService,
+            TokenValidationParametersFactory tokenValidationParametersFactory,
+            TokenProviderOptionsFactory tokenProviderOptionsFactory) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
             this._sessionManager = new SessionManager(this._session);
             this._signInManager = signInManager;
@@ -56,26 +47,18 @@ namespace ASI.Basecode.WebApp.Controllers
             this._userService = userService;
         }
 
-        /// <summary>
-        /// Login Method
-        /// </summary>
-        /// <returns>Created response view</returns>
         [HttpGet]
         [AllowAnonymous]
         public ActionResult Login()
         {
             TempData["returnUrl"] = System.Net.WebUtility.UrlDecode(HttpContext.Request.Query["ReturnUrl"]);
+
             this._sessionManager.Clear();
             this._session.SetString("SessionId", System.Guid.NewGuid().ToString());
+
             return this.View();
         }
 
-        /// <summary>
-        /// Authenticate user and signs the user in when successful.
-        /// </summary>
-        /// <param name="model">The model.</param>
-        /// <param name="returnUrl">The return URL.</param>
-        /// <returns> Created response view </returns>
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> Login(LoginViewModel model, string returnUrl)
@@ -85,19 +68,20 @@ namespace ASI.Basecode.WebApp.Controllers
             User user = null;
 
             var loginResult = _userService.AuthenticateUser(model.UserId, model.Password, ref user);
+
             if (loginResult == LoginResult.Success)
             {
-                // Sign in user
                 await this._signInManager.SignInAsync(user);
 
-                // Set session data with new model fields
                 var fullName = $"{user.FirstName} {user.LastName}".Trim();
+
                 this._session.SetString("UserName", fullName);
                 this._session.SetString("UserId", user.UserId);
                 this._session.SetString("UserRole", user.Role ?? "Student");
+                this._session.SetString("UserPhoto", user.ProfileImagePath ?? "");   // shown in the sidebar
 
-                // Role-Based Routing
                 var role = user.Role?.ToLowerInvariant() ?? "student";
+
                 switch (role)
                 {
                     case "admin":
@@ -114,7 +98,6 @@ namespace ASI.Basecode.WebApp.Controllers
             }
             else
             {
-                // Failed login
                 TempData["ErrorMessage"] = "Incorrect UserId or Password";
                 return View();
             }
@@ -140,36 +123,84 @@ namespace ASI.Basecode.WebApp.Controllers
             {
                 TempData["ErrorMessage"] = ex.Message;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 TempData["ErrorMessage"] = Resources.Messages.Errors.ServerError;
             }
+
             return View();
         }
 
-        /// <summary>
-        /// Sign Out current account and return login view.
-        /// </summary>
-        /// <returns>Created response view</returns>
         [AllowAnonymous]
         public async Task<IActionResult> SignOutUser()
         {
             await this._signInManager.SignOutAsync();
+
             return RedirectToAction("Login", "Account");
         }
 
         [HttpGet]
         public IActionResult Profile()
         {
-            return View();
+            var userId = this._session.GetString("UserId");
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var profile = _userService.GetProfile(userId);
+
+            if (profile == null)
+            {
+                TempData["ErrorMessage"] = "Student information could not be found.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            return View(profile);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Profile(string FullName, string ContactNumber, string StudentId,
-                             string Department, string Email, IFormFile photo)
+        public IActionResult Profile(string ContactNumber, string Email, IFormFile photo)
         {
-            // TODO: save to your database
+            var userId = this._session.GetString("UserId");
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var webRoot = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootPath;
+
+            var photoError = ProfilePhotoHelper.Validate(photo);
+            if (photoError != null)
+            {
+                TempData["ErrorMessage"] = photoError;
+                return RedirectToAction(nameof(Profile));
+            }
+
+            var oldPath = _userService.GetProfileImagePath(userId);
+            var newPath = ProfilePhotoHelper.Save(photo, webRoot);        // null when no photo was chosen
+
+            var result = _userService.UpdateProfile(userId, ContactNumber, Email, newPath);
+
+            if (result.Success)
+            {
+                if (newPath != null)
+                {
+                    ProfilePhotoHelper.Delete(oldPath, webRoot);          // remove the replaced photo
+                    this._session.SetString("UserPhoto", newPath);        // sidebar picks it up
+                }
+
+                TempData["SuccessMessage"] = result.Message;
+            }
+            else
+            {
+                ProfilePhotoHelper.Delete(newPath, webRoot);              // save failed: drop the new upload
+                TempData["ErrorMessage"] = result.Message;
+            }
+
             return RedirectToAction(nameof(Profile));
         }
 
@@ -184,6 +215,7 @@ namespace ASI.Basecode.WebApp.Controllers
             }
 
             var userId = this._session.GetString("UserId");
+
             if (string.IsNullOrEmpty(userId))
             {
                 return RedirectToAction("Login", "Account");
