@@ -158,6 +158,12 @@ public partial class TiaCContext : DbContext
                 .HasMaxLength(255)
                 .IsUnicode(false)
                 .HasColumnName("image_path");
+            entity.Property(e => e.SuggestedCategory)
+                .HasMaxLength(100)
+                .HasColumnName("suggested_category");
+            entity.Property(e => e.CategoryReviewNote)
+                .HasMaxLength(255)
+                .HasColumnName("category_review_note");
             entity.Property(e => e.ItemCode)
                 .IsRequired()
                 .HasMaxLength(50)

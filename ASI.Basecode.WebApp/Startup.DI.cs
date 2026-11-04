@@ -53,7 +53,9 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IItemReportService, ItemReportService>();
             // Manager Class
             this._services.AddScoped<SignInManager>();
-
+            this._services.AddScoped<ICategoryRepository, CategoryRepository>();
+            this._services.AddScoped<ICategoryService, CategoryService>();
+            this._services.AddScoped<IAdminDashboardService, AdminDashboardService>();
             this._services.AddHttpClient();
         }
     }

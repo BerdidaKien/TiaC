@@ -39,7 +39,8 @@ namespace ASI.Basecode.Services.Services
                                  .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.ActualPickupTime).First());
             var openIds = openByItem.Keys.ToList();
 
-            var q = _equipRepo.GetEquipmentItems();   // not archived, includes Category
+            var q = _equipRepo.GetEquipmentItems()   // not archived, includes Category
+                  .Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
 
             if (!string.IsNullOrWhiteSpace(f.Search))
             {

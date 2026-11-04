@@ -150,12 +150,7 @@
                                             @(isBorrowed ? "Currently Borrowed" : (available ? "Available" : item.Status))
                                         </span>
                                     </td>
-                                    <td>
-                                        <a asp-controller="Student" asp-action="EquipmentDetails" asp-route-id="@item.Id"
-                                           class="btn dash-btn @(available ? "dash-btn-reserve" : "dash-btn-view")">
-                                            @(available ? "Reserve" : "View")
-                                        </a>
-                                    </td>
+                                    x
                                 </tr>
                             }
                             @if (!Model.PagedItems.Any())

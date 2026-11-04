@@ -31,6 +31,13 @@
                 </a>
             </li>
             <li>
+                <a asp-controller="Admin" asp-action="Categories"
+                   class="side-nav__link @(IsActive("Admin", "Categories") ? "is-active" : "")">
+                    <i class="bi bi-people"></i>
+                    <span class="side-nav__text">Categories</span>
+                </a>
+            </li>
+            <li>
                 <a asp-controller="Admin" asp-action="Reservations"
                    class="side-nav__link @(IsActive("Admin", "Reservations") ? "is-active" : "")">
                     <i class="bi bi-calendar-check"></i>

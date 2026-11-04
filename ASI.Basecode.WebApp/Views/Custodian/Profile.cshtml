@@ -1,4 +1,5 @@
-﻿@{
+﻿@model ASI.Basecode.Services.ServiceModels.CustodianProfileViewModel
+@{
     ViewData["Title"] = "Custodian Profile";
 }
 
@@ -12,10 +13,28 @@
     <p class="dash-sub">Manage your personal information and account details.</p>
 </div>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <form method="post" asp-controller="Custodian" asp-action="Profile" id="profileForm">
     @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
 
     <div class="row g-4 mb-4">
+        <!-- Left: Profile Avatar Card -->
         <div class="col-md-4">
             <div class="dash-card text-center h-100 d-flex flex-column justify-content-between">
                 <div>
@@ -28,7 +47,7 @@
                             <i class="bi bi-camera-fill small"></i>
                         </span>
                     </div>
-                    <div class="dash fw-bold fs-5 text-uppercase mb-2" id="displayFullName">TIA CALOOD</div>
+                    <div class="dash fw-bold fs-5 text-uppercase mb-2" id="displayFullName">@Model.FullName</div>
                 </div>
                 <button type="button" class="btn btn-outline-danger btn-sm w-100 mt-3" id="btnChangePhoto" disabled>
                     <i class="bi bi-camera me-1"></i> Change Photo
@@ -36,16 +55,25 @@
             </div>
         </div>
 
+        <!-- Right: Personal Information Fields -->
         <div class="col-md-8">
             <div class="dash-card h-100">
                 <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-person-gear me-1"></i> Personal Information</h5>
 
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="dash-stat-label mb-1" for="FullName">Full Name</label>
+                        <label class="dash-stat-label mb-1" for="FirstName">First Name *</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
-                            <input type="text" id="FullName" name="FullName" class="form-control dash-search-input editable-field" value="Tia Calood" readonly />
+                            <input type="text" id="FirstName" name="FirstName" class="form-control dash-search-input editable-field" value="@Model.FirstName" readonly required />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="dash-stat-label mb-1" for="LastName">Last Name *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+                            <input type="text" id="LastName" name="LastName" class="form-control dash-search-input editable-field" value="@Model.LastName" readonly required />
                         </div>
                     </div>
 
@@ -53,7 +81,7 @@
                         <label class="dash-stat-label mb-1" for="ContactNumber">Contact Number</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white"><i class="bi bi-telephone"></i></span>
-                            <input type="text" id="ContactNumber" name="ContactNumber" class="form-control dash-search-input editable-field" value="0912 345 6789" readonly />
+                            <input type="text" id="ContactNumber" name="ContactNumber" class="form-control dash-search-input editable-field" value="@Model.ContactNumber" readonly />
                         </div>
                     </div>
 
@@ -61,7 +89,7 @@
                         <label class="dash-stat-label mb-1" for="EmployeeId">Employee ID</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light"><i class="bi bi-card-heading"></i></span>
-                            <input type="text" id="EmployeeId" class="form-control bg-light text-muted" value="EMP-2026-104" readonly disabled />
+                            <input type="text" id="EmployeeId" class="form-control bg-light text-muted" value="@Model.EmployeeId" readonly disabled />
                         </div>
                     </div>
 
@@ -69,15 +97,15 @@
                         <label class="dash-stat-label mb-1" for="Email">Email Address</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
-                            <input type="email" id="Email" class="form-control bg-light text-muted" value="tiacalood@school.edu.ph" readonly disabled />
+                            <input type="email" id="Email" class="form-control bg-light text-muted" value="@Model.Email" readonly disabled />
                         </div>
                     </div>
 
-                    <div class="col-md-12">
+                    <div class="col-md-6">
                         <label class="dash-stat-label mb-1" for="Role">Account / Role</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light"><i class="bi bi-shield-lock"></i></span>
-                            <input type="text" id="Role" class="form-control bg-light text-muted" value="Equipment Custodian" readonly disabled />
+                            <input type="text" id="Role" class="form-control bg-light text-muted" value="@Model.Role" readonly disabled />
                         </div>
                     </div>
                 </div>
@@ -85,30 +113,43 @@
         </div>
     </div>
 
+    <!-- Real Activity Metrics -->
     <div class="dash-card mb-4">
         <div class="row g-3">
             <div class="col-md-3">
                 <div class="d-flex align-items-center gap-3 p-2 border rounded bg-white">
-                    <div class="p-2 bg-success text-white rounded-circle"><i class="bi bi-check-circle-fill"></i></div>
-                    <div><div class="fw-bold text-dark">Active</div><div class="small text-muted">Account Status</div></div>
+                    <div class="p-2 @(Model.IsActive ? "bg-success" : "bg-danger") text-white rounded-circle"><i class="bi bi-check-circle-fill"></i></div>
+                    <div>
+                        <div class="fw-bold text-dark">@(Model.IsActive ? "Active" : "Inactive")</div>
+                        <div class="small text-muted">Account Status</div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="d-flex align-items-center gap-3 p-2 border rounded bg-white">
                     <div class="p-2 bg-danger text-white rounded-circle"><i class="bi bi-calendar3"></i></div>
-                    <div><div class="fw-bold text-dark">August 2026</div><div class="small text-muted">Date Joined</div></div>
+                    <div>
+                        <div class="fw-bold text-dark">@Model.CreatedTime.ToString("MMM yyyy")</div>
+                        <div class="small text-muted">Date Joined</div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="d-flex align-items-center gap-3 p-2 border rounded bg-white">
                     <div class="p-2 bg-info text-white rounded-circle"><i class="bi bi-file-earmark-check"></i></div>
-                    <div><div class="fw-bold text-dark">24</div><div class="small text-muted">Approved Requests</div></div>
+                    <div>
+                        <div class="fw-bold text-dark">@Model.ApprovedRequestsCount</div>
+                        <div class="small text-muted">Approved Requests</div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="d-flex align-items-center gap-3 p-2 border rounded bg-white">
                     <div class="p-2 bg-warning text-dark rounded-circle"><i class="bi bi-box-arrow-up-right"></i></div>
-                    <div><div class="fw-bold text-dark">18</div><div class="small text-muted">Completed Borrowings</div></div>
+                    <div>
+                        <div class="fw-bold text-dark">@Model.CompletedBorrowingsCount</div>
+                        <div class="small text-muted">Completed Borrowings</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -126,11 +167,11 @@
 
 @section Scripts {
     <script>
-        document.getElementById('toggleEditBtn').addEventListener('click', function () {
+        document.getElementById('toggleEditBtn').addEventListener('click', function() {
             var editableFields = document.querySelectorAll('.editable-field');
             var isEditing = editableFields[0].hasAttribute('readonly');
 
-            editableFields.forEach(function (field) {
+            editableFields.forEach(function(field) {
                 if (isEditing) {
                     field.removeAttribute('readonly');
                     field.style.backgroundColor = '#ffffff';

@@ -15,12 +15,14 @@ namespace ASI.Basecode.Services.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _repository;
+        private readonly IReservationRepository _reservationRepository;
         private readonly IMapper _mapper;
 
-        public UserService(IUserRepository repository, IMapper mapper)
+        public UserService(IUserRepository repository, IReservationRepository reservationRepository, IMapper mapper)
         {
             _mapper = mapper;
             _repository = repository;
+            _reservationRepository = reservationRepository;
         }
 
         public LoginResult AuthenticateUser(string userId, string password, ref User user)
@@ -135,6 +137,48 @@ namespace ASI.Basecode.Services.Services
                 SelectedStatus = status,
                 Users = userList
             };
+        }
+
+        public CustodianProfileViewModel GetCustodianProfile(string userIdStr)
+        {
+            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userIdStr);
+            if (user == null) return null;
+
+            int approvedCount = _reservationRepository.GetReservations()
+                .Count(r => r.Status == "approved" || r.Status == "completed");
+
+            int completedCount = _reservationRepository.GetTransactions()
+                .Count(t => t.ActualReturnTime != null);
+
+            return new CustodianProfileViewModel
+            {
+                Id = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                EmployeeId = user.UserId,
+                Email = user.Email,
+                ContactNumber = user.ContactNumber,
+                Role = user.Role == "Custodian" ? "Equipment Custodian" : user.Role,
+                IsActive = user.IsActive,
+                CreatedTime = user.CreatedTime,
+                ApprovedRequestsCount = approvedCount,
+                CompletedBorrowingsCount = completedCount
+            };
+        }
+
+        public bool UpdateCustodianProfile(int id, string firstName, string lastName, string contactNumber)
+        {
+            var user = _repository.GetUsers().FirstOrDefault(u => u.Id == id);
+            if (user == null) return false;
+
+            user.FirstName = firstName;
+            user.LastName = lastName;
+            user.ContactNumber = contactNumber;
+            user.UpdatedTime = DateTime.Now;
+            user.UpdatedBy = System.Environment.UserName;
+
+            _repository.UpdateUser(user);
+            return true;
         }
     }
 }

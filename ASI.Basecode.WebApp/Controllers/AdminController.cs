@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Linq;
-using ASI.Basecode.Data;
-using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.ServiceModels;
 using ASI.Basecode.WebApp.Mvc;
@@ -21,7 +19,8 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IAdminUserService _adminUserService;
         private readonly IAdminReservationService _adminReservationService;
         private readonly IItemReportService _itemReportService;
-        private readonly TiaCContext _context;
+        private readonly IAdminDashboardService _adminDashboardService;
+        private readonly ICategoryService _categoryService;
 
         public AdminController(
             IHttpContextAccessor httpContextAccessor,
@@ -32,29 +31,24 @@ namespace ASI.Basecode.WebApp.Controllers
             IAdminUserService adminUserService,
             IAdminReservationService adminReservationService,
             IItemReportService itemReportService,
-            TiaCContext context) : base(httpContextAccessor, loggerFactory, configuration, mapper)
+            IAdminDashboardService adminDashboardService,
+            ICategoryService categoryService) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
             _userService = userService;
             _adminUserService = adminUserService;
             _adminReservationService = adminReservationService;
             _itemReportService = itemReportService;
-            _context = context;
+            _adminDashboardService = adminDashboardService;
+            _categoryService = categoryService;
         }
+
+        private string AdminCode => _session.GetString("UserId") ?? "Admin";
 
         /// <summary>Main Admin Dashboard</summary>
         public IActionResult Index()
         {
-            ViewBag.TotalUsers = _context.Users.Count();
-            ViewBag.ActiveStudents = _context.Users.Count(u => u.IsActive && (u.Role == "User" || u.Role == "Student"));
-            ViewBag.ActiveCustodians = _context.Users.Count(u => u.IsActive && u.Role == "Custodian");
-            ViewBag.PendingReservations = _context.Reservations.Count(r => r.Status == "pending");
-
-            var recentUsers = _context.Users
-                .OrderByDescending(u => u.CreatedTime)
-                .Take(6)
-                .ToList();
-
-            return View(recentUsers);
+            ViewBag.PendingCategories = _categoryService.PendingCount();
+            return View(_adminDashboardService.GetDashboard());
         }
 
         /// <summary>User Management Overview Screen</summary>
@@ -82,8 +76,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return View(new AddUsersPostModel());
             }
 
-            var adminCode = _session.GetString("UserId") ?? "Admin";
-            var result = _adminUserService.CreateUsers(model, adminCode);
+            var result = _adminUserService.CreateUsers(model, AdminCode);
 
             Response.Headers["Cache-Control"] = "no-store";
             return View("AddUsersResult", result);
@@ -103,7 +96,6 @@ namespace ASI.Basecode.WebApp.Controllers
             return View(_itemReportService.GetPage(filter));
         }
 
-        // JSON for the item details popup
         [HttpGet]
         public IActionResult ItemDetails(int id)
         {
@@ -119,11 +111,53 @@ namespace ASI.Basecode.WebApp.Controllers
             return File(bytes, "text/csv", $"item-report-{DateTime.Now:yyyyMMdd-HHmm}.csv");
         }
 
-        // Print-ready page: the browser's print dialog saves it as PDF
         [HttpGet]
         public IActionResult ItemReportPrint(ItemReportFilter filter)
         {
             return View(_itemReportService.GetAll(filter));
+        }
+
+        // ---------- Categories ----------
+        [HttpGet]
+        public IActionResult Categories()
+        {
+            return View(_categoryService.GetPage());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateCategory(string name, string description)
+            => CategoryResult(_categoryService.Create(name, description, AdminCode));
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult UpdateCategory(int id, string name, string description)
+            => CategoryResult(_categoryService.Update(id, name, description, AdminCode));
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ToggleCategory(int id, bool active)
+            => CategoryResult(_categoryService.SetActive(id, active, AdminCode));
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult DeleteCategory(int id)
+            => CategoryResult(_categoryService.Delete(id));
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ApproveCategoryRequest(int itemId, string categoryName)
+            => CategoryResult(_categoryService.ApproveRequest(itemId, categoryName, AdminCode));
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult RejectCategoryRequest(int itemId, string reason)
+            => CategoryResult(_categoryService.RejectRequest(itemId, reason, AdminCode));
+
+        private IActionResult CategoryResult(ServiceResult result)
+        {
+            TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(Categories));
         }
 
         /// <summary>System Settings</summary>

@@ -1,0 +1,284 @@
+﻿@using ASI.Basecode.Services.ServiceModels
+@model CategoriesPageViewModel
+@{
+    ViewData["Title"] = "Categories";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
+<div class="dash-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="dash dash-name m-0">Categories</h1>
+        <p class="dash-sub">Manage equipment categories and review new category requests from custodians.</p>
+    </div>
+    <button type="button" class="btn dash-btn-reserve text-white fw-bold" data-bs-toggle="modal" data-bs-target="#categoryModal" data-mode="create">
+        <i class="bi bi-plus-lg me-1"></i> Add Category
+    </button>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.Pending.Any())
+{
+    <div class="dash-card p-3 mb-4 border border-warning">
+        <h6 class="dash fw-bold mb-1">
+            <i class="bi bi-hourglass-split text-warning me-1"></i> Pending category requests
+            <span class="badge bg-warning text-dark ms-1">@Model.Pending.Count</span>
+        </h6>
+        <small class="text-muted d-block mb-3">These items stay hidden from students until you approve a category.</small>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr><th>Item</th><th>Suggested category</th><th>Requested by</th><th>Date</th><th class="text-end">Decision</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Pending)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!string.IsNullOrEmpty(r.ImagePath))
+                                    {
+                                        <img src="@r.ImagePath" alt="@r.ItemName" style="width:40px;height:40px;object-fit:cover;border-radius:6px;" />
+                                    }
+                                    else
+                                    {
+                                        <span class="d-inline-flex align-items-center justify-content-center bg-light text-secondary" style="width:40px;height:40px;border-radius:6px;"><i class="bi bi-image"></i></span>
+                                    }
+                                    <div>
+                                        <div class="fw-bold">@r.ItemName</div>
+                                        <div class="text-muted">@r.ItemCode</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="fw-semibold">@r.Suggested</td>
+                            <td>@r.RequestedBy</td>
+                            <td>@r.RequestedAt.ToString("MMM d, yyyy h:mm tt")</td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-1">
+                                    <button type="button" class="btn btn-sm dash-btn-reserve text-white" data-bs-toggle="modal" data-bs-target="#approveModal"
+                                            data-id="@r.ItemId" data-name="@r.Suggested" data-item="@r.ItemName (@r.ItemCode)">
+                                        <i class="bi bi-check-lg me-1"></i>Approve
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal"
+                                            data-id="@r.ItemId" data-item="@r.ItemName (@r.ItemCode)">
+                                        <i class="bi bi-x-lg me-1"></i>Reject
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="dash-card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr class="small text-muted">
+                    <th>Category</th>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th class="text-center">Items</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.Categories)
+                {
+                    <tr class="@(c.IsActive ? "" : "text-muted")">
+                        <td class="fw-semibold">@c.Name</td>
+                        <td><code>@c.Code</code></td>
+                        <td class="small">@(string.IsNullOrWhiteSpace(c.Description) ? "-" : c.Description)</td>
+                        <td class="text-center">@c.ItemCount</td>
+                        <td>
+                            @if (c.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success-emphasis">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis">Disabled</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" title="Edit" data-bs-toggle="modal" data-bs-target="#categoryModal"
+                                        data-mode="edit" data-id="@c.Id" data-name="@c.Name" data-description="@c.Description">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+
+                                <form method="post" asp-controller="Admin" asp-action="ToggleCategory" class="d-inline"
+                                      data-confirm="@(c.IsActive ? $"Disable \"{c.Name}\"? Existing items keep it, but it can't be chosen for new items." : $"Enable \"{c.Name}\"?")">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <input type="hidden" name="active" value="@((!c.IsActive).ToString().ToLower())" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="@(c.IsActive ? "Disable" : "Enable")">
+                                        <i class="bi @(c.IsActive ? "bi-toggle-on" : "bi-toggle-off")"></i>
+                                    </button>
+                                </form>
+
+                                <form method="post" asp-controller="Admin" asp-action="DeleteCategory" class="d-inline"
+                                      data-confirm="@($"Delete \"{c.Name}\"? This can't be undone.")">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@(c.TotalItems > 0)"
+                                            title="@(c.TotalItems > 0 ? "Has items - disable it instead" : "Delete")">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Categories.Any())
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">No categories yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Add / Edit category -->
+    <div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold" id="categoryModalTitle">Add Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" id="categoryForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="catId" />
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="dash-stat-label mb-1">CATEGORY NAME *</label>
+                            <input type="text" name="name" id="catName" class="form-control dash-search-input" maxlength="100" required />
+                        </div>
+                        <div>
+                            <label class="dash-stat-label mb-1">DESCRIPTION (OPTIONAL)</label>
+                            <textarea name="description" id="catDesc" class="form-control dash-search-input" rows="3" maxlength="500"></textarea>
+                        </div>
+                        <div class="form-text mt-2">The category code is created automatically from the name.</div>
+                    </div>
+                    <div class="modal-footer border-top border-secondary">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn dash-btn-reserve text-white fw-bold">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve request -->
+    <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold">Approve category request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" asp-controller="Admin" asp-action="ApproveCategoryRequest">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="itemId" id="approveItemId" />
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">Item: <strong id="approveItemName"></strong></p>
+                        <label class="dash-stat-label mb-1">CATEGORY NAME *</label>
+                        <input type="text" name="categoryName" id="approveCatName" class="form-control dash-search-input" maxlength="100" required />
+                        <div class="form-text mt-2">You can fix the spelling first. If a category with this name already exists, the item is added to it. Otherwise a new category is created.</div>
+                    </div>
+                    <div class="modal-footer border-top border-secondary">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn dash-btn-reserve text-white fw-bold">Approve</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject request -->
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold text-danger">Reject category request</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" asp-controller="Admin" asp-action="RejectCategoryRequest">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="itemId" id="rejectItemId" />
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">Item: <strong id="rejectItemName"></strong></p>
+                        <label class="dash-stat-label mb-1">REASON *</label>
+                        <textarea name="reason" class="form-control dash-search-input" rows="3" maxlength="255" required
+                                  placeholder="e.g. Please use the Facilities & General Tools category."></textarea>
+                    </div>
+                    <div class="modal-footer border-top border-secondary">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger fw-bold">Reject</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            var createUrl = '@Url.Action("CreateCategory", "Admin")';
+            var updateUrl = '@Url.Action("UpdateCategory", "Admin")';
+
+            document.getElementById('categoryModal').addEventListener('show.bs.modal', function(ev) {
+                var b = ev.relatedTarget;
+                var edit = !!b && b.getAttribute('data-mode') === 'edit';
+                document.getElementById('categoryForm').action = edit ? updateUrl : createUrl;
+                document.getElementById('catId').value = edit ? b.getAttribute('data-id') : '';
+                document.getElementById('catName').value = edit ? (b.getAttribute('data-name') || '') : '';
+                document.getElementById('catDesc').value = edit ? (b.getAttribute('data-description') || '') : '';
+                document.getElementById('categoryModalTitle').textContent = edit ? 'Edit Category' : 'Add Category';
+            });
+
+            document.getElementById('approveModal').addEventListener('show.bs.modal', function(ev) {
+                var b = ev.relatedTarget;
+                if (!b) return;
+                document.getElementById('approveItemId').value = b.getAttribute('data-id');
+                document.getElementById('approveItemName').textContent = b.getAttribute('data-item');
+                document.getElementById('approveCatName').value = b.getAttribute('data-name') || '';
+            });
+
+            document.getElementById('rejectModal').addEventListener('show.bs.modal', function(ev) {
+                var b = ev.relatedTarget;
+                if (!b) return;
+                document.getElementById('rejectItemId').value = b.getAttribute('data-id');
+                document.getElementById('rejectItemName').textContent = b.getAttribute('data-item');
+            });
+
+            // Confirm before disabling, enabling or deleting
+            document.addEventListener('submit', function(ev) {
+                var message = ev.target.getAttribute('data-confirm');
+                if (message && !confirm(message)) { ev.preventDefault(); }
+            });
+        })();
+    </script>
+}

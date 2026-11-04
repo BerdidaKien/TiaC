@@ -113,11 +113,7 @@
     color: var(--d-maroon);
 }
 
-    .eq-card__media i {
-        transition: opacity .25s ease;
-    }
-
-    /* The custodian's uploaded photo sits on top, hidden until hover/focus */
+    /* Uploaded photo is always visible when present */
     .eq-card__media img {
         position: absolute;
         inset: 0;
@@ -125,30 +121,13 @@
         height: 100%;
         object-fit: cover;
         border-radius: 8px;
-        opacity: 0;
-        transition: opacity .25s ease;
-    }
-
-    .eq-card__media.has-photo:hover img,
-    .eq-card__media.has-photo:focus img {
         opacity: 1;
     }
 
-    .eq-card__media.has-photo:hover i,
-    .eq-card__media.has-photo:focus i {
-        opacity: 0;
-    }
-
-/* Touch screens have no hover, so always show the photo there */
-@media (hover: none) {
-    .eq-card__media.has-photo img {
-        opacity: 1;
-    }
-
+    /* Hide fallback icon when item has a photo */
     .eq-card__media.has-photo i {
-        opacity: 0;
+        display: none;
     }
-}
 
 .eq-card__info {
     min-width: 0;
@@ -222,7 +201,6 @@
         margin: 0;
         font-size: .88rem;
     }
-
 
 /* ----- Pagination ----- */
 .eq-showing {

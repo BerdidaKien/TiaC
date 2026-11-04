@@ -7,7 +7,10 @@ public partial class EquipmentItem
 {
     public int Id { get; set; }
 
-    public int CategoryId { get; set; }
+    public int? CategoryId { get; set; }
+    public string SuggestedCategory { get; set; }
+
+    public string CategoryReviewNote { get; set; }
 
     public string ItemCode { get; set; }
 

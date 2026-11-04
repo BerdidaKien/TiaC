@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.ServiceModels;
+using ASI.Basecode.Services.Services;
 using ASI.Basecode.WebApp.Mvc;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +26,7 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IReservationService _reservationService;
         private readonly IHistoryService _historyService;
         private readonly IReportService _reportService;
+        private readonly IUserService _userService; // Added field
         private readonly IWebHostEnvironment _env;
 
         public CustodianController(
@@ -31,6 +34,7 @@ namespace ASI.Basecode.WebApp.Controllers
             IReservationService reservationService,
             IHistoryService historyService,
             IReportService reportService,
+            IUserService userService, // Injected dependency
             IWebHostEnvironment env,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
@@ -42,6 +46,7 @@ namespace ASI.Basecode.WebApp.Controllers
             _reservationService = reservationService;
             _historyService = historyService;
             _reportService = reportService;
+            _userService = userService; // Assigned field
             _env = env;
         }
 
@@ -60,7 +65,6 @@ namespace ASI.Basecode.WebApp.Controllers
 
         private const int EquipmentPageSize = 5;
 
-        // Builds the Equipment page: newest first, 5 per page
         private IActionResult EquipmentPage(int page)
         {
             var all = _equipmentService.GetAllEquipment()
@@ -84,39 +88,31 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult AddEquipment(EquipmentItem model, IFormFile photo)
         {
-            model.CreatedBy = User.Identity?.Name ?? "Custodian";
-            model.UpdatedBy = User.Identity?.Name ?? "Custodian";
+            model.CreatedBy = CurrentUserCode ?? "Custodian";
+            model.UpdatedBy = model.CreatedBy;
             model.CreatedTime = DateTime.Now;
             model.UpdatedTime = DateTime.Now;
 
-            ModelState.Remove(nameof(model.Category));
-            ModelState.Remove(nameof(model.CreatedBy));
-            ModelState.Remove(nameof(model.UpdatedBy));
-            ModelState.Remove(nameof(model.BorrowingTransactions));
-            ModelState.Remove(nameof(model.Reservations));
-            ModelState.Remove(nameof(model.ImagePath));
-
-            if (!_equipmentService.GetCategories().Any(c => c.Id == model.CategoryId))
-            {
-                ModelState.AddModelError(nameof(model.CategoryId), "Please select a valid category.");
-            }
+            if (model.CategoryId == 0) model.CategoryId = null;
 
             var photoError = ValidatePhoto(photo);
             if (photoError != null)
             {
-                ModelState.AddModelError("photo", photoError);
                 TempData["ErrorMessage"] = photoError;
-            }
-
-            if (ModelState.IsValid)
-            {
-                model.ImagePath = SavePhoto(photo);   // null when no photo was chosen
-                _equipmentService.AddEquipment(model);
-                TempData["SuccessMessage"] = "Equipment asset registered successfully.";
                 return RedirectToAction(nameof(Equipment));
             }
 
-            return EquipmentPage(1);
+            var imagePath = SavePhoto(photo);
+            model.ImagePath = imagePath;
+
+            var result = _equipmentService.AddEquipment(model);
+            if (!result.Success)
+            {
+                DeletePhotoFile(imagePath);
+            }
+
+            TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(Equipment));
         }
 
         [HttpPost]
@@ -130,14 +126,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToAction(nameof(Equipment), new { page });
             }
 
-            if (string.IsNullOrWhiteSpace(model.ItemCode) ||
-                string.IsNullOrWhiteSpace(model.BrandModel) ||
-                string.IsNullOrWhiteSpace(model.SerialNumber) ||
-                string.IsNullOrWhiteSpace(model.StorageLocation))
-            {
-                TempData["ErrorMessage"] = "Item code, brand & model, serial number and storage location are required.";
-                return RedirectToAction(nameof(Equipment), new { page });
-            }
+            if (model.CategoryId == 0) model.CategoryId = null;
 
             var oldImagePath = _equipmentService.GetEquipmentById(model.Id)?.ImagePath;
             string newImagePath = null;
@@ -149,17 +138,17 @@ namespace ASI.Basecode.WebApp.Controllers
                 model.ImagePath = newImagePath;
             }
 
-            model.UpdatedBy = User.Identity?.Name ?? "Custodian";
+            model.UpdatedBy = CurrentUserCode ?? "Custodian";
             var result = _equipmentService.UpdateEquipment(model);
 
             if (result.Success)
             {
-                if (newImagePath != null) DeletePhotoFile(oldImagePath);   // replaced photo: remove the old file
+                if (newImagePath != null) DeletePhotoFile(oldImagePath);
                 TempData["SuccessMessage"] = result.Message;
             }
             else
             {
-                DeletePhotoFile(newImagePath);                             // save failed: drop the new upload
+                DeletePhotoFile(newImagePath);
                 TempData["ErrorMessage"] = result.Message;
             }
 
@@ -179,7 +168,6 @@ namespace ASI.Basecode.WebApp.Controllers
         private const long MaxPhotoBytes = 5 * 1024 * 1024; // 5 MB
         private static readonly string[] AllowedPhotoExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
 
-        // Returns an error message, or null when the photo is fine (or not provided)
         private static string ValidatePhoto(IFormFile photo)
         {
             if (photo == null || photo.Length == 0) return null;
@@ -199,7 +187,6 @@ namespace ASI.Basecode.WebApp.Controllers
             return null;
         }
 
-        // Saves to wwwroot/uploads/equipment with a random name; returns the web path
         private string SavePhoto(IFormFile photo)
         {
             if (photo == null || photo.Length == 0) return null;
@@ -217,7 +204,6 @@ namespace ASI.Basecode.WebApp.Controllers
             return "/uploads/equipment/" + fileName;
         }
 
-        // Removes a previously uploaded photo (only inside wwwroot/uploads/equipment)
         private void DeletePhotoFile(string imagePath)
         {
             if (string.IsNullOrEmpty(imagePath) ||
@@ -229,16 +215,23 @@ namespace ASI.Basecode.WebApp.Controllers
             {
                 if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
             }
-            catch (IOException) { /* a leftover file is harmless */ }
+            catch (IOException) { }
         }
 
         private void PopulateCategoryList()
         {
-            ViewBag.CategoryList = _equipmentService.GetCategories()
+            var all = _equipmentService.GetCategories().OrderBy(c => c.CategoryName).ToList();
+
+            ViewBag.CategoryList = all
+                .Where(c => c.IsActive)
+                .Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.CategoryName })
+                .ToList();
+
+            ViewBag.EditCategoryList = all
                 .Select(c => new SelectListItem
                 {
                     Value = c.Id.ToString(),
-                    Text = c.CategoryName
+                    Text = c.IsActive ? c.CategoryName : c.CategoryName + " (disabled)"
                 })
                 .ToList();
         }
@@ -290,7 +283,6 @@ namespace ASI.Basecode.WebApp.Controllers
             return File(bytes, "text/csv", $"borrowing-history-{DateTime.Now:yyyyMMdd-HHmm}.csv");
         }
 
-        // Print-ready page: the browser's print dialog saves it as PDF
         public IActionResult HistoryPrint(HistoryFilter filter)
         {
             return View(_historyService.GetPage(filter));
@@ -302,7 +294,6 @@ namespace ASI.Basecode.WebApp.Controllers
             return View(_reportService.GetPage(from, to));
         }
 
-        // JSON feed for the availability calendar (end is exclusive)
         [HttpGet]
         public IActionResult CalendarData(DateTime start, DateTime end, int? categoryId, int? itemId)
         {
@@ -314,9 +305,61 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         // ---------- Other pages ----------
+        [HttpGet]
+        [HttpGet]
         public IActionResult Profile()
         {
-            return View();
+            // Try session first, then fallback to authentication claims
+            var userIdStr = HttpContext.Session.GetString("UserId")
+                         ?? User.Identity?.Name
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdStr))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var model = _userService.GetCustodianProfile(userIdStr);
+            if (model == null)
+            {
+                // Debug fallback: If lookup by string user_id fails, try getting the first Custodian user
+                var fallbackUser = _userService.GetUserManagementData(null, "Custodian", null).Users.FirstOrDefault();
+                if (fallbackUser != null)
+                {
+                    model = _userService.GetCustodianProfile(fallbackUser.UserId);
+                }
+            }
+
+            if (model == null)
+            {
+                return NotFound("Custodian profile not found.");
+            }
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Profile(CustodianProfileViewModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.FirstName) || string.IsNullOrWhiteSpace(model.LastName))
+            {
+                TempData["ErrorMessage"] = "First name and Last name cannot be empty.";
+                return RedirectToAction("Profile");
+            }
+
+            bool updated = _userService.UpdateCustodianProfile(model.Id, model.FirstName, model.LastName, model.ContactNumber);
+
+            if (updated)
+            {
+                TempData["SuccessMessage"] = "Profile details updated successfully!";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Failed to update profile. Please try again.";
+            }
+
+            return RedirectToAction("Profile");
         }
 
         public IActionResult Settings()
