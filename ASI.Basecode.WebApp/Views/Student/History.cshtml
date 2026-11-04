@@ -1,4 +1,5 @@
-﻿@using ASI.Basecode.Services.ServiceModels
+﻿@* Location: ASI.Basecode.WebApp/Views/Student/History.cshtml *@
+@using ASI.Basecode.Services.ServiceModels
 @using ASI.Basecode.Data.Models
 @model HistoryPageViewModel
 
@@ -18,268 +19,151 @@
         _ => "bi-box-seam"
     };
 
-   string GetStatus(BorrowingTransaction t)
-{
-    if (!t.ActualReturnTime.HasValue)
+    string GetStatus(BorrowingTransaction t)
     {
-        if (t.Reservation != null &&
-            t.Reservation.EstimatedReturnDate < DateTime.Now)
+        if (!t.ActualReturnTime.HasValue)
         {
-            return "Overdue";
+            if (t.Reservation != null && t.Reservation.EstimatedReturnDate < DateTime.Now)
+            {
+                return "Overdue";
+            }
+
+            return "Currently Borrowing";
         }
 
-        return "Currently Borrowing";
-    }
-
-    if (t.ReturnCondition == "needs_maintenance")
-    {
-        return "Damaged";
-    }
-
-    if (t.IsOverdue)
-    {
-        return "Returned Late";
-    }
-
-    return "Returned";
-}
-
-    string GetStatusClass(string status)
-    {
-        return status switch
+        if (t.ReturnCondition == "needs_maintenance")
         {
-            "Currently Borrowing" => "history-active",
-            "Overdue" => "history-overdue",
-            "Returned" => "history-returned",
-            "Returned Late" => "history-late",
-            "Damaged" => "history-damaged",
-            _ => ""
-        };
+            return "Damaged";
+        }
+
+        if (t.IsOverdue)
+        {
+            return "Returned Late";
+        }
+
+        return "Returned";
     }
+
+    // Same pill colours as My Reservations
+    string GetPillClass(string status) => status switch
+    {
+        "Currently Borrowing" => "is-available",
+        "Overdue" => "is-overdue",
+        "Returned" => "is-completed",
+        "Returned Late" => "is-borrowed",
+        "Damaged" => "is-declined",
+        _ => "is-completed"
+    };
 }
 
 @section Styles {
-    <link rel="stylesheet"
-          href="~/css/student-history.css"
-          asp-append-version="true" />
-
-    
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/reservation-status.css" asp-append-version="true" />
 }
 
-<div class="dash history-page">
+<div class="dash">
 
-    <!-- Page Header -->
-    <div class="history-header">
-        <div>
-            <h1 class="dash-name">Borrowing History</h1>
-            <p class="dash-sub">
-                Keep track of the equipment you have borrowed and returned.
-            </p>
+    @* ===== Page header ===== *@
+    <div class="dash-header pb-3 mb-4">
+        <h1 class="dash-name mb-1">Borrowing History</h1>
+        <p class="dash-sub mb-0">Keep track of the equipment you have borrowed and returned.</p>
+    </div>
+
+    @* ===== Summary cards ===== *@
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="dash-card h-100">
+                <div class="dash-stat-label">Total Borrowings</div>
+                <div class="dash-stat-count">@Model.TotalTransactions</div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="dash-card h-100">
+                <div class="dash-stat-label">Currently Borrowing</div>
+                <div class="dash-stat-count">@Model.ActiveLoans</div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="dash-card h-100">
+                <div class="dash-stat-label">Late Returns</div>
+                <div class="dash-stat-count">@Model.LateReturns</div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="dash-card h-100">
+                <div class="dash-stat-label">On-time Return Rate</div>
+                <div class="dash-stat-count">@Model.OnTimeRate%</div>
+            </div>
         </div>
     </div>
 
-    <!-- Summary -->
-    <div class="history-summary">
+    @* ===== Search & filters ===== *@
+    <form method="get" asp-controller="Student" asp-action="History" class="dash-card mb-4">
+        <h2 class="dash-section-title mb-3">Find a Borrowing Record</h2>
 
-        <div class="history-stat">
-            <div class="history-stat-icon">
-                <i class="bi bi-journal-text"></i>
+        <div class="row g-2 align-items-end">
+            <div class="col-lg-3 col-md-6">
+                <label class="dash-stat-label mb-1" for="search">Search Equipment</label>
+                <input type="text" id="search" name="search" value="@f.Search"
+                       class="form-control dash-search-input"
+                       placeholder="Equipment name or item code..." />
             </div>
-            <div class="history-stat-label">Total Borrowings</div>
-            <div class="history-stat-value">
-                @Model.TotalTransactions
+
+            <div class="col-lg-2 col-md-6">
+                <label class="dash-stat-label mb-1" for="categoryId">Category</label>
+                <select id="categoryId" name="categoryId" class="form-select dash-search-input">
+                    <option value="">All Categories</option>
+                    @foreach (var category in Model.Categories)
+                    {
+                        <option value="@category.Id" selected="@(f.CategoryId == category.Id)">@category.CategoryName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <label class="dash-stat-label mb-1" for="result">Status</label>
+                <select id="result" name="result" class="form-select dash-search-input">
+                    <option value="">All Records</option>
+                    <option value="active" selected="@(f.Result == "active")">Currently Borrowing</option>
+                    <option value="overdue" selected="@(f.Result == "overdue")">Overdue</option>
+                    <option value="ontime" selected="@(f.Result == "ontime")">Returned</option>
+                    <option value="damaged" selected="@(f.Result == "damaged")">Damaged</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <label class="dash-stat-label mb-1" for="dateFrom">Borrowed From</label>
+                <input type="date" id="dateFrom" name="dateFrom"
+                       value="@(f.DateFrom?.ToString("yyyy-MM-dd"))"
+                       class="form-control dash-search-input" />
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <label class="dash-stat-label mb-1" for="dateTo">Borrowed To</label>
+                <input type="date" id="dateTo" name="dateTo"
+                       value="@(f.DateTo?.ToString("yyyy-MM-dd"))"
+                       class="form-control dash-search-input" />
+            </div>
+
+            <div class="col-12 d-flex gap-2 pt-1">
+                <button type="submit" class="btn dash-btn dash-btn-reserve">
+                    <i class="bi bi-search me-1"></i> Apply Filters
+                </button>
+                <a asp-controller="Student" asp-action="History" class="btn dash-btn dash-btn-view">Reset</a>
             </div>
         </div>
+    </form>
 
-        <div class="history-stat">
-            <div class="history-stat-icon">
-                <i class="bi bi-box-arrow-up-right"></i>
-            </div>
-            <div class="history-stat-label">Currently Borrowing</div>
-            <div class="history-stat-value">
-                @Model.ActiveLoans
-            </div>
-        </div>
-
-        <div class="history-stat">
-            <div class="history-stat-icon">
-                <i class="bi bi-clock-history"></i>
-            </div>
-            <div class="history-stat-label">Late Returns</div>
-            <div class="history-stat-value">
-                @Model.LateReturns
-            </div>
-        </div>
-
-        <div class="history-stat">
-            <div class="history-stat-icon">
-                <i class="bi bi-check-circle"></i>
-            </div>
-            <div class="history-stat-label">On-time Return Rate</div>
-            <div class="history-stat-value">
-                @Model.OnTimeRate%
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Search and Filters -->
-    <div class="history-filter">
-
-        <h2 class="history-section-title">
-            <i class="bi bi-funnel me-2"></i>
-            Find a Borrowing Record
-        </h2>
-
-        <form method="get"
-              asp-controller="Student"
-              asp-action="History">
-
-            <div class="row g-3 align-items-end">
-
-                <div class="col-lg-4 col-md-6">
-                    <label class="history-label" for="search">
-                        Search Equipment
-                    </label>
-
-                    <input type="text"
-                           id="search"
-                           name="search"
-                           value="@f.Search"
-                           class="form-control"
-                           placeholder="Equipment name or item code..." />
-                </div>
-
-                <div class="col-lg-2 col-md-6">
-                    <label class="history-label" for="categoryId">
-                        Category
-                    </label>
-
-                    <select id="categoryId"
-                            name="categoryId"
-                            class="form-select">
-
-                        <option value="">All Categories</option>
-
-                        @foreach (var category in Model.Categories)
-                        {
-                            if (f.CategoryId == category.Id)
-                            {
-                                <option value="@category.Id" selected>
-                                    @category.CategoryName
-                                </option>
-                            }
-                            else
-                            {
-                                <option value="@category.Id">
-                                    @category.CategoryName
-                                </option>
-                            }
-                        }
-
-                    </select>
-                </div>
-
-                <div class="col-lg-2 col-md-6">
-                    <label class="history-label" for="result">
-                        Status
-                    </label>
-
-                    <select id="result"
-                            name="result"
-                            class="form-select">
-
-                        <option value="">All Records</option>
-
-                        <option value="active"
-                                selected="@(f.Result == "active")">
-                            Currently Borrowing
-                        </option>
-
-                        <option value="overdue"
-                                selected="@(f.Result == "overdue")">
-                            Overdue
-                        </option>
-
-                        <option value="ontime"
-                                selected="@(f.Result == "ontime")">
-                            Returned
-                        </option>
-
-                        <option value="damaged"
-                                selected="@(f.Result == "damaged")">
-                            Damaged
-                        </option>
-
-                    </select>
-                </div>
-
-                <div class="col-lg-2 col-md-6">
-                    <label class="history-label" for="dateFrom">
-                        Borrowed From
-                    </label>
-
-                    <input type="date"
-                           id="dateFrom"
-                           name="dateFrom"
-                           value="@(f.DateFrom?.ToString("yyyy-MM-dd"))"
-                           class="form-control" />
-                </div>
-
-                <div class="col-lg-2 col-md-6">
-                    <label class="history-label" for="dateTo">
-                        Borrowed To
-                    </label>
-
-                    <input type="date"
-                           id="dateTo"
-                           name="dateTo"
-                           value="@(f.DateTo?.ToString("yyyy-MM-dd"))"
-                           class="form-control" />
-                </div>
-
-                <div class="col-12 d-flex gap-2">
-                    <button type="submit" class="btn history-btn">
-                        <i class="bi bi-search me-1"></i>
-                        Apply Filters
-                    </button>
-
-                    <a asp-controller="Student"
-                       asp-action="History"
-                       class="history-reset">
-                        Reset
-                    </a>
-                </div>
-
-            </div>
-        </form>
-    </div>
-
-    <!-- Borrowing Records -->
-    <div class="history-table-card">
+    @* ===== Borrowing records ===== *@
+    <div class="dash-card">
 
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-
-            <div>
-                <h2 class="history-section-title mb-1">
-                    My Equipment Records
-                </h2>
-
-                <p class="history-muted mb-0">
-                    Your borrowing activity and return records.
-                </p>
-            </div>
-
-            <span class="history-muted">
-                @Model.Rows.Count record(s) found
-            </span>
-
+            <h2 class="dash-section-title mb-0">My Equipment Records</h2>
+            <span class="dash-muted small">@Model.Rows.Count record(s) found</span>
         </div>
 
         <div class="table-responsive">
-
-            <table class="table history-table mb-0">
-
+            <table class="table dash-table mb-0">
                 <thead>
                     <tr>
                         <th>Equipment</th>
@@ -290,124 +174,82 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-
                 <tbody>
-
                     @foreach (var t in Model.Rows)
                     {
                         var status = GetStatus(t);
-                        var categoryCode =
-                            t.EquipmentItem?.Category?.CategoryCode;
+                        var categoryCode = t.EquipmentItem?.Category?.CategoryCode;
 
                         <tr>
-
-                            <!-- Equipment -->
                             <td>
-                                <div class="history-equipment">
-
-                                    <div class="history-equipment-icon">
+                                <div class="d-flex align-items-center">
+                                    <span class="dash-icon-circle dash-icon-sm d-inline-flex align-items-center justify-content-center">
                                         <i class="bi @IconFor(categoryCode)"></i>
+                                    </span>
+                                    <div class="ms-2">
+                                        <div>@(t.EquipmentItem?.BrandModel ?? "Unknown Equipment")</div>
+                                        <div class="dash-res-date">@(t.EquipmentItem?.ItemCode ?? "-")</div>
                                     </div>
-
-                                    <div>
-                                        <div class="history-equipment-name">
-                                            @(t.EquipmentItem?.BrandModel ?? "Unknown Equipment")
-                                        </div>
-
-                                        <div class="history-equipment-code">
-                                            @(t.EquipmentItem?.ItemCode ?? "-")
-                                        </div>
-                                    </div>
-
                                 </div>
                             </td>
 
-                            <!-- Borrowed Date -->
                             <td>
                                 @t.ActualPickupTime.ToString("MMM d, yyyy")
-                                <div class="history-muted">
-                                    @t.ActualPickupTime.ToString("h:mm tt")
-                                </div>
+                                <div class="dash-res-date">@t.ActualPickupTime.ToString("h:mm tt")</div>
                             </td>
 
-                            <!-- Due Date -->
                             <td>
                                 @if (t.Reservation != null)
                                 {
                                     @t.Reservation.EstimatedReturnDate.ToString("MMM d, yyyy")
-                                    <div class="history-muted">
-                                        @t.Reservation.EstimatedReturnDate.ToString("h:mm tt")
-                                    </div>
+                                    <div class="dash-res-date">@t.Reservation.EstimatedReturnDate.ToString("h:mm tt")</div>
                                 }
                                 else
                                 {
-                                    <span class="history-muted">Not available</span>
+                                    <span class="dash-muted">Not available</span>
                                 }
                             </td>
 
-                            <!-- Actual Return Date -->
                             <td>
                                 @if (t.ActualReturnTime.HasValue)
                                 {
                                     @t.ActualReturnTime.Value.ToString("MMM d, yyyy")
-                                    <div class="history-muted">
-                                        @t.ActualReturnTime.Value.ToString("h:mm tt")
-                                    </div>
+                                    <div class="dash-res-date">@t.ActualReturnTime.Value.ToString("h:mm tt")</div>
                                 }
                                 else
                                 {
-                                    <span class="history-muted">
-                                        Not yet returned
-                                    </span>
+                                    <span class="dash-muted">Not yet returned</span>
                                 }
                             </td>
 
-                            <!-- Return Condition -->
                             <td>
                                 @if (t.ActualReturnTime.HasValue)
                                 {
-                                    <span class="text-capitalize">
-                                        @((t.ReturnCondition ?? "-").Replace("_", " "))
-                                    </span>
+                                    <span class="text-capitalize">@((t.ReturnCondition ?? "-").Replace("_", " "))</span>
                                 }
                                 else
                                 {
-                                    <span class="history-muted">Pending return</span>
+                                    <span class="dash-muted">Pending return</span>
                                 }
                             </td>
 
-                            <!-- Borrowing Status -->
                             <td>
-                                <span class="history-status @GetStatusClass(status)">
-                                    @status
-                                </span>
+                                <span class="dash-pill @GetPillClass(status)">@status</span>
                             </td>
-
                         </tr>
                     }
 
                     @if (!Model.Rows.Any())
                     {
                         <tr>
-                            <td colspan="6">
-                                <div class="history-empty">
-                                    <i class="bi bi-clock-history"></i>
-
-                                    <h4>No borrowing records found</h4>
-
-                                    <p class="mb-0">
-                                        You don't have any borrowing records
-                                        matching your filters.
-                                    </p>
-                                </div>
+                            <td colspan="6" class="text-center dash-muted py-4">
+                                <i class="bi bi-clock-history fs-3 d-block mb-1"></i>
+                                No borrowing records found matching your filters.
                             </td>
                         </tr>
                     }
-
                 </tbody>
-
             </table>
-
         </div>
     </div>
 

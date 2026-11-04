@@ -25,7 +25,8 @@
         </li>
         <li>
             @* The dashboard already lists and filters all equipment *@
-            <a class="side-nav__link" asp-controller="Student" asp-action="Equipment">
+            <a class="side-nav__link  @(IsActive("Student", "Equipment") ? "is-active" : "")"
+            asp-controller="Student" asp-action="Equipment">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <span class="side-nav__text">Search Equipments</span>
             </a>

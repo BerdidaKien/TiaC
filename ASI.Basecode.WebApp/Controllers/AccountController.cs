@@ -1,5 +1,4 @@
-﻿
-using ASI.Basecode.Data.Models;
+﻿using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.Manager;
 using ASI.Basecode.Services.ServiceModels;
@@ -8,9 +7,11 @@ using ASI.Basecode.WebApp.Models;
 using ASI.Basecode.WebApp.Mvc;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
@@ -77,6 +78,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 this._session.SetString("UserName", fullName);
                 this._session.SetString("UserId", user.UserId);
                 this._session.SetString("UserRole", user.Role ?? "Student");
+                this._session.SetString("UserPhoto", user.ProfileImagePath ?? "");   // shown in the sidebar
 
                 var role = user.Role?.ToLowerInvariant() ?? "student";
 
@@ -160,10 +162,45 @@ namespace ASI.Basecode.WebApp.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Profile(string FullName, string ContactNumber, string StudentId,
-            string Department, string Email, IFormFile photo)
+        public IActionResult Profile(string ContactNumber, string Email, IFormFile photo)
         {
-            // Profile update will be implemented separately.
+            var userId = this._session.GetString("UserId");
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var webRoot = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootPath;
+
+            var photoError = ProfilePhotoHelper.Validate(photo);
+            if (photoError != null)
+            {
+                TempData["ErrorMessage"] = photoError;
+                return RedirectToAction(nameof(Profile));
+            }
+
+            var oldPath = _userService.GetProfileImagePath(userId);
+            var newPath = ProfilePhotoHelper.Save(photo, webRoot);        // null when no photo was chosen
+
+            var result = _userService.UpdateProfile(userId, ContactNumber, Email, newPath);
+
+            if (result.Success)
+            {
+                if (newPath != null)
+                {
+                    ProfilePhotoHelper.Delete(oldPath, webRoot);          // remove the replaced photo
+                    this._session.SetString("UserPhoto", newPath);        // sidebar picks it up
+                }
+
+                TempData["SuccessMessage"] = result.Message;
+            }
+            else
+            {
+                ProfilePhotoHelper.Delete(newPath, webRoot);              // save failed: drop the new upload
+                TempData["ErrorMessage"] = result.Message;
+            }
+
             return RedirectToAction(nameof(Profile));
         }
 

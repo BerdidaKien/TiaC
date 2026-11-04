@@ -12,5 +12,6 @@
         public string Role { get; set; }
         public string BorrowerStatus { get; set; }
         public bool IsActive { get; set; }
+        public string ProfileImagePath { get; set; }
     }
 }

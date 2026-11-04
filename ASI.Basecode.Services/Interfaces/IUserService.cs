@@ -1,5 +1,4 @@
-﻿
-using ASI.Basecode.Data.Models;
+﻿using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.ServiceModels;
 using System.Collections.Generic;
 using static ASI.Basecode.Resources.Constants.Enums;
@@ -19,5 +18,9 @@ namespace ASI.Basecode.Services.Interfaces
 
         // Get logged-in user's profile
         ProfileViewModel GetProfile(string userId);
+
+        // Profile photo / editable profile fields
+        string GetProfileImagePath(string userId);
+        ServiceResult UpdateProfile(string userId, string contactNumber, string email, string newImagePath);
     }
 }

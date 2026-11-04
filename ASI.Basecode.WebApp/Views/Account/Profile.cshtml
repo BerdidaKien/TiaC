@@ -1,4 +1,4 @@
-﻿
+﻿@* Location: ASI.Basecode.WebApp/Views/Account/Profile.cshtml *@
 @model ASI.Basecode.Services.ServiceModels.ProfileViewModel
 
 @section styles {
@@ -13,6 +13,7 @@
     ViewData["Title"] = "Profile";
 
     var fullName = Model.FullName ?? "Guest";
+    var photoUrl = string.IsNullOrWhiteSpace(Model.ProfileImagePath) ? null : Model.ProfileImagePath;
 }
 
 <div class="dash profile">
@@ -20,19 +21,6 @@
     @* ===== Header ===== *@
     <div class="dash-header d-flex align-items-center justify-content-between pb-3 mb-3">
         <h1 class="dash-name mb-0">Profile</h1>
-
-        <div class="d-flex align-items-center">
-            <button type="button" class="dash-bell btn" aria-label="Notifications">
-                <i class="fa-regular fa-bell"></i>
-            </button>
-
-            <div class="dash-user d-flex align-items-center ml-3 ms-3">
-                <span class="dash-avatar d-inline-flex align-items-center justify-content-center">
-                    <i class="fa-solid fa-user"></i>
-                </span>
-                <span class="dash-user-name">@fullName</span>
-            </div>
-        </div>
     </div>
 
     <p class="dash-sub profile-intro mb-3">
@@ -75,10 +63,11 @@
                             <span class="profile-photo d-inline-flex align-items-center justify-content-center"
                                   id="photoCircle">
 
-                                <i class="fa-solid fa-user" id="photoIcon"></i>
+                                <i class="fa-solid fa-user @(photoUrl != null ? "d-none" : "")" id="photoIcon"></i>
 
                                 <img id="photoPreview"
-                                     class="d-none"
+                                     class="@(photoUrl == null ? "d-none" : "")"
+                                     src="@photoUrl"
                                      alt="Profile photo" />
                             </span>
 
@@ -97,13 +86,15 @@
                         <input type="file"
                                id="photoInput"
                                name="photo"
-                               accept="image/*"
+                               accept="image/png,image/jpeg,image/webp"
                                class="d-none" />
 
                         <label for="photoInput"
                                class="btn dash-btn dash-btn-view profile-change-photo mb-0">
                             <i class="fa-solid fa-camera"></i> Change Photo
                         </label>
+
+                        <div class="dash-muted small mt-2">JPG, PNG or WEBP, up to 5 MB. Click <strong>Save Changes</strong> to apply.</div>
                     </div>
 
                 </div>
@@ -120,30 +111,10 @@
 
                     <div class="row">
 
-                        @* Full Name *@
-                        <!--<div class="col-md-6 mb-3">
-                            <label class="profile-label" for="FullName">
-                                Full Name
-                            </label>
-
-                            <div class="profile-field position-relative">
-                                <i class="fa-solid fa-user profile-field-icon"></i>
-
-                                <input type="text"
-                                       id="FullName"
-                                       name="FullName"
-                                       value="@Model.FullName"
-                                       class="form-control profile-input"
-                                       data-editable="true"
-                                       readonly />
-                            </div>
-                        </div>
-                        -->
-
                         @* Student ID *@
                         <div class="col-md-6 mb-3">
                             <label class="profile-label" for="StudentId">
-                                Student ID
+                                User ID
                             </label>
 
                             <div class="profile-field position-relative">
@@ -264,25 +235,6 @@
                                        readonly />
                             </div>
                         </div>
-
-                        <!--
-                        @* Borrower Status *@
-                        <div class="col-md-6 mb-3">
-                            <label class="profile-label" for="BorrowerStatus">
-                                Borrower Status
-                            </label>
-
-                            <div class="profile-field position-relative">
-                                <i class="fa-solid fa-id-badge profile-field-icon"></i>
-
-                                <input type="text"
-                                       id="BorrowerStatus"
-                                       value="@Model.BorrowerStatus"
-                                       class="form-control profile-input"
-                                       readonly />
-                            </div>
-                        </div>
-                        -->
 
                         @* Account Status *@
                         <div class="col-md-6 mb-3">
@@ -503,10 +455,11 @@
                 }
             });
 
-            // Photo preview
+            // Photo preview (+ type and 5 MB check before uploading)
             var photoInput = document.getElementById('photoInput');
             var preview = document.getElementById('photoPreview');
             var icon = document.getElementById('photoIcon');
+            var allowed = ['image/jpeg', 'image/png', 'image/webp'];
 
             if (photoInput) {
                 photoInput.addEventListener('change', function () {
@@ -515,10 +468,22 @@
 
                     if (!file) return;
 
+                    if (allowed.indexOf(file.type) === -1) {
+                        alert('Please choose a JPG, PNG or WEBP image.');
+                        photoInput.value = '';
+                        return;
+                    }
+
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('The photo must be 5 MB or smaller.');
+                        photoInput.value = '';
+                        return;
+                    }
+
                     preview.src = URL.createObjectURL(file);
                     preview.classList.remove('d-none');
 
-                    icon.classList.add('d-none');
+                    if (icon) icon.classList.add('d-none');
 
                     saveBtn.disabled = false;
                 });

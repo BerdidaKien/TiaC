@@ -1,0 +1,26 @@
+﻿@* Location: ASI.Basecode.WebApp/Views/Shared/_SidebarProfile.cshtml
+   Small avatar + name shown in the sidebar. Reads the photo path saved in the session. *@
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+@{
+    var session = HttpContextAccessor.HttpContext?.Session;
+    var photo = session?.GetString("UserPhoto");
+    var name = session?.GetString("UserName");
+    if (string.IsNullOrWhiteSpace(name)) { name = "My Profile"; }
+}
+<a asp-controller="Account" asp-action="Profile"
+   class="d-flex align-items-center gap-2 text-white text-decoration-none px-3 my-3" title="View profile">
+    @if (!string.IsNullOrEmpty(photo))
+    {
+        <img src="@photo" alt=""
+             style="width:2.5rem;height:2.5rem;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.75);flex:0 0 auto;" />
+    }
+    else
+    {
+        <span class="d-inline-flex align-items-center justify-content-center"
+              style="width:2.5rem;height:2.5rem;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.75);flex:0 0 auto;">
+            <i class="bi bi-person-fill"></i>
+        </span>
+    }
+    <span class="small fw-semibold text-truncate">@name</span>
+</a>
