@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Claims;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.ServiceModels;
-using ASI.Basecode.Services.Services;
 using ASI.Basecode.WebApp.Mvc;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -26,9 +24,10 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IReservationService _reservationService;
         private readonly IHistoryService _historyService;
         private readonly IReportService _reportService;
-        private readonly IUserService _userService; // Added field
-        private readonly IWebHostEnvironment _env;
         private readonly ISettingsService _settingsService;
+        private readonly IUserService _userService;
+        private readonly IWebHostEnvironment _env;
+        private readonly ProfilePhotoStorage _profilePhotos;
 
         public CustodianController(
             IEquipmentService equipmentService,
@@ -36,7 +35,8 @@ namespace ASI.Basecode.WebApp.Controllers
             IHistoryService historyService,
             IReportService reportService,
             ISettingsService settingsService,
-            IUserService userService, // Injected dependency
+            IUserService userService,
+            ProfilePhotoStorage profilePhotos,
             IWebHostEnvironment env,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
@@ -48,10 +48,13 @@ namespace ASI.Basecode.WebApp.Controllers
             _reservationService = reservationService;
             _historyService = historyService;
             _reportService = reportService;
+            _settingsService = settingsService;
             _userService = userService;
-            _settingsService = settingsService;// Assigned field
+            _profilePhotos = profilePhotos;
             _env = env;
         }
+
+        private string CurrentUserCode => _session.GetString("UserId");
 
         // ---------- Dashboard ----------
         public IActionResult Index(string search, int? categoryId, string status)
@@ -162,12 +165,12 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ArchiveEquipment(int id, int page = 1)
         {
-            var result = _equipmentService.ArchiveEquipment(id, User.Identity?.Name ?? "Custodian");
+            var result = _equipmentService.ArchiveEquipment(id, CurrentUserCode ?? "Custodian");
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
             return RedirectToAction(nameof(Equipment), new { page });
         }
 
-        // ---------- Photo upload helpers ----------
+        // ---------- Equipment photo helpers ----------
         private const long MaxPhotoBytes = 5 * 1024 * 1024; // 5 MB
         private static readonly string[] AllowedPhotoExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
 
@@ -266,8 +269,6 @@ namespace ASI.Basecode.WebApp.Controllers
         public IActionResult ReturnItem(int id, string returnCondition, string damageNotes)
             => HandleResult(_reservationService.Return(id, returnCondition, damageNotes, CurrentUserCode));
 
-        private string CurrentUserCode => _session.GetString("UserId");
-
         private IActionResult HandleResult(ServiceResult result)
         {
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
@@ -307,63 +308,50 @@ namespace ASI.Basecode.WebApp.Controllers
             return Json(_reportService.GetCalendar(start, end, categoryId, itemId));
         }
 
-        // ---------- Other pages ----------
+        // ---------- Profile ----------
         [HttpGet]
         public IActionResult Profile()
         {
-            // Try session first, then fallback to authentication claims
-            var userIdStr = HttpContext.Session.GetString("UserId")
-                         ?? User.Identity?.Name
-                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (string.IsNullOrEmpty(userIdStr))
-            {
-                return RedirectToAction("Login", "Account");
-            }
-
-            var model = _userService.GetCustodianProfile(userIdStr);
-            if (model == null)
-            {
-                // Debug fallback: If lookup by string user_id fails, try getting the first Custodian user
-                var fallbackUser = _userService.GetUserManagementData(null, "Custodian", null).Users.FirstOrDefault();
-                if (fallbackUser != null)
-                {
-                    model = _userService.GetCustodianProfile(fallbackUser.UserId);
-                }
-            }
-
-            if (model == null)
-            {
-                return NotFound("Custodian profile not found.");
-            }
-
+            var model = _userService.GetCustodianProfile(CurrentUserCode);
+            if (model == null) return RedirectToAction("Login", "Account");
             return View(model);
         }
 
+        // Custodians can only change their contact number and photo here.
+        // Name, ID and email go through an information change request.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Profile(CustodianProfileViewModel model)
+        public IActionResult Profile(string contactNumber, IFormFile photo)
         {
-            if (string.IsNullOrWhiteSpace(model.FirstName) || string.IsNullOrWhiteSpace(model.LastName))
+            string newPhoto = null;
+
+            if (photo != null && photo.Length > 0)
             {
-                TempData["ErrorMessage"] = "First name and Last name cannot be empty.";
-                return RedirectToAction("Profile");
+                if (!_profilePhotos.TrySave(photo, out newPhoto, out var photoError))
+                {
+                    TempData["ErrorMessage"] = photoError;
+                    return RedirectToAction(nameof(Profile));
+                }
             }
 
-            bool updated = _userService.UpdateCustodianProfile(model.Id, model.FirstName, model.LastName, model.ContactNumber);
+            var oldPhoto = _userService.GetProfileImagePath(CurrentUserCode);
+            var result = _userService.UpdateProfile(CurrentUserCode, contactNumber, null, newPhoto);
 
-            if (updated)
+            if (result.Success)
             {
-                TempData["SuccessMessage"] = "Profile details updated successfully!";
+                if (newPhoto != null) _profilePhotos.Delete(oldPhoto);   // replaced photo: remove the old file
+                TempData["SuccessMessage"] = result.Message;
             }
             else
             {
-                TempData["ErrorMessage"] = "Failed to update profile. Please try again.";
+                _profilePhotos.Delete(newPhoto);                         // save failed: drop the new upload
+                TempData["ErrorMessage"] = result.Message;
             }
 
-            return RedirectToAction("Profile");
+            return RedirectToAction(nameof(Profile));
         }
 
+        // ---------- Settings ----------
         [HttpGet]
         public IActionResult Settings()
         {

@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ASI.Basecode.Services.ServiceModels
 {
@@ -28,9 +25,11 @@ namespace ASI.Basecode.Services.ServiceModels
         public string Email { get; set; }
         public string Role { get; set; }
         public bool IsActive { get; set; }
+        public string Status { get; set; }          // active | inactive | disabled
         public DateTime DateCreated { get; set; }
         public string Initials { get; set; }
     }
+
     public class UserRowInput
     {
         public string FullName { get; set; }

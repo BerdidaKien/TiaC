@@ -61,6 +61,7 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IAccountAdminRepository, AccountAdminRepository>();
             this._services.AddScoped<IUserStatusService, UserStatusService>();
             this._services.AddScoped<IInfoRequestService, InfoRequestService>();
+            this._services.AddScoped<ProfilePhotoStorage>();
             this._services.AddScoped<ProofStorage>();
             this._services.AddHttpClient();
         }
