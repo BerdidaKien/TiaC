@@ -1,0 +1,233 @@
+﻿@using ASI.Basecode.Services.ServiceModels
+@model InfoRequestFormViewModel
+@{
+    ViewData["Title"] = "Request an Information Change";
+
+    var p = Model.Posted;
+    string error = ViewBag.Error as string;
+
+    // After an error the form shows what the user typed; otherwise their current details
+    string V(string posted, string current) => p != null ? (posted ?? "") : (current ?? "");
+
+    (string Text, string Css) Badge(string s) => s switch
+    {
+        "pending" => ("Waiting for review", "bg-warning-subtle text-warning-emphasis"),
+        "approved" => ("Approved", "bg-success-subtle text-success-emphasis"),
+        "rejected" => ("Rejected", "bg-danger-subtle text-danger-emphasis"),
+        "cancelled" => ("Cancelled", "bg-secondary-subtle text-secondary-emphasis"),
+        _ => (s ?? "-", "bg-light text-dark")
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .is-changed {
+            border-color: #f0ad4e !important;
+            background-color: #fffaf0 !important;
+        }
+    </style>
+}
+
+<div class="dash">
+
+    <div class="dash-header pb-3 mb-4">
+        <h1 class="dash-name mb-1">Request an Information Change</h1>
+        <p class="dash-sub mb-0">
+            Only an administrator can change your name, ID or email, so your account matches your official records.
+        </p>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@error
+            <div class="small mt-1">Please choose your photos again before sending.</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (Model.Pending != null)
+    {
+        var pb = Badge("pending");
+        <div class="dash-card mb-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h2 class="dash-section-title mb-1">You have a request waiting for review</h2>
+                    <div class="small text-muted">@Model.Pending.Code &middot; sent @Model.Pending.CreatedTime.ToString("MMM d, yyyy h:mm tt")</div>
+                </div>
+                <span class="badge @pb.Css">@pb.Text</span>
+            </div>
+
+            <ul class="mb-3">
+                @foreach (var it in Model.Pending.Items)
+                {
+                    <li>
+                        <strong>@it.Label:</strong>
+                        @(string.IsNullOrEmpty(it.OldValue) ? "(empty)" : it.OldValue)
+                        <i class="bi bi-arrow-right mx-1"></i>
+                        @(string.IsNullOrEmpty(it.NewValue) ? "(clear)" : it.NewValue)
+                    </li>
+                }
+            </ul>
+            <div class="small text-muted mb-3">@Model.Pending.Files.Count photo(s) attached. You can send a new request after this one is reviewed or cancelled.</div>
+
+            <form method="post" asp-controller="InfoRequest" asp-action="Cancel"
+                  onsubmit="return confirm('Cancel this request?');">
+                <input type="hidden" name="id" value="@Model.Pending.Id" />
+                <button type="submit" class="btn dash-btn dash-btn-view">Cancel request</button>
+            </form>
+        </div>
+    }
+    else
+    {
+        <div class="dash-card mb-4">
+            <h2 class="dash-section-title mb-3">What needs to be corrected?</h2>
+
+            <form method="post" asp-controller="InfoRequest" asp-action="Create" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <p class="small text-muted">Edit only the details that are wrong. Changed fields are highlighted.</p>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="dash-stat-label mb-1" for="FirstName">First name</label>
+                        <input type="text" id="FirstName" name="FirstName" value="@V(p?.FirstName, Model.FirstName)"
+                               data-original="@Model.FirstName" maxlength="50" required class="form-control dash-search-input" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="dash-stat-label mb-1" for="MiddleName">Middle name</label>
+                        <input type="text" id="MiddleName" name="MiddleName" value="@V(p?.MiddleName, Model.MiddleName)"
+                               data-original="@Model.MiddleName" maxlength="50" class="form-control dash-search-input" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="dash-stat-label mb-1" for="LastName">Last name</label>
+                        <input type="text" id="LastName" name="LastName" value="@V(p?.LastName, Model.LastName)"
+                               data-original="@Model.LastName" maxlength="50" required class="form-control dash-search-input" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="dash-stat-label mb-1" for="UserCode">@Model.IdLabel</label>
+                        <input type="text" id="UserCode" name="UserCode" value="@V(p?.UserCode, Model.UserCode)"
+                               data-original="@Model.UserCode" maxlength="50" required class="form-control dash-search-input" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="dash-stat-label mb-1" for="Email">Email address</label>
+                        <input type="email" id="Email" name="Email" value="@V(p?.Email, Model.Email)"
+                               data-original="@Model.Email" maxlength="100" required class="form-control dash-search-input" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="dash-stat-label mb-1" for="Reason">What is wrong, and what is correct?</label>
+                    <textarea id="Reason" name="Reason" rows="3" maxlength="500" required
+                              class="form-control dash-search-input"
+                              placeholder="e.g. My last name is misspelled. My school ID shows the correct spelling.">@(p?.Reason)</textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="dash-stat-label mb-1" for="proofs">Proof photos (1 to 3)</label>
+                    <input type="file" id="proofs" name="proofs" multiple required
+                           accept="image/png,image/jpeg,image/webp" class="form-control dash-search-input" />
+                    <div class="form-text">
+                        A clear photo of your school ID or another official document that shows the correct details.
+                        JPG, PNG or WEBP, up to 5 MB each. Only administrators can see them.
+                    </div>
+                    <ul id="proofList" class="small text-muted mt-2 mb-0"></ul>
+                </div>
+
+                <button type="submit" class="btn dash-btn-reserve">
+                    <i class="bi bi-send me-1"></i> Send request
+                </button>
+                <div class="form-text mt-2">Your contact number and photo can be updated from your profile.</div>
+            </form>
+        </div>
+    }
+
+    <div class="dash-card">
+        <h2 class="dash-section-title mb-3">My requests</h2>
+        <div class="table-responsive">
+            <table class="table dash-table mb-0">
+                <thead>
+                    <tr><th>Request</th><th>Changes</th><th>Sent</th><th>Status</th><th>Admin note</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.History)
+                    {
+                        var b = Badge(r.Status);
+                        <tr>
+                            <td class="fw-semibold">@r.Code</td>
+                            <td class="small">@string.Join(", ", r.Items.Select(i => i.Label))</td>
+                            <td class="small">@r.CreatedTime.ToString("MMM d, yyyy")</td>
+                            <td><span class="badge @b.Css">@b.Text</span></td>
+                            <td class="small text-muted">@r.ReviewNote</td>
+                        </tr>
+                    }
+                    @if (!Model.History.Any())
+                    {
+                        <tr><td colspan="5" class="text-center dash-muted py-4">You haven't sent any requests yet.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            var MAX_FILES = 3;
+            var MAX_BYTES = 5 * 1024 * 1024;
+
+            // Photo checks before sending (the server checks again)
+            var input = document.getElementById('proofs');
+            var list = document.getElementById('proofList');
+            if (input) {
+                input.addEventListener('change', function() {
+                    list.textContent = '';
+
+                    if (input.files.length > MAX_FILES) {
+                        alert('You can attach up to 3 photos.');
+                        input.value = '';
+                        return;
+                    }
+                    for (var i = 0; i < input.files.length; i++) {
+                        if (input.files[i].size > MAX_BYTES) {
+                            alert(input.files[i].name + ' is larger than 5 MB.');
+                            input.value = '';
+                            return;
+                        }
+                    }
+                    Array.prototype.forEach.call(input.files, function(f) {
+                        var li = document.createElement('li');
+                        li.textContent = f.name;
+                        list.appendChild(li);
+                    });
+                });
+            }
+
+            // Highlight the fields that were changed
+            document.querySelectorAll('[data-original]').forEach(function(el) {
+                function mark() {
+                    var original = (el.getAttribute('data-original') || '').trim();
+                    el.classList.toggle('is-changed', el.value.trim() !== original);
+                }
+                el.addEventListener('input', mark);
+                mark();
+            });
+        })();
+    </script>
+}

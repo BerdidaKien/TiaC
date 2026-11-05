@@ -1,6 +1,7 @@
 @* Location: ASI.Basecode.WebApp/Views/Shared/_ReservationStatus.cshtml
    Shows where a student's reservation is in its life cycle. *@
 @model ASI.Basecode.Data.Models.Reservation
+@inject ASI.Basecode.Services.Interfaces.ISettingsService SettingsSvc
 @{
     var bt = Model.BorrowingTransaction;
     var showCaption = ViewData["ShowCaption"] is bool b && b;
@@ -18,12 +19,35 @@
     else if (bt != null)
     {
         // The custodian handed the item over and it is not back yet
-        var overdue = Model.EstimatedReturnDate < DateTime.Now;
-        label = overdue ? "Overdue" : "Active borrow";
-        css = overdue ? "is-overdue" : "is-available";
-        caption = overdue
-            ? $"Approved · was due {Model.EstimatedReturnDate:MMM d, h:mm tt}"
-            : $"Approved · return by {Model.EstimatedReturnDate:MMM d, h:mm tt}";
+        var rules = SettingsSvc.Get();
+        var now = DateTime.Now;
+        var due = Model.EstimatedReturnDate;
+
+        if (due.AddMinutes(rules.OverdueGraceMinutes) < now)
+        {
+            label = "Overdue";
+            css = "is-overdue";
+            caption = $"Was due {due:MMM d, h:mm tt} · please return it now";
+        }
+        else if (due < now)
+        {
+            // Past the due time but still inside the grace period
+            label = "Past due";
+            css = "is-borrowed";
+            caption = $"Was due {due:MMM d, h:mm tt} · return it as soon as possible";
+        }
+        else if (due <= now.AddHours(rules.DueSoonHours))
+        {
+            label = "Due soon";
+            css = "is-borrowed";
+            caption = $"Return by {due:MMM d, h:mm tt}";
+        }
+        else
+        {
+            label = "Active borrow";
+            css = "is-available";
+            caption = $"Approved · return by {due:MMM d, h:mm tt}";
+        }
     }
     else
     {
@@ -42,7 +66,9 @@
             case "declined":
                 label = "Declined";
                 css = "is-declined";
-                caption = "Declined by the custodian";
+                caption = string.IsNullOrWhiteSpace(Model.ReviewNotes)
+                    ? "Declined by the custodian"
+                    : "Declined by the custodian · see the notes";
                 break;
             case "cancelled":
                 label = "Cancelled";

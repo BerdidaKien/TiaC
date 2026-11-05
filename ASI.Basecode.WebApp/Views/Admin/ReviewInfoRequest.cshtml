@@ -1,0 +1,196 @@
+﻿@using ASI.Basecode.Services.ServiceModels
+@model InfoRequestRow
+@{
+    ViewData["Title"] = "Review Request";
+    var pending = Model.Status == "pending";
+
+    (string Text, string Css) Badge(string s) => s switch
+    {
+        "pending" => ("Waiting for review", "bg-warning-subtle text-warning-emphasis"),
+        "approved" => ("Approved", "bg-success-subtle text-success-emphasis"),
+        "rejected" => ("Rejected", "bg-danger-subtle text-danger-emphasis"),
+        "cancelled" => ("Cancelled", "bg-secondary-subtle text-secondary-emphasis"),
+        _ => (s ?? "-", "bg-light text-dark")
+    };
+    var badge = Badge(Model.Status);
+
+    string RoleText(string r) => r == "Admin" ? "Admin" : r == "Custodian" ? "Custodian" : "Student";
+    string Show(string v) => string.IsNullOrEmpty(v) ? "(empty)" : v;
+    string Size(long b) => b >= 1048576 ? (b / 1048576.0).ToString("0.#") + " MB" : Math.Max(1, b / 1024) + " KB";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
+<div class="dash-header mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="InfoRequests" class="text-decoration-none text-secondary">Information Change Requests</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Model.Code</li>
+        </ol>
+    </nav>
+    <h1 class="dash dash-name m-0">@Model.Code <span class="badge fs-6 align-middle @badge.Css">@badge.Text</span></h1>
+    <p class="dash-sub">Submitted @Model.CreatedTime.ToString("MMM d, yyyy h:mm tt")</p>
+</div>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="dash-card p-4 h-100">
+            <h6 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-person-circle me-1"></i> Requested by</h6>
+            <div class="fw-bold">@Model.UserName</div>
+            <div class="small text-muted">@Model.UserCode &middot; @RoleText(Model.UserRole)</div>
+            <div class="small text-muted mb-3">@Model.UserEmail</div>
+            <a asp-controller="Admin" asp-action="EditUser" asp-route-id="@Model.UserDbId" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-person-gear me-1"></i> Open user
+            </a>
+
+            <h6 class="dash fw-bold border-bottom pb-2 mb-2 mt-4"><i class="bi bi-chat-left-text me-1"></i> Reason</h6>
+            <p class="small mb-0">@Model.Reason</p>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="dash-card p-4 h-100">
+            <h6 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-images me-1"></i> Proof documents</h6>
+            <p class="small text-muted">Compare these with the requested details. Click a photo to open it full size.</p>
+            <div class="d-flex flex-wrap gap-3">
+                @foreach (var f in Model.Files)
+                {
+                    var url = Url.Action("ProofFile", "Admin", new { id = f.Id });
+                    <a href="@url" target="_blank" rel="noopener" class="text-decoration-none">
+                        <img src="@url" alt="@f.Name"
+                             style="height:170px; max-width:240px; object-fit:cover; border-radius:8px; border:1px solid #ddd;" />
+                        <div class="small text-muted mt-1">@f.Name &middot; @Size(f.Size)</div>
+                    </a>
+                }
+                @if (!Model.Files.Any())
+                {
+                    <div class="text-muted">No files were attached.</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Requested changes -->
+<div class="dash-card p-4 mb-4">
+    <h6 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-arrow-left-right me-1"></i> Requested changes</h6>
+
+    @if (pending)
+    {
+        <form method="post" asp-controller="Admin" asp-action="ApproveInfoRequest" id="approveForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead class="table-light small">
+                        <tr><th>Field</th><th>Current</th><th>Requested</th><th style="min-width:220px;">Apply as</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var it in Model.Items)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@it.Label</td>
+                                <td>@Show(it.OldValue)</td>
+                                <td>@(string.IsNullOrEmpty(it.NewValue) ? "(clear this field)" : it.NewValue)</td>
+                                <td>
+                                    <input type="text" name="values[@it.Key]" value="@it.NewValue" maxlength="@it.MaxLength"
+                                           class="form-control form-control-sm dash-search-input" required="@it.Required" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-text mb-3">You can correct a value before approving, for example if the request has a typo. Approving updates the user's account right away.</div>
+
+            <div class="mb-3">
+                <label class="dash-stat-label mb-1">NOTE TO THE USER (OPTIONAL)</label>
+                <input type="text" name="note" class="form-control dash-search-input" maxlength="255"
+                       placeholder="e.g. Updated to match your school ID." />
+            </div>
+
+            <button type="submit" class="btn dash-btn-reserve text-white fw-bold">
+                <i class="bi bi-check-lg me-1"></i> Approve and update account
+            </button>
+        </form>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light small">
+                    <tr><th>Field</th><th>Was</th><th>Requested</th><th>Applied</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var it in Model.Items)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@it.Label</td>
+                            <td>@Show(it.OldValue)</td>
+                            <td>@Show(it.NewValue)</td>
+                            <td>@(Model.Status == "approved" ? Show(it.ApprovedValue) : "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.ReviewedAt.HasValue)
+        {
+            <div class="small text-muted mt-3">
+                <i class="bi bi-person-check me-1"></i>
+                @(Model.Status == "approved" ? "Approved" : "Rejected") by <strong>@Model.ReviewedBy</strong>
+                on @Model.ReviewedAt.Value.ToString("MMM d, yyyy h:mm tt")
+                @if (!string.IsNullOrWhiteSpace(Model.ReviewNote))
+                {
+                    <div class="mt-1">Note: @Model.ReviewNote</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@if (pending)
+{
+    <div class="dash-card p-4 mb-4 border border-danger-subtle">
+        <h6 class="dash fw-bold text-danger mb-3"><i class="bi bi-x-circle me-1"></i> Reject this request</h6>
+        <form method="post" asp-controller="Admin" asp-action="RejectInfoRequest" id="rejectForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <label class="dash-stat-label mb-1">REASON *</label>
+            <textarea name="reason" class="form-control dash-search-input mb-3" rows="2" maxlength="255" required
+                      placeholder="e.g. The photo is not clear. Please send a new request with a clearer picture."></textarea>
+            <button type="submit" class="btn btn-danger fw-bold"><i class="bi bi-x-lg me-1"></i> Reject request</button>
+        </form>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function() {
+            var approve = document.getElementById('approveForm');
+            if (approve) {
+                approve.addEventListener('submit', function(e) {
+                    if (!confirm('Apply these changes to the user\'s account?')) { e.preventDefault(); }
+                });
+            }
+            var reject = document.getElementById('rejectForm');
+            if (reject) {
+                reject.addEventListener('submit', function(e) {
+                    if (!confirm('Reject this request?')) { e.preventDefault(); }
+                });
+            }
+        })();
+    </script>
+}

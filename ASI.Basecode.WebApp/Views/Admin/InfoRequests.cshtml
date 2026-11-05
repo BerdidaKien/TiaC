@@ -1,0 +1,234 @@
+﻿@using ASI.Basecode.Services.ServiceModels
+@model AdminInfoRequestsViewModel
+@{
+    ViewData["Title"] = "Information Change Requests";
+    var status = Model.Status ?? "pending";
+
+    string Link(string s, int? page = null) =>
+        Url.Action("InfoRequests", "Admin", new { status = s, search = Model.Search, page = page });
+
+    (string Text, string Css) Badge(string s) => s switch
+    {
+        "pending" => ("Waiting for review", "bg-warning-subtle text-warning-emphasis"),
+        "approved" => ("Approved", "bg-success-subtle text-success-emphasis"),
+        "rejected" => ("Rejected", "bg-danger-subtle text-danger-emphasis"),
+        "cancelled" => ("Cancelled", "bg-secondary-subtle text-secondary-emphasis"),
+        _ => (s ?? "-", "bg-light text-dark")
+    };
+
+    string RoleText(string r) => r == "Admin" ? "Admin" : r == "Custodian" ? "Custodian" : "Student";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .dash-card.res-card {
+            padding: .6rem .9rem;
+            border: 2px solid transparent;
+            transition: all .15s ease-in-out;
+        }
+
+        a:hover > .res-card {
+            border-color: #800000;
+        }
+
+        .res-card.is-active {
+            border-color: #800000;
+            box-shadow: 0 0 0 1px #800000;
+            background-color: #fcf0f0;
+        }
+
+        .res-card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .res-card .dash-stat-count {
+            font-size: 1.5rem;
+            line-height: 1.1;
+        }
+
+        .res-card .dash-stat-label {
+            font-size: .75rem;
+        }
+
+        .page-link {
+            color: #800000;
+        }
+
+        .page-item.active .page-link {
+            background-color: #800000;
+            border-color: #800000;
+            color: #fff;
+        }
+    </style>
+}
+
+<div class="dash-header mb-4">
+    <h1 class="dash dash-name m-0">Information Change Requests</h1>
+    <p class="dash-sub">Review requests from users to correct their name, ID or email.</p>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <a href="@Link("pending")" class="text-decoration-none">
+            <div class="dash-card res-card @(status == "pending" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-warning-subtle text-warning"><i class="bi bi-hourglass-split"></i></div>
+                    <div><div class="dash-stat-label">Waiting for review</div><div class="dash-stat-count">@Model.PendingCount</div></div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("approved")" class="text-decoration-none">
+            <div class="dash-card res-card @(status == "approved" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-success-subtle text-success"><i class="bi bi-check-lg"></i></div>
+                    <div><div class="dash-stat-label">Approved</div><div class="dash-stat-count">@Model.ApprovedCount</div></div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("rejected")" class="text-decoration-none">
+            <div class="dash-card res-card @(status == "rejected" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-x-lg"></i></div>
+                    <div><div class="dash-stat-label">Rejected</div><div class="dash-stat-count">@Model.RejectedCount</div></div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-xl-3">
+        <a href="@Link("all")" class="text-decoration-none">
+            <div class="dash-card res-card @(status == "all" ? "is-active" : "")">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-files"></i></div>
+                    <div><div class="dash-stat-label">All requests</div><div class="dash-stat-count">@Model.TotalCount</div></div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<form method="get" asp-controller="Admin" asp-action="InfoRequests" class="dash-card mb-4">
+    <input type="hidden" name="status" value="@status" />
+    <div class="row g-2 align-items-end">
+        <div class="col-md-8">
+            <label class="dash-stat-label mb-1">Search</label>
+            <input type="text" name="search" value="@Model.Search" class="form-control dash-search-input"
+                   placeholder="User name, user ID, or REQ-2026-0001" />
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn dash-btn-reserve">Search</button>
+        </div>
+        <div class="col-md-2 d-grid">
+            <a asp-controller="Admin" asp-action="InfoRequests" class="btn btn-outline-secondary">Reset</a>
+        </div>
+    </div>
+</form>
+
+<div class="dash-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr class="small text-muted">
+                    <th>Request</th>
+                    <th>User</th>
+                    <th>Changes</th>
+                    <th class="text-center">Proofs</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th class="text-end">Review</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    var b = Badge(r.Status);
+                    <tr>
+                        <td class="fw-semibold text-nowrap">@r.Code</td>
+                        <td>
+                            <div class="fw-semibold">@r.UserName</div>
+                            <div class="text-muted small">@r.UserCode &middot; @RoleText(r.UserRole)</div>
+                        </td>
+                        <td class="small">
+                            @foreach (var i in r.Items)
+                            {
+                                <span class="badge bg-light text-dark border me-1">@i.Label</span>
+                            }
+                        </td>
+                        <td class="text-center"><i class="bi bi-paperclip"></i> @r.Files.Count</td>
+                        <td class="small text-nowrap">@r.CreatedTime.ToString("MMM d, yyyy h:mm tt")</td>
+                        <td><span class="badge @b.Css">@b.Text</span></td>
+                        <td class="text-end">
+                            <a asp-controller="Admin" asp-action="ReviewInfoRequest" asp-route-id="@r.Id"
+                               class="btn btn-sm @(r.Status == "pending" ? "dash-btn-reserve text-white" : "btn-outline-secondary")">
+                                @(r.Status == "pending" ? "Review" : "View")
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No requests found.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <div class="text-danger small">Showing @Model.FirstShown - @Model.LastShown of @Model.TotalRows requests</div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav aria-label="Request pages">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Link(status, Model.Page - 1)"><i class="bi bi-chevron-left"></i></a>
+                    </li>
+                    @foreach (var p in Model.PageWindow())
+                    {
+                        if (p == 0)
+                        {
+                            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                        }
+                        else
+                        {
+                            <li class="page-item @(p == Model.Page ? "active" : "")"><a class="page-link" href="@Link(status, p)">@p</a></li>
+                        }
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Link(status, Model.Page + 1)"><i class="bi bi-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+</div>

@@ -29,18 +29,20 @@
     else
     {
         <div class="app-shell">
-            @if (User.IsInRole("Admin"))
-            {
-                <partial name="_HeaderAdmin" />
-            }
-            else if (User.IsInRole("Custodian"))
-            {
-                <partial name="_HeaderCustodian" />
-            }
-            else
-            {
-                <partial name="_HeaderStudent" />
-            }
+            <aside class="app-sidebar">
+                @if (User.IsInRole("Admin"))
+                {
+                    <partial name="_HeaderAdmin" />
+                }
+                else if (User.IsInRole("Custodian"))
+                {
+                    <partial name="_HeaderCustodian" />
+                }
+                else
+                {
+                    <partial name="_HeaderStudent" />
+                }
+            </aside>
 
             <div class="app-content">
                 <div class="container flex-grow-1">

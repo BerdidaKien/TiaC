@@ -119,6 +119,7 @@ namespace ASI.Basecode.Services.Services
                     PasswordHash = PasswordManager.EncryptPassword(password),
                     Role = role,
                     IsActive = model.IsActive,
+                    AccountStatus = model.IsActive ? "active" : "inactive",
                     BorrowerStatus = "Active",
                     CreatedBy = adminCode,
                     UpdatedBy = adminCode,

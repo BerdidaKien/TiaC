@@ -36,6 +36,7 @@ public partial class User
     public string UpdatedBy { get; set; }
 
     public string ProfileImagePath { get; set; }
+    public string AccountStatus { get; set; } = "active";
 
     public virtual ICollection<BorrowingTransaction> BorrowingTransactionBorrowers { get; set; } = new List<BorrowingTransaction>();
 

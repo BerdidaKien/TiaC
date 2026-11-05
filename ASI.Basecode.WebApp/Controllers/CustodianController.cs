@@ -28,12 +28,14 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IReportService _reportService;
         private readonly IUserService _userService; // Added field
         private readonly IWebHostEnvironment _env;
+        private readonly ISettingsService _settingsService;
 
         public CustodianController(
             IEquipmentService equipmentService,
             IReservationService reservationService,
             IHistoryService historyService,
             IReportService reportService,
+            ISettingsService settingsService,
             IUserService userService, // Injected dependency
             IWebHostEnvironment env,
             IHttpContextAccessor httpContextAccessor,
@@ -46,7 +48,8 @@ namespace ASI.Basecode.WebApp.Controllers
             _reservationService = reservationService;
             _historyService = historyService;
             _reportService = reportService;
-            _userService = userService; // Assigned field
+            _userService = userService;
+            _settingsService = settingsService;// Assigned field
             _env = env;
         }
 
@@ -361,9 +364,27 @@ namespace ASI.Basecode.WebApp.Controllers
             return RedirectToAction("Profile");
         }
 
+        [HttpGet]
         public IActionResult Settings()
         {
-            return View();
+            return View(_settingsService.Get());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SaveSettings(BorrowingSettings model)
+        {
+            var result = _settingsService.Save(model, CurrentUserCode ?? "Custodian");
+
+            if (result.Success)
+            {
+                TempData["SuccessMessage"] = result.Message;
+                return RedirectToAction(nameof(Settings));
+            }
+
+            // Keep what the custodian typed, and show why it was refused
+            ViewBag.Error = result.Message;
+            return View("Settings", model ?? _settingsService.Get());
         }
     }
 }

@@ -1,0 +1,227 @@
+﻿@using ASI.Basecode.Services.ServiceModels
+@model UserEditViewModel
+@{
+    ViewData["Title"] = "Edit User";
+
+    (string Text, string Css) StatusBadge(string s) => s switch
+    {
+        "active" => ("Active", "bg-success-subtle text-success-emphasis"),
+        "inactive" => ("Inactive", "bg-warning-subtle text-warning-emphasis"),
+        "disabled" => ("Disabled", "bg-danger-subtle text-danger-emphasis"),
+        _ => (s ?? "-", "bg-light text-dark")
+    };
+
+    (string Text, string Css) RequestBadge(string s) => s switch
+    {
+        "pending" => ("Waiting for review", "bg-warning-subtle text-warning-emphasis"),
+        "approved" => ("Approved", "bg-success-subtle text-success-emphasis"),
+        "rejected" => ("Rejected", "bg-danger-subtle text-danger-emphasis"),
+        "cancelled" => ("Cancelled", "bg-secondary-subtle text-secondary-emphasis"),
+        _ => (s ?? "-", "bg-light text-dark")
+    };
+
+    string RoleText(string r) => r == "Admin" ? "Admin" : r == "Custodian" ? "Custodian" : "Student";
+
+    var badge = StatusBadge(Model.Status);
+
+    // The server enforces these rules too; here they only explain why an option is unavailable
+    bool lockAway = Model.Status == "active" && (Model.IsSelf || Model.IsLastActiveAdmin || Model.ItemsOut > 0);
+    string lockReason =
+        Model.IsSelf ? "You can't deactivate or disable your own account." :
+        Model.IsLastActiveAdmin ? "This is the only active administrator." :
+        Model.ItemsOut > 0 ? $"This user still has {Model.ItemsOut} item(s) that haven't been returned." :
+        null;
+
+    var options = new[]
+    {
+        (Key: "active",   Title: "Active",   Icon: "bi-check-circle", Text: "Can log in and use the system normally."),
+        (Key: "inactive", Title: "Inactive", Icon: "bi-pause-circle", Text: "Can't log in until reactivated. Use this for a temporary hold, such as a leave of absence."),
+        (Key: "disabled", Title: "Disabled", Icon: "bi-slash-circle", Text: "Can't log in. The account is treated as deleted, but its borrowing history is kept and it can be restored later.")
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .status-option {
+            border: 2px solid #e5d3c8;
+            border-radius: 10px;
+            padding: .75rem 1rem;
+            background: #fff;
+            cursor: pointer;
+        }
+
+            .status-option.is-selected {
+                border-color: #800000;
+                background-color: #fcf0f0;
+            }
+
+            .status-option.is-locked {
+                opacity: .55;
+                cursor: not-allowed;
+            }
+    </style>
+}
+
+<div class="dash-header mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Users" class="text-decoration-none text-secondary">User Management</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Edit User</li>
+        </ol>
+    </nav>
+    <h1 class="dash dash-name m-0">@Model.FullName</h1>
+    <p class="dash-sub">Manage this account's status and review information change requests.</p>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="row g-4 mb-4">
+    <!-- Account details (read-only) -->
+    <div class="col-lg-5">
+        <div class="dash-card h-100 p-4">
+            <h6 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-person-badge me-1"></i> Account details</h6>
+            <dl class="row mb-0 small">
+                <dt class="col-5 text-muted">Name</dt>
+                <dd class="col-7">@Model.FullName</dd>
+                <dt class="col-5 text-muted">Student / Employee ID</dt>
+                <dd class="col-7">@Model.UserCode</dd>
+                <dt class="col-5 text-muted">Email</dt>
+                <dd class="col-7">@Model.Email</dd>
+                <dt class="col-5 text-muted">Contact</dt>
+                <dd class="col-7">@(string.IsNullOrWhiteSpace(Model.ContactNumber) ? "N/A" : Model.ContactNumber)</dd>
+                <dt class="col-5 text-muted">Role</dt>
+                <dd class="col-7">@RoleText(Model.Role)</dd>
+                <dt class="col-5 text-muted">Created</dt>
+                <dd class="col-7">@Model.CreatedTime.ToString("MMM d, yyyy")</dd>
+                <dt class="col-5 text-muted">Status</dt>
+                <dd class="col-7"><span class="badge @badge.Css">@badge.Text</span></dd>
+            </dl>
+            <div class="form-text mt-3">
+                Name, ID and email are changed through an <strong>information change request</strong> with proof from the user.
+            </div>
+        </div>
+    </div>
+
+    <!-- Status -->
+    <div class="col-lg-7">
+        <div class="dash-card h-100 p-4">
+            <h6 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-toggles me-1"></i> Account status</h6>
+
+            @if (lockAway)
+            {
+                <div class="alert alert-warning small py-2"><i class="bi bi-info-circle me-1"></i> @lockReason</div>
+            }
+            @if (Model.OpenRequests > 0 && Model.Status == "active")
+            {
+                <div class="small text-muted mb-2">
+                    <i class="bi bi-info-circle me-1"></i> @Model.OpenRequests open reservation(s) will be cancelled if the account is deactivated or disabled.
+                </div>
+            }
+
+            <form method="post" asp-controller="Admin" asp-action="ChangeUserStatus" id="statusForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+
+                <div class="d-flex flex-column gap-2 mb-3">
+                    @foreach (var o in options)
+                    {
+                        var locked = lockAway && o.Key != "active";
+                        <label class="status-option d-flex gap-3 align-items-start @(Model.Status == o.Key ? "is-selected" : "") @(locked ? "is-locked" : "")">
+                            <input class="form-check-input mt-1" type="radio" name="status" value="@o.Key"
+                                   checked="@(Model.Status == o.Key)" disabled="@locked" />
+                            <span>
+                                <span class="fw-bold d-block"><i class="bi @o.Icon me-1"></i>@o.Title</span>
+                                <span class="small text-muted">@o.Text</span>
+                            </span>
+                        </label>
+                    }
+                </div>
+
+                <button type="submit" class="btn dash-btn-reserve text-white fw-bold">
+                    <i class="bi bi-floppy me-1"></i> Save status
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Information change requests of this user -->
+<div class="dash-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="dash fw-bold m-0"><i class="bi bi-file-earmark-person me-1"></i> Information change requests</h6>
+        <a asp-controller="Admin" asp-action="InfoRequests" asp-route-status="all" asp-route-search="@Model.UserCode"
+           class="btn btn-sm btn-outline-secondary">View in Info Requests</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light small">
+                <tr><th>Request</th><th>Changes</th><th>Submitted</th><th>Status</th><th class="text-end">Review</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Requests)
+                {
+                    var rb = RequestBadge(r.Status);
+                    <tr>
+                        <td class="fw-semibold">@r.Code</td>
+                        <td class="small">@string.Join(", ", r.Items.Select(i => i.Label))</td>
+                        <td class="small">@r.CreatedTime.ToString("MMM d, yyyy")</td>
+                        <td><span class="badge @rb.Css">@rb.Text</span></td>
+                        <td class="text-end">
+                            <a asp-controller="Admin" asp-action="ReviewInfoRequest" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Requests.Any())
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-3">This user hasn't sent any change requests.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            var form = document.getElementById('statusForm');
+
+            // Highlight the chosen status
+            form.addEventListener('change', function() {
+                document.querySelectorAll('.status-option').forEach(function(label) {
+                    var radio = label.querySelector('input');
+                    label.classList.toggle('is-selected', radio.checked);
+                });
+            });
+
+            // Confirm before changing the status
+            form.addEventListener('submit', function(e) {
+                var chosen = form.querySelector('input[name="status"]:checked');
+                if (!chosen) { e.preventDefault(); return; }
+
+                var messages = {
+                    active: 'Reactivate this account? The user will be able to log in again.',
+                    inactive: 'Make this account inactive? The user will not be able to log in until you reactivate it.',
+                    disabled: 'Disable this account? The user will not be able to log in. Their records are kept.'
+                };
+                if (!confirm(messages[chosen.value])) { e.preventDefault(); }
+            });
+        })();
+    </script>
+}
