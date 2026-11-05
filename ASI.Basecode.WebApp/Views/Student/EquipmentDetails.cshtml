@@ -5,7 +5,12 @@
 
     var available = Model.Status == "available";
     var statusLabel = available ? "Available" : (Model.Status == "borrowed" ? "Currently Borrowed" : Model.Status);
-    var minValue = DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm");
+    var rules = ViewBag.Rules as ASI.Basecode.Services.ServiceModels.BorrowingSettings
+                ?? new ASI.Basecode.Services.ServiceModels.BorrowingSettings();
+    var nowTime = DateTime.Now;
+    var minValue = nowTime.ToString("yyyy-MM-dd'T'HH:mm");
+    var maxValue = nowTime.AddDays(rules.AdvanceBookingDays).ToString("yyyy-MM-dd'T'HH:mm");
+    string Clock(string hhmm) => DateTime.Today.Add(TimeSpan.Parse(hhmm)).ToString("h:mm tt");
 
     string IconFor(string categoryCode) => (categoryCode ?? "") switch
     {
@@ -111,7 +116,7 @@
 
                         <div class="mb-3">
                             <label class="dash-stat-label mb-1" for="pickupDate">Pickup date &amp; time</label>
-                            <input type="datetime-local" id="pickupDate" name="pickupDate" min="@minValue"
+                            <input type="datetime-local" id="pickupDate" name="pickupDate" min="@minValue" max="@maxValue"
                                    class="form-control dash-search-input" required />
                         </div>
 
@@ -119,13 +124,21 @@
                             <label class="dash-stat-label mb-1" for="returnDate">Return date &amp; time</label>
                             <input type="datetime-local" id="returnDate" name="returnDate" min="@minValue"
                                    class="form-control dash-search-input" required />
-                            <div class="form-text">You can borrow equipment for up to 14 days.</div>
+                            <div class="form-text">Pick the pickup time first. The return time is filled in for you.</div>
                         </div>
 
                         <div class="dash-muted small mb-3">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Your request is sent to the custodian, who will approve or decline it.
-                            You can follow its status under <strong>My Reservations</strong>.
+                            <i class="bi bi-info-circle me-1"></i> Borrowing rules
+                            <ul class="mb-0 ps-3 mt-1">
+                                <li>Pickup and return between <strong>@Clock(rules.OpeningTime)</strong> and <strong>@Clock(rules.ClosingTime)</strong>.</li>
+                                <li>Borrow for up to <strong>@rules.MaxDurationDays day(s)</strong>.</li>
+                                <li>Reserve up to <strong>@rules.AdvanceBookingDays day(s)</strong> ahead.</li>
+                                <li>At most <strong>@rules.MaxActiveItems item(s)</strong> at a time, counting pending, approved and borrowed.</li>
+                            </ul>
+                            <div class="mt-2">
+                                Your request is sent to the custodian, who will approve or decline it.
+                                You can follow its status under <strong>My Reservations</strong>.
+                            </div>
                         </div>
 
                         <button type="submit" class="btn dash-btn-reserve w-100">
@@ -151,18 +164,33 @@
 
 @section Scripts {
     <script>
-        // The return time can never be earlier than the pickup time
         (function () {
+            var DEFAULT_HOURS = @rules.DefaultDurationHours;
+            var MAX_DAYS = @rules.MaxDurationDays;
+
             var pickup = document.getElementById('pickupDate');
-            var ret = document.getElementById('returnDate');
+                    var ret = document.getElementById('returnDate');
             if (!pickup || !ret) return;
 
-            pickup.addEventListener('change', function () {
-                if (pickup.value) {
-                    ret.min = pickup.value;
-                    if (ret.value && ret.value <= pickup.value) ret.value = '';
-                }
-            });
-        })();
+                 function pad(n) { return (n < 10 ? '0' : '') + n; }
+                function fmt(d) {
+                return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+                       'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            }
+
+                    pickup.addEventListener('change', function () {
+                        if (!pickup.value) return;
+                        var start = new Date(pickup.value);
+
+                        // The return time can't be before the pickup or later than the longest allowed borrowing
+                        ret.min = pickup.value;
+                        ret.max = fmt(new Date(start.getTime() + MAX_DAYS * 86400000));
+
+                        // Fill in the default duration when empty or no longer valid
+                        if (!ret.value || ret.value <= pickup.value || ret.value > ret.max) {
+                            ret.value = fmt(new Date(start.getTime() + DEFAULT_HOURS * 3600000));
+                        }
+                    });
+                })();
     </script>
 }

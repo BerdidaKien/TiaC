@@ -27,12 +27,12 @@ namespace ASI.Basecode.Services.Services
 
         public LoginResult AuthenticateUser(string userId, string password, ref User user)
         {
-            user = new User();
-
             var passwordKey = PasswordManager.EncryptPassword(password);
 
             user = _repository.GetUsers()
-                .FirstOrDefault(x => x.UserId == userId && x.PasswordHash == passwordKey);
+                .FirstOrDefault(x => x.UserId == userId &&
+                                     x.PasswordHash == passwordKey &&
+                                     x.IsActive);
 
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }

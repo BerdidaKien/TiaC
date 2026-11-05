@@ -11,7 +11,7 @@ public partial class TiaCContext : DbContext
         : base(options)
     {
     }
-
+    public virtual DbSet<SystemSetting> SystemSettings { get; set; }
     public virtual DbSet<BorrowingTransaction> BorrowingTransactions { get; set; }
 
     public virtual DbSet<EquipmentCategory> EquipmentCategories { get; set; }
@@ -21,6 +21,11 @@ public partial class TiaCContext : DbContext
     public virtual DbSet<Reservation> Reservations { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
+    public virtual DbSet<InfoChangeRequest> InfoChangeRequests { get; set; }
+
+    public virtual DbSet<InfoChangeRequestFile> InfoChangeRequestFiles { get; set; }
+
+    public virtual DbSet<InfoChangeRequestItem> InfoChangeRequestItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -260,6 +265,12 @@ public partial class TiaCContext : DbContext
                 .IsUnicode(false)
                 .HasDefaultValue("Active")
                 .HasColumnName("borrower_status");
+            entity.Property(e => e.AccountStatus)
+                .IsRequired()
+                .HasMaxLength(20)
+                .IsUnicode(false)
+                .HasDefaultValue("active")
+                .HasColumnName("account_status");
             entity.Property(e => e.ContactNumber)
                 .HasMaxLength(20)
                 .IsUnicode(false)
@@ -321,7 +332,123 @@ public partial class TiaCContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("user_id");
         });
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasKey(e => e.SettingKey).HasName("PK_SystemSettings");
 
+            entity.ToTable("system_settings");
+
+            entity.Property(e => e.SettingKey)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("setting_key");
+            entity.Property(e => e.SettingValue)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnName("setting_value");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("updated_by");
+            entity.Property(e => e.UpdatedTime)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("updated_time");
+        });
+        modelBuilder.Entity<InfoChangeRequest>(entity =>
+        {
+            entity.ToTable("info_change_requests");
+            entity.HasKey(e => e.Id).HasName("PK_InfoChangeRequests");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Reason)
+                .IsRequired()
+                .HasMaxLength(500)
+                .HasColumnName("reason");
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(20)
+                .IsUnicode(false)
+                .HasDefaultValue("pending")
+                .HasColumnName("status");
+            entity.Property(e => e.ReviewNote)
+                .HasMaxLength(255)
+                .HasColumnName("review_note");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.CreatedTime)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("created_time");
+            entity.Property(e => e.UpdatedTime)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("updated_time");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_InfoRequests_User");
+
+            entity.HasOne(d => d.ReviewedByNavigation).WithMany()
+                .HasForeignKey(d => d.ReviewedBy)
+                .HasConstraintName("FK_InfoRequests_Reviewer");
+        });
+
+        modelBuilder.Entity<InfoChangeRequestItem>(entity =>
+        {
+            entity.ToTable("info_change_request_items");
+            entity.HasKey(e => e.Id).HasName("PK_InfoRequestItems");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.FieldKey)
+                .IsRequired()
+                .HasMaxLength(30)
+                .IsUnicode(false)
+                .HasColumnName("field_key");
+            entity.Property(e => e.OldValue).HasMaxLength(100).HasColumnName("old_value");
+            entity.Property(e => e.NewValue)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnName("new_value");
+            entity.Property(e => e.ApprovedValue).HasMaxLength(100).HasColumnName("approved_value");
+
+            entity.HasOne(d => d.Request).WithMany(p => p.Items)
+                .HasForeignKey(d => d.RequestId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_InfoRequestItems_Request");
+        });
+
+        modelBuilder.Entity<InfoChangeRequestFile>(entity =>
+        {
+            entity.ToTable("info_change_request_files");
+            entity.HasKey(e => e.Id).HasName("PK_InfoRequestFiles");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.StoredName)
+                .IsRequired()
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("stored_name");
+            entity.Property(e => e.OriginalName)
+                .IsRequired()
+                .HasMaxLength(255)
+                .HasColumnName("original_name");
+            entity.Property(e => e.ContentType)
+                .IsRequired()
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("content_type");
+            entity.Property(e => e.SizeBytes).HasColumnName("size_bytes");
+            entity.Property(e => e.UploadedTime)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("uploaded_time");
+
+            entity.HasOne(d => d.Request).WithMany(p => p.Files)
+                .HasForeignKey(d => d.RequestId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_InfoRequestFiles_Request");
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

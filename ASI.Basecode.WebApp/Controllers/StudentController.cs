@@ -22,6 +22,7 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IEquipmentService _equipmentService;
         private readonly IReservationService _reservationService;
         private readonly IHistoryService _historyService;
+        private readonly ISettingsService _settingsService;
 
         public StudentController(
             IEquipmentService equipmentService,
@@ -30,6 +31,7 @@ namespace ASI.Basecode.WebApp.Controllers
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
+            ISettingsService settingsService,
             IMapper mapper) : base(
                 httpContextAccessor,
                 loggerFactory,
@@ -39,6 +41,7 @@ namespace ASI.Basecode.WebApp.Controllers
             _equipmentService = equipmentService;
             _reservationService = reservationService;
             _historyService = historyService;
+            _settingsService = settingsService;
         }
 
         private string CurrentUserCode =>
@@ -227,7 +230,8 @@ namespace ASI.Basecode.WebApp.Controllers
             var item = _equipmentService.GetAllEquipment()
                 .FirstOrDefault(i => i.Id == id);
 
-            if (item == null)
+            // Items still waiting for a category are not visible to students
+            if (item == null || ItemStatuses.AwaitingCategory.Contains(item.Status))
             {
                 TempData["ErrorMessage"] =
                     "That equipment item was not found.";
@@ -235,6 +239,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToAction(nameof(Equipment));
             }
 
+            ViewBag.Rules = _settingsService.Get();
             return View(item);
         }
 

@@ -13,10 +13,12 @@ namespace ASI.Basecode.Services.Services
     public class ReservationService : IReservationService
     {
         private readonly IReservationRepository _repo;
+        private readonly ISettingsService _settings;
 
-        public ReservationService(IReservationRepository repo)
+        public ReservationService(IReservationRepository repo, ISettingsService settings)
         {
             _repo = repo;
+            _settings = settings;
         }
 
         public ReservationsPageViewModel GetPage(string search, int? categoryId)
@@ -48,6 +50,8 @@ namespace ASI.Basecode.Services.Services
                 reservations = reservations.Where(r => r.EquipmentItem.CategoryId == categoryId.Value);
                 transactions = transactions.Where(t => t.EquipmentItem.CategoryId == categoryId.Value);
             }
+            var s = _settings.Get();
+
 
             return new ReservationsPageViewModel
             {
@@ -58,8 +62,11 @@ namespace ASI.Basecode.Services.Services
                 Active = transactions.OrderBy(t => t.ActualPickupTime).ToList(),
                 Categories = _repo.GetCategories().OrderBy(c => c.CategoryName).ToList(),
                 Search = search,
-                CategoryId = categoryId
+                CategoryId = categoryId,
+                GraceMinutes = s.OverdueGraceMinutes,
+                DueSoonHours = s.DueSoonHours
             };
+
         }
 
         // ---------- Student side ----------
@@ -89,10 +96,6 @@ namespace ASI.Basecode.Services.Services
                 r.Borrower.UserId == userCode &&
                 r.Status == "pending");
         }
-
-        // Longest loan a student can request (change this number if your policy differs)
-        private const int MaxLoanDays = 14;
-
         public ServiceResult CreateReservation(string borrowerCode, int equipmentItemId, DateTime pickup, DateTime returnDate)
         {
             var borrowerId = _repo.GetUserDbId(borrowerCode);
@@ -106,12 +109,23 @@ namespace ASI.Basecode.Services.Services
 
             if (pickup == default || returnDate == default)
                 return ServiceResult.Fail("Please choose both a pickup and a return date and time.");
-            if (pickup < DateTime.Now.AddMinutes(-5))
-                return ServiceResult.Fail("The pickup time must be in the future.");
-            if (returnDate <= pickup)
-                return ServiceResult.Fail("The return time must be after the pickup time.");
-            if ((returnDate - pickup).TotalDays > MaxLoanDays)
-                return ServiceResult.Fail($"Equipment can be borrowed for up to {MaxLoanDays} days.");
+
+            // The custodian's rules: duration, how far ahead, operating hours
+            var rules = _settings.Get();
+            var scheduleError = BorrowingRules.CheckSchedule(rules, pickup, returnDate, DateTime.Now);
+            if (scheduleError != null)
+                return ServiceResult.Fail(scheduleError);
+
+            // Item limit: pending requests, approved reservations and items not yet returned all count
+            var holding = _repo.GetReservations().Count(x =>
+                x.BorrowerId == borrowerId &&
+                (x.Status == "pending" ||
+                 (x.Status == "approved" &&
+                  (x.BorrowingTransaction == null || x.BorrowingTransaction.ActualReturnTime == null))));
+            if (holding >= rules.MaxActiveItems)
+                return ServiceResult.Fail(
+                    $"You already have {holding} request(s) or item(s) in progress. The limit is {rules.MaxActiveItems}. " +
+                    "Wait for a decision, cancel a request, or return an item first.");
 
             // One open request per student per item
             var alreadyRequested = _repo.GetReservations().Any(x =>
@@ -195,7 +209,14 @@ namespace ASI.Basecode.Services.Services
                 x.Status == "approved" && x.BorrowingTransaction == null);
             if (alreadyReserved)
                 return ServiceResult.Fail("Another approved request is already waiting to pick up this item.");
-
+            var limit = _settings.Get().MaxActiveItems;
+            var holding = _repo.GetReservations().Count(x =>
+                x.Id != r.Id &&
+                x.BorrowerId == r.BorrowerId &&
+                x.Status == "approved" &&
+                (x.BorrowingTransaction == null || x.BorrowingTransaction.ActualReturnTime == null));
+            if (holding >= limit)
+                return ServiceResult.Fail($"This borrower already has {holding} approved or borrowed item(s). The limit is {limit}. Decline this request, or approve it after an item is returned.");
             r.Status = "approved";
             r.ReviewedBy = custodianId;
             r.ReviewedAt = DateTime.Now;
@@ -274,10 +295,14 @@ namespace ASI.Basecode.Services.Services
             t.UpdatedTime = now;
 
             var due = t.Reservation?.EstimatedReturnDate;
-            if (due.HasValue && now > due.Value)
+            if (due.HasValue)
             {
-                t.IsOverdue = true;
-                t.DelayDurationHours = (int)Math.Ceiling((now - due.Value).TotalHours);
+                var lateBy = now - due.Value;
+                if (lateBy.TotalMinutes > _settings.Get().OverdueGraceMinutes)
+                {
+                    t.IsOverdue = true;
+                    t.DelayDurationHours = (int)Math.Ceiling(lateBy.TotalHours);
+                }
             }
 
             t.EquipmentItem.ConditionRating = condition;

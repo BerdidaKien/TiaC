@@ -16,5 +16,7 @@ namespace ASI.Basecode.Services.ServiceModels
 
         public string Search { get; set; }
         public int? CategoryId { get; set; }
+        public int GraceMinutes { get; set; } = 30;
+        public int DueSoonHours { get; set; } = 2;
     }
 }

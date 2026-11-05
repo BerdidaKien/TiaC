@@ -131,9 +131,12 @@
             <div class="d-flex flex-column gap-3">
                 @foreach (var t in Model.Active)
                 {
+                    var now = DateTime.Now;
                     var due = t.Reservation?.EstimatedReturnDate;
-                    var overdue = due.HasValue && due.Value < DateTime.Now;
-                    <div class="p-3 bg-white rounded border @(overdue ? "border-danger" : "border-success")">
+                    var pastDue = due.HasValue && due.Value < now;
+                    var overdue = pastDue && due.Value.AddMinutes(Model.GraceMinutes) < now;
+                    var dueSoon = due.HasValue && !pastDue && due.Value <= now.AddHours(Model.DueSoonHours);
+                    <div class="p-3 bg-white rounded border @(overdue ? "border-danger" : (pastDue || dueSoon) ? "border-warning" : "border-success")">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <h5 class="fw-bold mb-0">@t.EquipmentItem.BrandModel</h5>
@@ -142,6 +145,14 @@
                             @if (overdue)
                             {
                                 <span class="badge bg-danger">Overdue</span>
+                            }
+                            else if (pastDue)
+                            {
+                                <span class="badge bg-warning text-dark">Past due (grace period)</span>
+                            }
+                            else if (dueSoon)
+                            {
+                                <span class="badge bg-warning text-dark">Due soon</span>
                             }
                             else
                             {

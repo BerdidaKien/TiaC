@@ -1,6 +1,7 @@
 ﻿@* Location: ASI.Basecode.WebApp/Views/Student/History.cshtml *@
 @using ASI.Basecode.Services.ServiceModels
 @using ASI.Basecode.Data.Models
+@inject ASI.Basecode.Services.Interfaces.ISettingsService SettingsSvc
 @model HistoryPageViewModel
 
 @{
@@ -23,7 +24,8 @@
     {
         if (!t.ActualReturnTime.HasValue)
         {
-            if (t.Reservation != null && t.Reservation.EstimatedReturnDate < DateTime.Now)
+            if (t.Reservation != null &&
+                   t.Reservation.EstimatedReturnDate.AddMinutes(SettingsSvc.Get().OverdueGraceMinutes) < DateTime.Now)
             {
                 return "Overdue";
             }

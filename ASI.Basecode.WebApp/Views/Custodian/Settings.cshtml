@@ -1,5 +1,9 @@
-﻿@{
+﻿@using ASI.Basecode.Services.ServiceModels
+@model BorrowingSettings
+@{
     ViewData["Title"] = "Custodian Settings";
+    var d = new BorrowingSettings();          // factory defaults for the "Restore Defaults" button
+    string error = ViewBag.Error as string;
 }
 
 @section Styles {
@@ -8,60 +12,122 @@
 
 <div class="dash-header mb-4">
     <h1 class="dash dash-name m-0">System & Operational Settings</h1>
-    <p class="dash-sub">Configure borrowing limits, grace periods, operating hours, and email alerts.</p>
+    <p class="dash-sub">Configure borrowing limits, overdue rules, and operating hours.</p>
 </div>
 
-<form method="post" action="/Custodian/SaveSettings">
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<form method="post" asp-controller="Custodian" asp-action="SaveSettings" id="settingsForm">
     @Html.AntiForgeryToken()
 
     <div class="row g-4 mb-4">
-        <div class="col-md-6">
+        <!-- Borrowing rules -->
+        <div class="col-lg-6">
             <div class="dash-card h-100">
-                <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-sliders me-1"></i> Borrowing Rules & Limits</h5>
+                <h5 class="dash fw-bold border-bottom pb-2 mb-3">
+                    <i class="bi bi-sliders me-1"></i> Borrowing Rules & Limits
+                </h5>
 
                 <div class="mb-3">
                     <label class="dash-stat-label mb-1">Max Active Items per Student</label>
-                    <input type="number" name="MaxBorrowLimit" class="form-control dash-search-input" value="2" min="1" max="5" />
-                    <div class="form-text text-muted small">Limits how many items a student can borrow concurrently.</div>
+                    <input type="number" name="MaxActiveItems" value="@Model.MaxActiveItems" data-default="@d.MaxActiveItems"
+                           class="form-control dash-search-input" min="1" max="10" required />
+                    <div class="form-text text-muted small">Counts a student's approved and borrowed items. Checked when you approve a request.</div>
                 </div>
 
                 <div class="mb-3">
                     <label class="dash-stat-label mb-1">Default Reservation Duration (Hours)</label>
-                    <input type="number" name="DefaultDurationHours" class="form-control dash-search-input" value="8" min="1" max="72" />
+                    <input type="number" name="DefaultDurationHours" value="@Model.DefaultDurationHours" data-default="@d.DefaultDurationHours"
+                           class="form-control dash-search-input" min="1" max="72" required />
+                    <div class="form-text text-muted small">Pre-filled return time on new student requests.</div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="dash-stat-label mb-1">Overdue Grace Period (Minutes)</label>
-                    <input type="number" name="OverdueGraceMinutes" class="form-control dash-search-input" value="30" min="0" max="120" />
-                    <div class="form-text text-muted small">Buffer time before system flags an unreturned item as overdue.</div>
+                    <label class="dash-stat-label mb-1">Max Reservation Duration (Days)</label>
+                    <input type="number" name="MaxDurationDays" value="@Model.MaxDurationDays" data-default="@d.MaxDurationDays"
+                           class="form-control dash-search-input" min="1" max="30" required />
+                    <div class="form-text text-muted small">The longest a student can borrow one item.</div>
+                </div>
+
+                <div class="mb-0">
+                    <label class="dash-stat-label mb-1">Advance Booking Limit (Days)</label>
+                    <input type="number" name="AdvanceBookingDays" value="@Model.AdvanceBookingDays" data-default="@d.AdvanceBookingDays"
+                           class="form-control dash-search-input" min="1" max="60" required />
+                    <div class="form-text text-muted small">How far ahead a student can reserve an item.</div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6">
+        <!-- Returns and overdue -->
+        <div class="col-lg-6">
             <div class="dash-card h-100">
-                <h5 class="dash fw-bold border-bottom pb-2 mb-3"><i class="bi bi-bell me-1"></i> Notifications & Alerts</h5>
+                <h5 class="dash fw-bold border-bottom pb-2 mb-3">
+                    <i class="bi bi-alarm me-1"></i> Returns & Overdue
+                </h5>
 
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="emailNewReq" checked />
-                    <label class="form-check-label fw-semibold" for="emailNewReq">Email me when new reservations are submitted</label>
+                <div class="mb-3">
+                    <label class="dash-stat-label mb-1">Overdue Grace Period (Minutes)</label>
+                    <input type="number" name="OverdueGraceMinutes" value="@Model.OverdueGraceMinutes" data-default="@d.OverdueGraceMinutes"
+                           class="form-control dash-search-input" min="0" max="240" required />
+                    <div class="form-text text-muted small">An item is only flagged overdue after this buffer past its due time.</div>
                 </div>
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="reminderStudent" checked />
-                    <label class="form-check-label fw-semibold" for="reminderStudent">Send automatic return reminders to students (2 hrs before deadline)</label>
+
+                <div class="mb-3">
+                    <label class="dash-stat-label mb-1">Due-Soon Warning Window (Hours)</label>
+                    <input type="number" name="DueSoonHours" value="@Model.DueSoonHours" data-default="@d.DueSoonHours"
+                           class="form-control dash-search-input" min="1" max="48" required />
+                    <div class="form-text text-muted small">Loans due within this window are highlighted as <strong>Due soon</strong> on the Reservations page.</div>
                 </div>
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="overdueAlert" checked />
-                    <label class="form-check-label fw-semibold" for="overdueAlert">Send daily overdue digest summaries</label>
+
+                <h5 class="dash fw-bold border-bottom pb-2 mb-3 mt-4">
+                    <i class="bi bi-clock me-1"></i> Operating Hours
+                </h5>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="dash-stat-label mb-1">Opening Time</label>
+                        <input type="time" name="OpeningTime" value="@Model.OpeningTime" data-default="@d.OpeningTime"
+                               class="form-control dash-search-input" required />
+                    </div>
+                    <div class="col-6">
+                        <label class="dash-stat-label mb-1">Closing Time</label>
+                        <input type="time" name="ClosingTime" value="@Model.ClosingTime" data-default="@d.ClosingTime"
+                               class="form-control dash-search-input" required />
+                    </div>
                 </div>
+                <div class="form-text text-muted small mt-2">Pickup and return times students can choose on new requests.</div>
             </div>
         </div>
     </div>
 
     <div class="d-flex justify-content-end gap-3">
-        <button type="reset" class="btn btn-outline-secondary">Reset Defaults</button>
+        <button type="button" id="restoreDefaults" class="btn btn-outline-secondary">Restore Defaults</button>
         <button type="submit" class="btn dash-btn-reserve fw-bold">
             <i class="bi bi-floppy me-1"></i> Save Configuration
         </button>
     </div>
 </form>
+
+@section Scripts {
+    <script>
+        // Fills the form with the factory defaults. Nothing is saved until you click Save Configuration.
+        document.getElementById('restoreDefaults').addEventListener('click', function() {
+            document.querySelectorAll('#settingsForm [data-default]').forEach(function(input) {
+                input.value = input.getAttribute('data-default');
+            });
+        });
+    </script>
+}

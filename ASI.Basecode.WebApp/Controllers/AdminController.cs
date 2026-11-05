@@ -9,7 +9,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-
+using System.Collections.Generic;
+using System.IO;
 namespace ASI.Basecode.WebApp.Controllers
 {
     [Authorize(Roles = "Admin")]
@@ -21,6 +22,9 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IItemReportService _itemReportService;
         private readonly IAdminDashboardService _adminDashboardService;
         private readonly ICategoryService _categoryService;
+        private readonly IUserStatusService _userStatusService;
+        private readonly IInfoRequestService _infoRequestService;
+        private readonly ProofStorage _proofStorage;
 
         public AdminController(
             IHttpContextAccessor httpContextAccessor,
@@ -32,6 +36,9 @@ namespace ASI.Basecode.WebApp.Controllers
             IAdminReservationService adminReservationService,
             IItemReportService itemReportService,
             IAdminDashboardService adminDashboardService,
+            IUserStatusService userStatusService,
+            IInfoRequestService infoRequestService,
+            ProofStorage proofStorage,
             ICategoryService categoryService) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
             _userService = userService;
@@ -40,6 +47,9 @@ namespace ASI.Basecode.WebApp.Controllers
             _itemReportService = itemReportService;
             _adminDashboardService = adminDashboardService;
             _categoryService = categoryService;
+            _userStatusService = userStatusService;
+            _infoRequestService = infoRequestService;
+            _proofStorage = proofStorage;
         }
 
         private string AdminCode => _session.GetString("UserId") ?? "Admin";
@@ -80,6 +90,83 @@ namespace ASI.Basecode.WebApp.Controllers
 
             Response.Headers["Cache-Control"] = "no-store";
             return View("AddUsersResult", result);
+        }
+        // ---------- Edit user (account status) ----------
+        [HttpGet]
+        public IActionResult EditUser(int id)
+        {
+            var model = _userStatusService.GetEditPage(id, AdminCode);
+            if (model == null)
+            {
+                TempData["ErrorMessage"] = "User not found.";
+                return RedirectToAction(nameof(Users));
+            }
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ChangeUserStatus(int id, string status)
+        {
+            var result = _userStatusService.ChangeStatus(id, status, AdminCode);
+            TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(EditUser), new { id });
+        }
+
+        // ---------- Information change requests ----------
+        [HttpGet]
+        public IActionResult InfoRequests(string status, string search, int page = 1)
+        {
+            return View(_infoRequestService.GetAdminPage(status ?? "pending", search, page));
+        }
+
+        [HttpGet]
+        public IActionResult ReviewInfoRequest(int id)
+        {
+            var row = _infoRequestService.GetRequestRow(id);
+            if (row == null)
+            {
+                TempData["ErrorMessage"] = "Request not found.";
+                return RedirectToAction(nameof(InfoRequests));
+            }
+            return View(row);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ApproveInfoRequest(int id, Dictionary<string, string> values, string note)
+        {
+            var result = _infoRequestService.Approve(id, values, note, AdminCode);
+            TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+
+            if (result.Success) return RedirectToAction(nameof(InfoRequests));
+            return RedirectToAction(nameof(ReviewInfoRequest), new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult RejectInfoRequest(int id, string reason)
+        {
+            var result = _infoRequestService.Reject(id, reason, AdminCode);
+            TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+
+            if (result.Success) return RedirectToAction(nameof(InfoRequests));
+            return RedirectToAction(nameof(ReviewInfoRequest), new { id });
+        }
+
+        // Proof photos are only reachable through this admin-only action
+        [HttpGet]
+        public IActionResult ProofFile(int id)
+        {
+            var file = _infoRequestService.GetFile(id);
+            if (file == null) return NotFound();
+
+            var path = _proofStorage.PhysicalPath(file.StoredName);
+            if (path == null || !System.IO.File.Exists(path)) return NotFound();
+
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            Response.Headers["Cache-Control"] = "private, no-store";
+            return PhysicalFile(path, file.ContentType);
         }
 
         /// <summary>System-wide reservations oversight (read-only)</summary>
