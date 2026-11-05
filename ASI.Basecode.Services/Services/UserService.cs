@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using static ASI.Basecode.Resources.Constants.Enums;
 
 namespace ASI.Basecode.Services.Services
@@ -29,10 +30,12 @@ namespace ASI.Basecode.Services.Services
         {
             var passwordKey = PasswordManager.EncryptPassword(password);
 
+            // Inactive and disabled accounts can't log in
             user = _repository.GetUsers()
                 .FirstOrDefault(x => x.UserId == userId &&
                                      x.PasswordHash == passwordKey &&
-                                     x.IsActive);
+                                     x.IsActive &&
+                                     x.AccountStatus == "active");
 
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
@@ -56,6 +59,7 @@ namespace ASI.Basecode.Services.Services
 
                 user.BorrowerStatus = "eligible";
                 user.IsActive = true;
+                user.AccountStatus = "active";
 
                 user.CreatedTime = DateTime.Now;
                 user.UpdatedTime = DateTime.Now;
@@ -99,15 +103,17 @@ namespace ASI.Basecode.Services.Services
             var totalCustodians = query.Count(u => u.Role == "Custodian");
             var totalAdmins = query.Count(u => u.Role == "Admin");
 
+            var searchTerm = search;   // shown back in the search box exactly as typed
+
             if (!string.IsNullOrWhiteSpace(search))
             {
-                search = search.Trim().ToLower();
+                var term = search.Trim().ToLower();
 
                 query = query.Where(u =>
-                    (u.FirstName ?? "").ToLower().Contains(search) ||
-                    (u.LastName ?? "").ToLower().Contains(search) ||
-                    (u.Email ?? "").ToLower().Contains(search) ||
-                    (u.UserId ?? "").ToLower().Contains(search));
+                    (u.FirstName ?? "").ToLower().Contains(term) ||
+                    (u.LastName ?? "").ToLower().Contains(term) ||
+                    (u.Email ?? "").ToLower().Contains(term) ||
+                    (u.UserId ?? "").ToLower().Contains(term));
             }
 
             if (!string.IsNullOrWhiteSpace(role))
@@ -117,8 +123,11 @@ namespace ASI.Basecode.Services.Services
 
             if (!string.IsNullOrWhiteSpace(status))
             {
-                bool isActive = status.Equals("Active", StringComparison.OrdinalIgnoreCase);
-                query = query.Where(u => u.IsActive == isActive);
+                var wanted = status.Trim().ToLowerInvariant();
+                if (AccountStatuses.All.Contains(wanted))
+                {
+                    query = query.Where(u => u.AccountStatus == wanted);
+                }
             }
 
             var userList = query
@@ -131,6 +140,7 @@ namespace ASI.Basecode.Services.Services
                     Email = u.Email,
                     Role = u.Role,
                     IsActive = u.IsActive,
+                    Status = u.AccountStatus,
                     DateCreated = u.CreatedTime,
                     Initials =
                         ((!string.IsNullOrEmpty(u.FirstName) ? u.FirstName[0].ToString() : "") +
@@ -144,14 +154,14 @@ namespace ASI.Basecode.Services.Services
                 TotalBorrowers = totalBorrowers,
                 TotalCustodians = totalCustodians,
                 TotalAdministrators = totalAdmins,
-                SearchTerm = search,
+                SearchTerm = searchTerm,
                 SelectedRole = role,
                 SelectedStatus = status,
                 Users = userList
             };
         }
 
-        // Custodian Profile Methods
+        // ---------- Custodian profile ----------
         public CustodianProfileViewModel GetCustodianProfile(string userIdStr)
         {
             var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userIdStr);
@@ -162,17 +172,19 @@ namespace ASI.Basecode.Services.Services
 
             if (_reservationRepository != null)
             {
+                // The requests this custodian approved, and the returns this custodian received
                 approvedCount = _reservationRepository.GetReservations()
-                    .Count(r => r.Status == "approved" || r.Status == "completed");
+                    .Count(r => r.ReviewedBy == user.Id && r.Status == "approved");
 
                 completedCount = _reservationRepository.GetTransactions()
-                    .Count(t => t.ActualReturnTime != null);
+                    .Count(t => t.ReturnedTo == user.Id && t.ActualReturnTime != null);
             }
 
             return new CustodianProfileViewModel
             {
                 Id = user.Id,
                 FirstName = user.FirstName,
+                MiddleName = user.MiddleName,
                 LastName = user.LastName,
                 EmployeeId = user.UserId,
                 Email = user.Email,
@@ -180,27 +192,13 @@ namespace ASI.Basecode.Services.Services
                 Role = user.Role == "Custodian" ? "Equipment Custodian" : user.Role,
                 IsActive = user.IsActive,
                 CreatedTime = user.CreatedTime,
+                ProfileImagePath = user.ProfileImagePath,
                 ApprovedRequestsCount = approvedCount,
                 CompletedBorrowingsCount = completedCount
             };
         }
 
-        public bool UpdateCustodianProfile(int id, string firstName, string lastName, string contactNumber)
-        {
-            var user = _repository.GetUsers().FirstOrDefault(u => u.Id == id);
-            if (user == null) return false;
-
-            user.FirstName = firstName;
-            user.LastName = lastName;
-            user.ContactNumber = contactNumber;
-            user.UpdatedTime = DateTime.Now;
-            user.UpdatedBy = Environment.UserName;
-
-            _repository.UpdateUser(user);
-            return true;
-        }
-
-        // Get logged-in user's profile
+        // ---------- Profile (student and custodian) ----------
         public ProfileViewModel GetProfile(string userId)
         {
             var user = _repository.GetUsers()
@@ -236,29 +234,23 @@ namespace ASI.Basecode.Services.Services
                 .FirstOrDefault();
         }
 
-        // Saves the editable profile fields and, when given, the new photo path
+        // Users can change only their contact number and photo here.
+        // Name, ID and email go through an information change request that an admin approves.
+        // (The email parameter is kept so existing callers still compile, but it is ignored.)
         public ServiceResult UpdateProfile(string userId, string contactNumber, string email, string newImagePath)
         {
             var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userId);
             if (user == null)
                 return ServiceResult.Fail("Your account was not found. Please log in again.");
 
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                var cleanEmail = email.Trim();
-                try
-                {
-                    _ = new System.Net.Mail.MailAddress(cleanEmail);
-                }
-                catch (FormatException)
-                {
-                    return ServiceResult.Fail("Please enter a valid email address.");
-                }
-                user.Email = cleanEmail;
-            }
-
             if (!string.IsNullOrWhiteSpace(contactNumber))
-                user.ContactNumber = contactNumber.Trim();
+            {
+                var contact = contactNumber.Trim();
+                if (!Regex.IsMatch(contact, @"^[0-9+()\-\s]{7,20}$"))
+                    return ServiceResult.Fail("Please enter a valid contact number (7 to 20 digits, spaces, + or -).");
+
+                user.ContactNumber = contact;
+            }
 
             if (!string.IsNullOrEmpty(newImagePath))
                 user.ProfileImagePath = newImagePath;

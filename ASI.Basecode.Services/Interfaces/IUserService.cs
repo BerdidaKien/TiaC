@@ -17,7 +17,6 @@ namespace ASI.Basecode.Services.Interfaces
 
         // Custodian Profile Methods
         CustodianProfileViewModel GetCustodianProfile(string userIdStr);
-        bool UpdateCustodianProfile(int id, string firstName, string lastName, string contactNumber);
 
         // Shared / Student Profile Methods
         ProfileViewModel GetProfile(string userId);
