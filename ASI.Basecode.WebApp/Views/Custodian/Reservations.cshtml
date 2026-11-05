@@ -7,9 +7,12 @@
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
 }
 
-<div class="dash-header mb-4">
-    <h1 class="dash dash-name m-0">Borrow Requests & Active Loans</h1>
-    <p class="dash-sub">Review incoming student requests, approve or decline borrowings, and process returns.</p>
+<div class="dash-header mb-4 d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+        <h1 class="dash dash-name m-0">Borrow Requests & Active Loans</h1>
+        <p class="dash-sub">Review incoming student requests, approve or decline borrowings, and process returns.</p>
+    </div>
+    <partial name="_UserBadge" />
 </div>
 
 @if (TempData["SuccessMessage"] != null)

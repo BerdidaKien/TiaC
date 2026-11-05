@@ -38,6 +38,7 @@
             <h1 class="dash-name mb-1">@fullName</h1>
             <p class="dash-sub mb-0">Browse available equipment and track your reservations.</p>
         </div>
+        <partial name="_UserBadge" />
     </div>
 
     @* ===== Stat cards ===== *@
@@ -145,7 +146,13 @@
                                             @(isBorrowed ? "Currently Borrowed" : (available ? "Available" : item.Status))
                                         </span>
                                     </td>
-                                    x
+                                    <td>
+                                        <a asp-controller="Student" asp-action="EquipmentDetails" asp-route-id="@item.Id"
+                                           class="btn dash-btn @(available ? "dash-btn-reserve" : "dash-btn-view")">
+                                            @(available ? "Reserve" : "View")
+                                        </a>
+                                    </td>
+
                                 </tr>
                             }
                             @if (!Model.PagedItems.Any())

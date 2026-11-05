@@ -44,22 +44,25 @@
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
 }
 
-<div class="dash-header mb-4 d-flex justify-content-between align-items-center">
+<div class="dash-header mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
         <h1 class="dash dash-name m-0">Borrowing History Log</h1>
         <p class="dash-sub">View past transactions, audit trails, return conditions, and penalty summaries.</p>
     </div>
-    <div class="d-flex gap-2">
-        <a class="btn btn-outline-danger btn-sm fw-bold" asp-controller="Custodian" asp-action="ExportHistoryCsv"
-           asp-route-search="@f.Search" asp-route-categoryId="@f.CategoryId" asp-route-result="@f.Result"
-           asp-route-dateFrom="@dFrom" asp-route-dateTo="@dTo">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </a>
-        <a class="btn dash-btn-reserve btn-sm fw-bold" target="_blank" asp-controller="Custodian" asp-action="HistoryPrint"
-           asp-route-search="@f.Search" asp-route-categoryId="@f.CategoryId" asp-route-result="@f.Result"
-           asp-route-dateFrom="@dFrom" asp-route-dateTo="@dTo">
-            <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
-        </a>
+    <div class="d-flex align-items-center gap-3">
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-danger btn-sm fw-bold" asp-controller="Custodian" asp-action="ExportHistoryCsv"
+               asp-route-search="@f.Search" asp-route-categoryId="@f.CategoryId" asp-route-result="@f.Result"
+               asp-route-dateFrom="@dFrom" asp-route-dateTo="@dTo">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+            </a>
+            <a class="btn dash-btn-reserve btn-sm fw-bold" target="_blank" asp-controller="Custodian" asp-action="HistoryPrint"
+               asp-route-search="@f.Search" asp-route-categoryId="@f.CategoryId" asp-route-result="@f.Result"
+               asp-route-dateFrom="@dFrom" asp-route-dateTo="@dTo">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+            </a>
+        </div>
+        <partial name="_UserBadge" />
     </div>
 </div>
 
