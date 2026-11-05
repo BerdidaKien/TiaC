@@ -68,10 +68,14 @@
     </style>
 }
 
-<div class="dash-header mb-4">
-    <h1 class="dash dash-name m-0">Custodian Dashboard</h1>
-    <p class="dash-sub">Manage inventory stock, track active borrowings, and oversee reservations.</p>
+<div class="dash-header mb-4 d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+        <h1 class="dash dash-name m-0">Custodian Dashboard</h1>
+        <p class="dash-sub">Manage inventory stock, track active borrowings, and oversee reservations.</p>
+    </div>
+    <partial name="_UserBadge" />
 </div>
+
 
 <!-- Metric Cards Row -->
 <div class="row g-3 mb-4">

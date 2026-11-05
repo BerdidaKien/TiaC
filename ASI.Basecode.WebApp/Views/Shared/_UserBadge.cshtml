@@ -1,0 +1,68 @@
+﻿@* Location: ASI.Basecode.WebApp/Views/Shared/_UserBadge.cshtml *@
+@* Profile picture, full name and role. Place it inside a page header. *@
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+@{
+    var session = HttpContextAccessor.HttpContext.Session;
+
+    var badgeName = session.GetString("UserName").ToUpperInvariant();
+    if (string.IsNullOrWhiteSpace(badgeName)) { badgeName = "Guest"; }
+
+    var badgePhoto = session.GetString("UserPhoto");
+    var badgeRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Custodian") ? "Custodian" : "Student";
+
+    // Shown instead of a photo: first letters of the first and last word of the name
+    var parts = badgeName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var initials = parts.Length == 0 ? "?"
+        : parts.Length == 1 ? parts[0].Substring(0, 1).ToUpperInvariant()
+        : (parts[0].Substring(0, 1) + parts[parts.Length - 1].Substring(0, 1)).ToUpperInvariant();
+}
+
+<style>
+    .user-badge {
+        padding: .25rem;
+        border: 2px solid currentColor; /* same color as the name text */
+        border-radius: 50rem;
+        background: var(--d-card);
+        transition: background-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+
+    @@media (min-width: 576px) {
+        .user-badge {
+            padding-right: .9rem;
+        }
+    }
+
+    .user-badge:hover,
+    .user-badge:focus-visible {
+        background: var(--bs-tertiary-bg);
+        box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .1);
+        transform: translateY(-1px);
+    }
+
+    /* Border around the profile picture, same color as the name text */
+    .user-badge__avatar {
+        border: 2px solid currentColor;
+    }
+</style>
+
+<a asp-controller="Account" asp-action="Profile" title="View my profile"
+   class="user-badge d-flex align-items-center text-decoration-none text-reset flex-shrink-0" style="gap: .65rem;">
+
+    <span class="user-badge__avatar d-inline-flex align-items-center justify-content-center rounded-circle overflow-hidden bg-secondary-subtle fw-bold flex-shrink-0"
+          style="width: 2.5rem; height: 2.5rem; font-size: .85rem;">
+        @if (!string.IsNullOrWhiteSpace(badgePhoto))
+        {
+            <img src="@badgePhoto" alt="@badgeName" style="width: 100%; height: 100%; object-fit: cover;" />
+        }
+        else
+        {
+            @initials
+        }
+    </span>
+
+    <span class="d-none d-sm-block lh-sm">
+        <span class="d-block fw-semibold text-truncate" style="max-width: 14rem;">@badgeName</span>
+        <span class="d-block small opacity-75">@badgeRole</span>
+    </span>
+</a>

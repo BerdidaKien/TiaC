@@ -32,14 +32,17 @@
     </style>
 }
 
-<div class="dash-header mb-4 d-flex justify-content-between align-items-center">
+<div class="dash-header mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
         <h1 class="dash dash-name m-0">Reports & Analytics</h1>
         <p class="dash-sub">Monitor inventory utilization, overdue metrics, and equipment availability.</p>
     </div>
-    <a class="btn dash-btn-reserve btn-sm fw-bold" asp-controller="Custodian" asp-action="History">
-        <i class="bi bi-clock-history me-1"></i> Borrowing History & Export
-    </a>
+    <div class="d-flex align-items-center gap-3">
+        <a class="btn dash-btn-reserve btn-sm fw-bold" asp-controller="Custodian" asp-action="History">
+            <i class="bi bi-clock-history me-1"></i> Borrowing History & Export
+        </a>
+        <partial name="_UserBadge" />
+    </div>
 </div>
 
 <!-- Date range for the analytics -->

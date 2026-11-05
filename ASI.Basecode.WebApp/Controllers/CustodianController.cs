@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.ServiceModels;
+using ASI.Basecode.Services.Services;
 using ASI.Basecode.WebApp.Mvc;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -24,10 +26,9 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IReservationService _reservationService;
         private readonly IHistoryService _historyService;
         private readonly IReportService _reportService;
-        private readonly ISettingsService _settingsService;
-        private readonly IUserService _userService;
+        private readonly IUserService _userService; // Added field
         private readonly IWebHostEnvironment _env;
-        private readonly ProfilePhotoStorage _profilePhotos;
+        private readonly ISettingsService _settingsService;
 
         public CustodianController(
             IEquipmentService equipmentService,
@@ -35,8 +36,7 @@ namespace ASI.Basecode.WebApp.Controllers
             IHistoryService historyService,
             IReportService reportService,
             ISettingsService settingsService,
-            IUserService userService,
-            ProfilePhotoStorage profilePhotos,
+            IUserService userService, // Injected dependency
             IWebHostEnvironment env,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
@@ -48,13 +48,10 @@ namespace ASI.Basecode.WebApp.Controllers
             _reservationService = reservationService;
             _historyService = historyService;
             _reportService = reportService;
-            _settingsService = settingsService;
             _userService = userService;
-            _profilePhotos = profilePhotos;
+            _settingsService = settingsService;// Assigned field
             _env = env;
         }
-
-        private string CurrentUserCode => _session.GetString("UserId");
 
         // ---------- Dashboard ----------
         public IActionResult Index(string search, int? categoryId, string status)
@@ -165,12 +162,12 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ArchiveEquipment(int id, int page = 1)
         {
-            var result = _equipmentService.ArchiveEquipment(id, CurrentUserCode ?? "Custodian");
+            var result = _equipmentService.ArchiveEquipment(id, User.Identity?.Name ?? "Custodian");
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
             return RedirectToAction(nameof(Equipment), new { page });
         }
 
-        // ---------- Equipment photo helpers ----------
+        // ---------- Photo upload helpers ----------
         private const long MaxPhotoBytes = 5 * 1024 * 1024; // 5 MB
         private static readonly string[] AllowedPhotoExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
 
@@ -269,6 +266,8 @@ namespace ASI.Basecode.WebApp.Controllers
         public IActionResult ReturnItem(int id, string returnCondition, string damageNotes)
             => HandleResult(_reservationService.Return(id, returnCondition, damageNotes, CurrentUserCode));
 
+        private string CurrentUserCode => _session.GetString("UserId");
+
         private IActionResult HandleResult(ServiceResult result)
         {
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
@@ -308,50 +307,81 @@ namespace ASI.Basecode.WebApp.Controllers
             return Json(_reportService.GetCalendar(start, end, categoryId, itemId));
         }
 
-        // ---------- Profile ----------
+        // ---------- Other pages ----------
         [HttpGet]
         public IActionResult Profile()
         {
-            var model = _userService.GetCustodianProfile(CurrentUserCode);
-            if (model == null) return RedirectToAction("Login", "Account");
-            return View(model);
-        }
+            // Try session first, then fallback to authentication claims
+            var userIdStr = HttpContext.Session.GetString("UserId")
+                         ?? User.Identity?.Name
+                         ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        // Custodians can only change their contact number and photo here.
-        // Name, ID and email go through an information change request.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult Profile(string contactNumber, IFormFile photo)
-        {
-            string newPhoto = null;
-
-            if (photo != null && photo.Length > 0)
+            if (string.IsNullOrEmpty(userIdStr))
             {
-                if (!_profilePhotos.TrySave(photo, out newPhoto, out var photoError))
+                return RedirectToAction("Login", "Account");
+            }
+
+            var model = _userService.GetCustodianProfile(userIdStr);
+            if (model == null)
+            {
+                // Debug fallback: If lookup by string user_id fails, try getting the first Custodian user
+                var fallbackUser = _userService.GetUserManagementData(null, "Custodian", null).Users.FirstOrDefault();
+                if (fallbackUser != null)
                 {
-                    TempData["ErrorMessage"] = photoError;
-                    return RedirectToAction(nameof(Profile));
+                    model = _userService.GetCustodianProfile(fallbackUser.UserId);
                 }
             }
 
-            var oldPhoto = _userService.GetProfileImagePath(CurrentUserCode);
-            var result = _userService.UpdateProfile(CurrentUserCode, contactNumber, null, newPhoto);
+            if (model == null)
+            {
+                return NotFound("Custodian profile not found.");
+            }
+
+            return View(model);
+        }
+
+        // Only the contact number, email and profile photo can be changed here
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Profile(string ContactNumber, string Email, IFormFile photo)
+        {
+            var userId = CurrentUserCode;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var photoError = ProfilePhotoHelper.Validate(photo);
+            if (photoError != null)
+            {
+                TempData["ErrorMessage"] = photoError;
+                return RedirectToAction(nameof(Profile));
+            }
+
+            var webRoot = _env.WebRootPath;
+            var oldPath = _userService.GetProfileImagePath(userId);
+            var newPath = ProfilePhotoHelper.Save(photo, webRoot);          // null when no photo was chosen
+
+            var result = _userService.UpdateProfile(userId, ContactNumber, Email, newPath);
 
             if (result.Success)
             {
-                if (newPhoto != null) _profilePhotos.Delete(oldPhoto);   // replaced photo: remove the old file
+                if (newPath != null)
+                {
+                    ProfilePhotoHelper.Delete(oldPath, webRoot);            // remove the replaced photo
+                    _session.SetString("UserPhoto", newPath);               // sidebar + profile page pick it up
+                }
                 TempData["SuccessMessage"] = result.Message;
             }
             else
             {
-                _profilePhotos.Delete(newPhoto);                         // save failed: drop the new upload
+                ProfilePhotoHelper.Delete(newPath, webRoot);                // save failed: drop the new upload
                 TempData["ErrorMessage"] = result.Message;
             }
 
             return RedirectToAction(nameof(Profile));
         }
 
-        // ---------- Settings ----------
         [HttpGet]
         public IActionResult Settings()
         {

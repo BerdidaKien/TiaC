@@ -157,7 +157,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            return View(profile);
+            return View("~/Views/Student/Profile.cshtml", profile);
         }
 
         [HttpPost]
