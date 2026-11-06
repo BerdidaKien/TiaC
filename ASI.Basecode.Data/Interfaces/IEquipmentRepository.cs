@@ -18,5 +18,8 @@ namespace ASI.Basecode.Data.Interfaces
         void AddEquipment(EquipmentItem equipment);
         void UpdateEquipment(EquipmentItem equipment);
         void DeleteEquipment(EquipmentItem equipment);
+
+        // Converts the login code (user.user_id) into the numeric primary key (user.id)
+        int GetUserDbId(string userCode);
     }
 }

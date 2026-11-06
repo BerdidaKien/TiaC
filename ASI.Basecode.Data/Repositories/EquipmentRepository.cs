@@ -71,5 +71,13 @@ namespace ASI.Basecode.Data.Repositories
         {
             return _context.BorrowingTransactions;
         }
+
+        public int GetUserDbId(string userCode)
+        {
+            return _context.Users
+                           .Where(u => u.UserId == userCode)
+                           .Select(u => u.Id)
+                           .FirstOrDefault();
+        }
     }
 }

@@ -20,7 +20,7 @@ namespace ASI.Basecode.Services.Services
             _equipRepo = equipRepo;
         }
 
-        public ReportsPageViewModel GetPage(DateTime? from, DateTime? to)
+        public ReportsPageViewModel GetPage(DateTime? from, DateTime? to, string custodianCode = null)
         {
             var end = (to ?? DateTime.Today).Date;
             var start = (from ?? end.AddDays(-29)).Date;
@@ -28,12 +28,16 @@ namespace ASI.Basecode.Services.Services
             var endExclusive = end.AddDays(1);
             var now = DateTime.Now;
 
+            int? ownerId = string.IsNullOrEmpty(custodianCode) ? (int?)null : _resRepo.GetUserDbId(custodianCode);
+
             var items = _equipRepo.GetEquipmentItems().Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
+            if (ownerId.HasValue) items = items.Where(i => i.CustodianId == ownerId.Value);
             var totalItems = items.Count();
 
             // Borrowings that started in the selected range
             var tx = _resRepo.GetTransactions()
                              .Where(t => t.ActualPickupTime >= start && t.ActualPickupTime < endExclusive);
+            if (ownerId.HasValue) tx = tx.Where(t => t.EquipmentItem.CustodianId == ownerId.Value);
 
             var totalTx = tx.Count();
             var distinctItems = tx.Select(t => t.EquipmentItemId).Distinct().Count();
@@ -63,8 +67,11 @@ namespace ASI.Basecode.Services.Services
             };
 
             // Top requested equipment (all requests whose pickup date is in the range)
-            var topIds = _resRepo.GetReservations()
-                .Where(r => r.RequestedPickupDate >= start && r.RequestedPickupDate < endExclusive)
+            var topQ = _resRepo.GetReservations()
+                .Where(r => r.RequestedPickupDate >= start && r.RequestedPickupDate < endExclusive);
+            if (ownerId.HasValue) topQ = topQ.Where(r => r.EquipmentItem.CustodianId == ownerId.Value);
+
+            var topIds = topQ
                 .GroupBy(r => r.EquipmentItemId)
                 .Select(g => new { ItemId = g.Key, Count = g.Count() })
                 .OrderByDescending(x => x.Count)
@@ -104,7 +111,7 @@ namespace ASI.Basecode.Services.Services
         }
 
         // 'end' is exclusive. Returns every booking that touches [start, end).
-        public CalendarDataDto GetCalendar(DateTime start, DateTime end, int? categoryId, int? itemId)
+        public CalendarDataDto GetCalendar(DateTime start, DateTime end, int? categoryId, int? itemId, string custodianCode = null)
         {
             var now = DateTime.Now;
 
@@ -135,6 +142,14 @@ namespace ASI.Basecode.Services.Services
             {
                 reservations = reservations.Where(r => r.EquipmentItemId == itemId.Value);
                 transactions = transactions.Where(t => t.EquipmentItemId == itemId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(custodianCode))
+            {
+                var ownerId = _resRepo.GetUserDbId(custodianCode);
+                items = items.Where(i => i.CustodianId == ownerId);
+                reservations = reservations.Where(r => r.EquipmentItem.CustodianId == ownerId);
+                transactions = transactions.Where(t => t.EquipmentItem.CustodianId == ownerId);
             }
 
             var result = new CalendarDataDto { TotalItems = items.Count() };

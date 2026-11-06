@@ -23,9 +23,17 @@ namespace ASI.Basecode.Services.Services
         // needs to retrieve records from all borrowers.
         private IQueryable<BorrowingTransaction> BuildBase(
             HistoryFilter f,
-            string borrowerUserId = null)
+            string borrowerUserId = null,
+            string custodianCode = null)
         {
             var q = _repo.GetTransactions();
+
+            // Custodian view: only loans of equipment this custodian owns
+            if (!string.IsNullOrEmpty(custodianCode))
+            {
+                var ownerId = _repo.GetUserDbId(custodianCode);
+                q = q.Where(t => t.EquipmentItem.CustodianId == ownerId);
+            }
 
             // Restrict records to the logged-in student.
             if (borrowerUserId != null)
@@ -105,9 +113,9 @@ namespace ASI.Basecode.Services.Services
 
         // Custodian History.
         // Retrieves all borrowers' transactions.
-        public HistoryPageViewModel GetPage(HistoryFilter filter)
+        public HistoryPageViewModel GetPage(HistoryFilter filter, string custodianCode = null)
         {
-            return BuildPage(filter, null);
+            return BuildPage(filter, null, custodianCode);
         }
 
         // Student History.
@@ -135,11 +143,12 @@ namespace ASI.Basecode.Services.Services
         // Shared summary and result calculations.
         private HistoryPageViewModel BuildPage(
             HistoryFilter filter,
-            string borrowerUserId)
+            string borrowerUserId,
+            string custodianCode = null)
         {
             var f = filter ?? new HistoryFilter();
 
-            var baseQ = BuildBase(f, borrowerUserId);
+            var baseQ = BuildBase(f, borrowerUserId, custodianCode);
             var now = DateTime.Now;
 
             var returned = baseQ.Count(t =>
@@ -200,11 +209,11 @@ namespace ASI.Basecode.Services.Services
         }
 
         // Existing Custodian CSV export.
-        public byte[] ExportCsv(HistoryFilter filter)
+        public byte[] ExportCsv(HistoryFilter filter, string custodianCode = null)
         {
             var f = filter ?? new HistoryFilter();
 
-            var rows = ApplyResult(BuildBase(f), f.Result)
+            var rows = ApplyResult(BuildBase(f, null, custodianCode), f.Result)
                 .OrderByDescending(t => t.ActualPickupTime)
                 .ToList();
 

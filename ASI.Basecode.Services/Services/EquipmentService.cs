@@ -20,9 +20,16 @@ namespace ASI.Basecode.Services.Services
             _equipmentRepository = equipmentRepository;
         }
 
-        public IEnumerable<EquipmentItem> GetAllEquipment()
+        // null code = no filter (students, admin). An unknown code resolves to 0 and matches nothing.
+        private int? OwnerId(string custodianCode) =>
+            string.IsNullOrEmpty(custodianCode) ? (int?)null : _equipmentRepository.GetUserDbId(custodianCode);
+
+        public IEnumerable<EquipmentItem> GetAllEquipment(string custodianCode = null)
         {
-            return _equipmentRepository.GetEquipmentItems().ToList();
+            var q = _equipmentRepository.GetEquipmentItems();
+            var owner = OwnerId(custodianCode);
+            if (owner.HasValue) q = q.Where(e => e.CustodianId == owner.Value);
+            return q.ToList();
         }
 
         public IEnumerable<EquipmentCategory> GetCategories()
@@ -42,9 +49,14 @@ namespace ASI.Basecode.Services.Services
             suggestion == null || suggestion.Length < 2 || suggestion.Length > 100;
 
         // ---------- Add ----------
-        public ServiceResult AddEquipment(EquipmentItem item)
+        public ServiceResult AddEquipment(EquipmentItem item, string custodianCode = null)
         {
             item.Id = 0;
+
+            // The owner always comes from the logged-in custodian, never from the posted form
+            var owner = OwnerId(custodianCode);
+            if (owner == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            item.CustodianId = owner;
             item.ItemCode = item.ItemCode?.Trim();
             item.BrandModel = item.BrandModel?.Trim();
 
@@ -110,10 +122,14 @@ namespace ASI.Basecode.Services.Services
             return _equipmentRepository.GetEquipmentById(id);
         }
 
-        public ServiceResult UpdateEquipment(EquipmentItem edited)
+        public ServiceResult UpdateEquipment(EquipmentItem edited, string custodianCode = null)
         {
             var existing = _equipmentRepository.GetEquipmentById(edited.Id);
             if (existing == null || existing.Status == "archived")
+                return ServiceResult.Fail("Equipment item not found.");
+
+            var owner = OwnerId(custodianCode);
+            if (owner.HasValue && existing.CustodianId != owner)
                 return ServiceResult.Fail("Equipment item not found.");
 
             var code = edited.ItemCode?.Trim();
@@ -198,10 +214,14 @@ namespace ASI.Basecode.Services.Services
         }
 
         // ---------- Archive (soft delete) ----------
-        public ServiceResult ArchiveEquipment(int id, string updatedBy)
+        public ServiceResult ArchiveEquipment(int id, string updatedBy, string custodianCode = null)
         {
             var existing = _equipmentRepository.GetEquipmentById(id);
             if (existing == null || existing.Status == "archived")
+                return ServiceResult.Fail("Equipment item not found.");
+
+            var owner = OwnerId(custodianCode);
+            if (owner.HasValue && existing.CustodianId != owner)
                 return ServiceResult.Fail("Equipment item not found.");
 
             var isOut = existing.Status == "borrowed" ||
@@ -233,14 +253,26 @@ namespace ASI.Basecode.Services.Services
         }
 
         // ---------- Custodian dashboard ----------
-        public DashboardViewModel GetDashboardSummary(string search, int? categoryId, string status)
+        public DashboardViewModel GetDashboardSummary(string search, int? categoryId, string status, string custodianCode = null)
         {
             // Items still waiting for a category are not part of the inventory yet
+            var owner = OwnerId(custodianCode);
+
             var items = _equipmentRepository.GetEquipmentItems()   // non-archived, includes Category
                 .Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
+            var openLoans = _equipmentRepository.GetBorrowingTransactions()
+                .Where(t => t.ActualReturnTime == null);
+            var pending = _equipmentRepository.GetReservations()
+                .Where(r => r.Status == "pending");
 
-            var borrowedIds = _equipmentRepository.GetBorrowingTransactions()
-                .Where(t => t.ActualReturnTime == null)
+            if (owner.HasValue)
+            {
+                items = items.Where(i => i.CustodianId == owner.Value);
+                openLoans = openLoans.Where(t => t.EquipmentItem.CustodianId == owner.Value);
+                pending = pending.Where(r => r.EquipmentItem.CustodianId == owner.Value);
+            }
+
+            var borrowedIds = openLoans
                 .Select(t => t.EquipmentItemId)
                 .Distinct()
                 .ToList();
@@ -250,7 +282,7 @@ namespace ASI.Basecode.Services.Services
                 TotalEquipment = items.Count(),
                 CurrentlyBorrowed = items.Count(i => borrowedIds.Contains(i.Id)),
                 AvailableItems = items.Count(i => i.Status == "available" && !borrowedIds.Contains(i.Id)),
-                PendingRequests = _equipmentRepository.GetReservations().Count(r => r.Status == "pending"),
+                PendingRequests = pending.Count(),
                 BorrowedItemIds = borrowedIds,
                 Categories = _equipmentRepository.GetCategories().OrderBy(c => c.CategoryName).ToList(),
                 Search = search,

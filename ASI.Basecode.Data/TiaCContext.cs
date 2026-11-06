@@ -146,6 +146,7 @@ public partial class TiaCContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("brand_model");
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.CustodianId).HasColumnName("custodian_id");
             entity.Property(e => e.ConditionRating)
                 .IsRequired()
                 .HasMaxLength(20)

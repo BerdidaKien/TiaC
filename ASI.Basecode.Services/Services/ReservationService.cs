@@ -21,7 +21,7 @@ namespace ASI.Basecode.Services.Services
             _settings = settings;
         }
 
-        public ReservationsPageViewModel GetPage(string search, int? categoryId)
+        public ReservationsPageViewModel GetPage(string search, int? categoryId, string custodianCode = null)
         {
             var term = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
 
@@ -50,6 +50,15 @@ namespace ASI.Basecode.Services.Services
                 reservations = reservations.Where(r => r.EquipmentItem.CategoryId == categoryId.Value);
                 transactions = transactions.Where(t => t.EquipmentItem.CategoryId == categoryId.Value);
             }
+
+            // A custodian only sees requests and loans for their own equipment
+            if (!string.IsNullOrEmpty(custodianCode))
+            {
+                var ownerId = _repo.GetUserDbId(custodianCode);
+                reservations = reservations.Where(r => r.EquipmentItem.CustodianId == ownerId);
+                transactions = transactions.Where(t => t.EquipmentItem.CustodianId == ownerId);
+            }
+
             var s = _settings.Get();
 
 
@@ -200,6 +209,8 @@ namespace ASI.Basecode.Services.Services
 
             var r = _repo.GetReservationById(reservationId);
             if (r == null) return ServiceResult.Fail("Reservation not found.");
+            if (r.EquipmentItem.CustodianId != custodianId)
+                return ServiceResult.Fail("This request belongs to another custodian.");
             if (r.Status != "pending") return ServiceResult.Fail("This request was already processed.");
             if (r.EquipmentItem.Status != "available")
                 return ServiceResult.Fail("This item is not available right now.");
@@ -234,6 +245,8 @@ namespace ASI.Basecode.Services.Services
 
             var r = _repo.GetReservationById(reservationId);
             if (r == null) return ServiceResult.Fail("Reservation not found.");
+            if (r.EquipmentItem.CustodianId != custodianId)
+                return ServiceResult.Fail("This request belongs to another custodian.");
             if (r.Status != "pending") return ServiceResult.Fail("This request was already processed.");
 
             r.Status = "declined";
@@ -253,6 +266,8 @@ namespace ASI.Basecode.Services.Services
 
             var r = _repo.GetReservationById(reservationId);
             if (r == null) return ServiceResult.Fail("Reservation not found.");
+            if (r.EquipmentItem.CustodianId != custodianId)
+                return ServiceResult.Fail("This request belongs to another custodian.");
             if (r.Status != "approved" || r.BorrowingTransaction != null)
                 return ServiceResult.Fail("This reservation can't be released.");
             if (r.EquipmentItem.Status != "available")
@@ -285,6 +300,8 @@ namespace ASI.Basecode.Services.Services
 
             var t = _repo.GetTransactionById(transactionId);
             if (t == null) return ServiceResult.Fail("Transaction not found.");
+            if (t.EquipmentItem.CustodianId != custodianId)
+                return ServiceResult.Fail("This loan belongs to another custodian.");
             if (t.ActualReturnTime != null) return ServiceResult.Fail("This item was already returned.");
 
             var now = DateTime.Now;
