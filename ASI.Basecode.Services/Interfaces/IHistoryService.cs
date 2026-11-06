@@ -9,12 +9,13 @@ namespace ASI.Basecode.Services.Interfaces
 {
     public interface IHistoryService
     {
-        HistoryPageViewModel GetPage(HistoryFilter filter);
+        // custodianCode limits the history to that custodian's equipment (null = everything)
+        HistoryPageViewModel GetPage(HistoryFilter filter, string custodianCode = null);
 
         HistoryPageViewModel GetStudentPage(
             HistoryFilter filter,
             string borrowerUserId);
 
-        byte[] ExportCsv(HistoryFilter filter);
+        byte[] ExportCsv(HistoryFilter filter, string custodianCode = null);
     }
 }
