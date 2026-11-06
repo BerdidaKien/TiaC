@@ -75,39 +75,15 @@
 
     <div class="row dash-bottom">
 
-        @* ===== Available equipment ===== *@
+        @* ===== Equipment Overview ===== *@
         <div class="col-lg-8 mb-4 dash-col">
             <div class="dash-card">
-                <h2 class="dash-section-title mb-3">Available Equipment</h2>
-
-                <form method="get" asp-controller="Student" asp-action="Index" class="mb-3">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-md-5">
-                            <input type="text" name="search" value="@cat.Search" class="form-control dash-search-input"
-                                   placeholder="Search by name, code, or serial..." />
-                        </div>
-                        <div class="col-md-3">
-                            <select name="categoryId" class="form-select dash-search-input">
-                                <option value="">All Categories</option>
-                                @foreach (var c in cat.Categories)
-                                {
-                                    <option value="@c.Id" selected="@(cat.CategoryId == c.Id)">@c.CategoryName</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <select name="status" class="form-select dash-search-input">
-                                <option value="">All</option>
-                                <option value="available" selected="@(cat.Status == "available")">Available</option>
-                                <option value="borrowed" selected="@(cat.Status == "borrowed")">Borrowed</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn dash-btn-reserve w-100">Search</button>
-                        </div>
-                    </div>
-                </form>
-
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="dash-section-title mb-3">Equipment Overview</h2>
+                    <a asp-controller="Student" asp-action="Equipment" class="dash-link">
+                        View all <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                </div>
                 <div class="table-responsive dash-scroll">
                     <table class="table dash-table mb-0">
                         <thead>
@@ -115,8 +91,6 @@
                                 <th>Equipment Name</th>
                                 <th>Category</th>
                                 <th>Status</th>
-                                <th>Action</th>
-                            </tr>
                         </thead>
                         <tbody>
                             @foreach (var item in Model.PagedItems)
@@ -145,12 +119,6 @@
                                         <span class="dash-pill @(available ? "is-available" : "is-borrowed")">
                                             @(isBorrowed ? "Currently Borrowed" : (available ? "Available" : item.Status))
                                         </span>
-                                    </td>
-                                    <td>
-                                        <a asp-controller="Student" asp-action="EquipmentDetails" asp-route-id="@item.Id"
-                                           class="btn dash-btn @(available ? "dash-btn-reserve" : "dash-btn-view")">
-                                            @(available ? "Reserve" : "View")
-                                        </a>
                                     </td>
 
                                 </tr>
