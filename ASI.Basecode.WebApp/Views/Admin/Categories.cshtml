@@ -6,6 +6,28 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        /* Pagination */
+        .dash-pager:empty {
+            display: none;
+        }
+
+        .dash-pager .page-link {
+            color: #800000;
+            font-size: .8rem;
+            padding: .25rem .6rem;
+        }
+
+        .dash-pager .page-item.active .page-link {
+            background-color: #800000;
+            border-color: #800000;
+            color: #fff;
+        }
+
+        .dash-pager .page-item.disabled .page-link {
+            color: #adb5bd;
+        }
+    </style>
 }
 
 <div class="dash-header mb-4 d-flex justify-content-between align-items-center">
@@ -103,7 +125,7 @@
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody data-paginate="7" data-pager="#categoriesPager">
                 @foreach (var c in Model.Categories)
                 {
                     <tr class="@(c.IsActive ? "" : "text-muted")">
@@ -143,11 +165,12 @@
                 }
                 @if (!Model.Categories.Any())
                 {
-                    <tr><td colspan="6" class="text-center text-muted py-4">No categories yet.</td></tr>
+                    <tr data-empty><td colspan="6" class="text-center text-muted py-4">No categories yet.</td></tr>
                 }
             </tbody>
         </table>
     </div>
+    <div id="categoriesPager" class="dash-pager d-flex justify-content-between align-items-center mt-3"></div>
 </div>
 
 @section Scripts {
@@ -269,6 +292,59 @@
                 var message = ev.target.getAttribute('data-confirm');
                 if (message && !confirm(message)) { ev.preventDefault(); }
             });
+        })();
+    </script>
+
+    <!-- Table pagination -->
+    <script>
+        (function () {
+            function paginate(tbody) {
+                var pageSize = parseInt(tbody.dataset.paginate, 10) || 7;
+                var pager = document.querySelector(tbody.dataset.pager);
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr:not([data-empty])'));
+                var total = rows.length;
+                var pages = Math.ceil(total / pageSize);
+                var current = 1;
+
+                function render() {
+                    rows.forEach(function (r, i) {
+                        r.style.display = (i >= (current - 1) * pageSize && i < current * pageSize) ? '' : 'none';
+                    });
+
+                    if (!pager) return;
+                    if (pages <= 1) { pager.innerHTML = ''; return; }
+
+                    var from = (current - 1) * pageSize + 1;
+                    var to = Math.min(current * pageSize, total);
+
+                    var html = '<small class="text-muted">Showing ' + from + '&ndash;' + to + ' of ' + total + '</small>';
+                    html += '<ul class="pagination pagination-sm mb-0">';
+                    html += '<li class="page-item' + (current === 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (current - 1) + '">&laquo;</a></li>';
+                    for (var p = 1; p <= pages; p++) {
+                        html += '<li class="page-item' + (p === current ? ' active' : '') + '"><a class="page-link" href="#" data-page="' + p + '">' + p + '</a></li>';
+                    }
+                    html += '<li class="page-item' + (current === pages ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (current + 1) + '">&raquo;</a></li>';
+                    html += '</ul>';
+                    pager.innerHTML = html;
+                }
+
+                if (pager) {
+                    pager.addEventListener('click', function (e) {
+                        var link = e.target.closest('a[data-page]');
+                        if (!link) return;
+                        e.preventDefault();
+                        var p = parseInt(link.dataset.page, 10);
+                        if (p >= 1 && p <= pages && p !== current) {
+                            current = p;
+                            render();
+                        }
+                    });
+                }
+
+                render();
+            }
+
+            document.querySelectorAll('tbody[data-paginate]').forEach(paginate);
         })();
     </script>
 }
