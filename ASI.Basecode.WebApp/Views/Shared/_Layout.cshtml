@@ -76,5 +76,9 @@
             };
     </script>
     @await RenderSectionAsync("Scripts", required: false)
+    @if (ViewBag.LoginView != true)
+    {
+        <partial name="_LogoutModal" />
+    }
 </body>
 </html>

@@ -1,0 +1,30 @@
+﻿@* Location: ASI.Basecode.WebApp/Views/Shared/_LogoutModal.cshtml *@
+<div class="modal fade" id="logoutWarningModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true" data-bs-backdrop="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content text-center p-4 border-0 shadow" style="background-color: #faf5f0; border-radius: 20px;">
+
+            <div class="modal-body p-0">
+                <div class="mx-auto mb-3 d-flex align-items-center justify-content-center"
+                     style="width: 70px; height: 70px; background-color: #f2e1d9; border-radius: 50%;">
+                    <i class="fa-solid fa-right-from-bracket fs-3" style="color: #6b1414;"></i>
+                </div>
+
+                <h6 class="fw-semibold mb-4" style="color: #4a1515; font-size: 1.05rem;">
+                    Are you sure you want to logout?
+                </h6>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn px-4 py-2" data-bs-dismiss="modal"
+                            style="background-color: #faf0e6; color: #6b1414; border: 1px solid #d9b8ab; border-radius: 10px; font-weight: 500;">
+                        Cancel
+                    </button>
+                    <a asp-controller="Account" asp-action="SignOutUser" class="btn px-4 py-2 text-white"
+                       style="background-color: #6b1414; border-radius: 10px; font-weight: 500;">
+                        Logout
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

@@ -23,51 +23,105 @@
 
     string IconFor(string categoryCode) => (categoryCode ?? "") switch
     {
-        "AV-MEDIA"   => "bi-camera",
-        "IT-TECH"    => "bi-laptop",
-        "EVENT-SUP"  => "bi-megaphone",
-        "LAB-SCI"    => "bi-eyedropper",
+        "AV-MEDIA" => "bi-camera",
+        "IT-TECH" => "bi-laptop",
+        "EVENT-SUP" => "bi-megaphone",
+        "LAB-SCI" => "bi-eyedropper",
         "SPORTS-REC" => "bi-trophy",
-        "GEN-TOOLS"  => "bi-tools",
-        _            => "bi-box-seam"
+        "GEN-TOOLS" => "bi-tools",
+        _ => "bi-box-seam"
     };
 
     (string Text, string Css, string Icon) Badge(string s) => s switch
     {
-        "pending"   => ("Pending",   "bg-warning-subtle text-warning-emphasis",   "bi-clock"),
-        "approved"  => ("Approved",  "bg-success-subtle text-success-emphasis",   "bi-check-lg"),
-        "borrowed"  => ("Borrowed",  "bg-primary-subtle text-primary-emphasis",   "bi-box-arrow-up-right"),
-        "overdue"   => ("Overdue",   "bg-danger text-white",                      "bi-exclamation-triangle"),
+        "pending" => ("Pending", "bg-warning-subtle text-warning-emphasis", "bi-clock"),
+        "approved" => ("Approved", "bg-success-subtle text-success-emphasis", "bi-check-lg"),
+        "borrowed" => ("Borrowed", "bg-primary-subtle text-primary-emphasis", "bi-box-arrow-up-right"),
+        "overdue" => ("Overdue", "bg-danger text-white", "bi-exclamation-triangle"),
         "completed" => ("Completed", "bg-secondary-subtle text-secondary-emphasis", "bi-check2-all"),
-        "rejected"  => ("Rejected",  "bg-danger-subtle text-danger-emphasis",     "bi-x-lg"),
+        "rejected" => ("Rejected", "bg-danger-subtle text-danger-emphasis", "bi-x-lg"),
         "cancelled" => ("Cancelled", "bg-secondary-subtle text-secondary-emphasis", "bi-slash-circle"),
-        _           => (s ?? "-",    "bg-light text-dark",                        "bi-dot")
+        _ => (s ?? "-", "bg-light text-dark", "bi-dot")
     };
 
     string Stage(string s) => s switch
     {
-        "pending"   => "Waiting for the custodian's decision",
-        "approved"  => "Approved - waiting for the borrower to pick up the item",
-        "borrowed"  => "Item is currently out on loan",
-        "overdue"   => "Item is overdue and has not been returned",
+        "pending" => "Waiting for the custodian's decision",
+        "approved" => "Approved - waiting for the borrower to pick up the item",
+        "borrowed" => "Item is currently out on loan",
+        "overdue" => "Item is overdue and has not been returned",
         "completed" => "Item was returned",
-        "rejected"  => "Declined by the custodian",
+        "rejected" => "Declined by the custodian",
         "cancelled" => "Cancelled",
-        _           => "-"
+        _ => "-"
     };
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
     <style>
-        .res-card { border: 2px solid transparent; transition: all .15s ease-in-out; }
-        a:hover > .res-card { border-color: #800000; }
-        .res-card.is-active { border-color: #800000; box-shadow: 0 0 0 1px #800000; background-color: #fcf0f0; }
-        .res-card-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
-        .res-avatar { width: 36px; height: 36px; border-radius: 50%; background: #f3d9d9; color: #800000; font-weight: 700; font-size: .8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .res-table td, .res-table th { white-space: nowrap; }
-        .page-link { color: #800000; }
-        .page-item.active .page-link { background-color: #800000; border-color: #800000; color: #fff; }
+        .dash-card.res-card {
+            padding: .6rem .9rem;
+            border: 2px solid transparent;
+            transition: all .15s ease-in-out;
+        }
+
+        a:hover > .res-card {
+            border-color: #800000;
+        }
+
+        .res-card.is-active {
+            border-color: #800000;
+            box-shadow: 0 0 0 1px #800000;
+            background-color: #fcf0f0;
+        }
+
+        .res-card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .res-card .dash-stat-count {
+            font-size: 1.5rem;
+            line-height: 1.1;
+        }
+
+        .res-card .dash-stat-label {
+            font-size: .75rem;
+        }
+
+        .res-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #f3d9d9;
+            color: #800000;
+            font-weight: 700;
+            font-size: .8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .res-table td, .res-table th {
+            white-space: nowrap;
+        }
+
+        .page-link {
+            color: #800000;
+        }
+
+        .page-item.active .page-link {
+            background-color: #800000;
+            border-color: #800000;
+            color: #fff;
+        }
     </style>
 }
 
@@ -359,12 +413,12 @@
     </div>
 
     <script>
-        document.getElementById('resModal').addEventListener('show.bs.modal', function (event) {
+        document.getElementById('resModal').addEventListener('show.bs.modal', function(event) {
             var b = event.relatedTarget;
             var keys = ['code', 'borrower', 'bcode', 'bemail', 'bcontact', 'item', 'icode', 'category',
-                        'resdate', 'pickup', 'ret', 'reviewedby', 'reviewedat', 'notes',
-                        'releasedby', 'handover', 'returnedto', 'returnedat', 'condition', 'delay', 'damage'];
-            keys.forEach(function (k) {
+                'resdate', 'pickup', 'ret', 'reviewedby', 'reviewedat', 'notes',
+                'releasedby', 'handover', 'returnedto', 'returnedat', 'condition', 'delay', 'damage'];
+            keys.forEach(function(k) {
                 var el = document.getElementById('m-' + k);
                 if (el) { el.textContent = b.getAttribute('data-' + k) || '-'; }
             });
