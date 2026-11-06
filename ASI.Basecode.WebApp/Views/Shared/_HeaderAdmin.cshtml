@@ -66,22 +66,13 @@
                     <span class="side-nav__text">Reports</span>
                 </a>
             </li>
-            <li>
-                <a class="side-nav__link @(IsActive("Admin", "Settings") ? "is-active" : "")"
-                   asp-controller="Admin" asp-action="Settings">
-                    <i class="fa-solid fa-gear"></i>
-                    <span class="side-nav__text">Settings</span>
-                </a>
-            </li>
         </ul>
 
-        <p class="side-nav__quote">“Better days are ahead, keep going.”</p>
-
         <div class="side-nav__user">
-            <a class="side-nav__link" asp-controller="Account" asp-action="SignOutUser">
+            <button type="button" class="side-nav__link border-0 bg-transparent w-100 text-start" data-bs-toggle="modal" data-bs-target="#logoutWarningModal">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span class="side-nav__text">Logout</span>
-            </a>
+            </button>
         </div>
     </nav>
 }

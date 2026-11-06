@@ -16,6 +16,32 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .dash-card.res-card {
+            padding: .6rem .9rem;
+            border: 2px solid transparent;
+            transition: all .15s ease-in-out;
+        }
+
+        .res-card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .res-card .dash-stat-count {
+            font-size: 1.5rem;
+            line-height: 1.1;
+        }
+
+        .res-card .dash-stat-label {
+            font-size: .75rem;
+        }
+    </style>
 }
 
 <div class="dash-header mb-4">
@@ -41,27 +67,47 @@
 <!-- Stat Cards -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-xl-3">
-        <div class="dash-card">
-            <div class="dash-stat-label">Total Users</div>
-            <div class="dash-stat-count">@Model.TotalUsers</div>
+        <div class="dash-card res-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-people"></i></div>
+                <div>
+                    <div class="dash-stat-label">Total Users</div>
+                    <div class="dash-stat-count">@Model.TotalUsers</div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
-        <div class="dash-card">
-            <div class="dash-stat-label">Borrowers</div>
-            <div class="dash-stat-count">@Model.TotalBorrowers</div>
+        <div class="dash-card res-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="res-card-icon bg-warning-subtle text-warning"><i class="bi bi-person"></i></div>
+                <div>
+                    <div class="dash-stat-label">Borrowers</div>
+                    <div class="dash-stat-count">@Model.TotalBorrowers</div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
-        <div class="dash-card">
-            <div class="dash-stat-label">Custodians</div>
-            <div class="dash-stat-count">@Model.TotalCustodians</div>
+        <div class="dash-card res-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="res-card-icon bg-success-subtle text-success"><i class="bi bi-person-badge"></i></div>
+                <div>
+                    <div class="dash-stat-label">Custodians</div>
+                    <div class="dash-stat-count">@Model.TotalCustodians</div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
-        <div class="dash-card">
-            <div class="dash-stat-label">Administrators</div>
-            <div class="dash-stat-count">@Model.TotalAdministrators</div>
+        <div class="dash-card res-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="res-card-icon bg-dark-subtle text-dark"><i class="bi bi-shield-lock"></i></div>
+                <div>
+                    <div class="dash-stat-label">Administrators</div>
+                    <div class="dash-stat-count">@Model.TotalAdministrators</div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

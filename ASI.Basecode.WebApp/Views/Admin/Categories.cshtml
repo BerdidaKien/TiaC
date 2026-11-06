@@ -137,16 +137,6 @@
                                         <i class="bi @(c.IsActive ? "bi-toggle-on" : "bi-toggle-off")"></i>
                                     </button>
                                 </form>
-
-                                <form method="post" asp-controller="Admin" asp-action="DeleteCategory" class="d-inline"
-                                      data-confirm="@($"Delete \"{c.Name}\"? This can't be undone.")">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@c.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@(c.TotalItems > 0)"
-                                            title="@(c.TotalItems > 0 ? "Has items - disable it instead" : "Delete")">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
                             </div>
                         </td>
                     </tr>
