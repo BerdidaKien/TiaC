@@ -189,7 +189,7 @@
                         </div>
 
                         @* Change password *@
-                        <div class="col-12 mb-1">
+                        <div class="col-12 mb-1 d-flex flex-wrap" style="gap: 0.5rem 1.5rem;">
                             <a href="#"
                                class="dash-link"
                                data-toggle="modal"
@@ -197,7 +197,14 @@
                                data-bs-toggle="modal"
                                data-bs-target="#changePasswordModal">
 
-                                <i class="fa-solid fa-key"></i> Change password
+                                <i class="fa-solid fa-key"></i> Change Password
+                            </a>
+
+                            <a asp-controller="InfoRequest"
+                               asp-action="Create"
+                               class="dash-link">
+
+                                <i class="fa-solid fa-user-pen"></i> Request an information change
                             </a>
                         </div>
 
