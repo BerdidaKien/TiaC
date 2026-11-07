@@ -1,6 +1,24 @@
 ﻿@model ASI.Basecode.Services.ServiceModels.AddUsersPostModel
 @{
     ViewData["Title"] = "Add Users";
+
+    // Rows and errors are handed to the script, which builds the table.
+    // When the server sends the batch back, every typed value is restored.
+    var initial = new
+    {
+        role = Model.Role,
+        rows = Model.UserRows.Select(r => new
+        {
+            id = r.StudentEmployeeId,
+            first = r.FirstName,
+            middle = r.MiddleName,
+            last = r.LastName,
+            email = r.Email,
+            contact = r.ContactNumber,
+            password = r.Password
+        }),
+        errors = Model.RowErrors
+    };
 }
 
 @section Styles {
@@ -9,7 +27,26 @@
         .role-option-card { cursor: pointer; transition: all 0.2s ease-in-out; }
         .role-option-card:hover { border-color: #800000 !important; background-color: #fdf8f8; }
         .role-option-card.selected { border-color: #800000 !important; background-color: #fcf0f0; box-shadow: 0 0 0 1px #800000; }
-        .border-dashed { border-style: dashed !important; }
+
+        .accounts-scroll { max-height: 58vh; overflow: auto; }
+        .accounts-table { min-width: 1180px; margin-bottom: 0; }
+        .accounts-table thead th {
+            position: sticky; top: 0; z-index: 2;
+            background: #f8f9fa; font-size: .8rem; white-space: nowrap;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .accounts-table td { vertical-align: top; padding-top: .6rem; padding-bottom: .6rem; }
+        .accounts-table .row-number { padding-top: 1.05rem; width: 2.5rem; }
+        .accounts-table .invalid-feedback { font-size: .75rem; white-space: normal; }
+        .accounts-table.auto-pass .col-password { display: none; }
+        .accounts-table tr.has-error { background-color: #fff5f5; }
+
+        .add-users-actions {
+            position: sticky; bottom: 0; z-index: 5;
+            background: var(--d-bg, #fdf0e6);
+            border-top: 1px solid rgba(90, 0, 0, .15);
+            padding: .85rem 0;
+        }
     </style>
 }
 
@@ -21,257 +58,682 @@
         </ol>
     </nav>
     <h1 class="dash-name m-0">Add Users</h1>
-    <p class="dash-sub">Create one or multiple accounts with complete user information.</p>
+    <p class="dash-sub">Create student and custodian accounts. New accounts are active and can log in right away.</p>
 </div>
 
-<form asp-controller="Admin" asp-action="AddUsers" method="post" id="addUsersForm">
+@if (!string.IsNullOrEmpty(Model.FormError))
+{
+    <div class="alert alert-danger d-flex align-items-start" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+        <div>
+            <strong>@Model.FormError</strong>
+            <div class="small">Your entries are kept. Fix the highlighted fields below and submit again.</div>
+        </div>
+    </div>
+}
+
+<form asp-controller="Admin" asp-action="AddUsers" method="post" id="addUsersForm" novalidate>
     @Html.AntiForgeryToken()
 
-    <div class="row g-4">
-        <div class="col-lg-9">
-            <!-- Role selection -->
-            <div class="dash-card mb-4 p-4">
+    <div class="row g-4 mb-4">
+        <!-- Role -->
+        <div class="col-lg-8">
+            <div class="dash-card p-4 h-100">
                 <div class="d-flex align-items-center mb-3">
                     <i class="bi bi-people-fill text-danger fs-4 me-2"></i>
                     <div>
-                        <h6 class="fw-bold m-0">User Details & Role Assignment</h6>
-                        <small class="text-muted">Select a role to apply to every account in this batch.</small>
+                        <h6 class="fw-bold m-0">Account Role</h6>
+                        <small class="text-muted">Applies to every account in this list.</small>
                     </div>
                 </div>
 
-                <label class="form-label fw-bold mb-2">Select Role for These Users</label>
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="card p-3 border role-option-card" data-role="Admin" onclick="selectRole('Admin')">
-                            <div class="form-check m-0 pe-none">
-                                <input class="form-check-input" type="radio" name="Role" id="roleAdmin" value="Admin" />
-                                <label class="form-check-label w-100 ps-2" for="roleAdmin">
-                                    <strong class="d-block text-dark"><i class="bi bi-shield-lock me-1"></i> Admin</strong>
-                                    <small class="text-muted">Manage system settings and users</small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card p-3 border role-option-card selected" data-role="User" onclick="selectRole('User')">
-                            <div class="form-check m-0 pe-none">
-                                <input class="form-check-input" type="radio" name="Role" id="roleUser" value="User" checked />
-                                <label class="form-check-label w-100 ps-2" for="roleUser">
-                                    <strong class="d-block text-dark"><i class="bi bi-mortarboard me-1"></i> User / Student</strong>
+                    <div class="col-sm-6">
+                        <label class="card p-3 border role-option-card h-100 mb-0" data-role="User">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="radio" name="Role" value="User" />
+                                <span class="form-check-label w-100 ps-2 d-block">
+                                    <strong class="d-block text-dark"><i class="bi bi-mortarboard me-1"></i> Student</strong>
                                     <small class="text-muted">Borrow and reserve school equipment</small>
-                                </label>
+                                </span>
                             </div>
-                        </div>
+                        </label>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card p-3 border role-option-card" data-role="Custodian" onclick="selectRole('Custodian')">
-                            <div class="form-check m-0 pe-none">
-                                <input class="form-check-input" type="radio" name="Role" id="roleCustodian" value="Custodian" />
-                                <label class="form-check-label w-100 ps-2" for="roleCustodian">
+                    <div class="col-sm-6">
+                        <label class="card p-3 border role-option-card h-100 mb-0" data-role="Custodian">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="radio" name="Role" value="Custodian" />
+                                <span class="form-check-label w-100 ps-2 d-block">
                                     <strong class="d-block text-dark"><i class="bi bi-person-badge me-1"></i> Custodian</strong>
                                     <small class="text-muted">Manage item inventory and transactions</small>
-                                </label>
+                                </span>
                             </div>
-                        </div>
+                        </label>
                     </div>
                 </div>
-            </div>
-
-            <!-- Bulk entry table -->
-            <div class="dash-card p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="fw-bold m-0"><i class="bi bi-pencil-square me-1"></i> Bulk Entry Method</h6>
-                    <small class="text-muted">Maximum 100 users per batch</small>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table align-middle text-nowrap" id="usersTable">
-                        <thead class="table-light small">
-                            <tr>
-                                <th style="width: 3%;">#</th>
-                                <th id="idHeaderLabel">Student ID *</th>
-                                <th>First Name *</th>
-                                <th>Middle Name</th>
-                                <th>Last Name *</th>
-                                <th>Email *</th>
-                                <th>Contact No.</th>
-                                <th>Temp Password</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rowsContainer"></tbody>
-                    </table>
-                </div>
-
-                <button type="button" id="addRowBtn" class="btn btn-outline-secondary w-100 py-2 border-dashed mt-3">
-                    <i class="bi bi-plus-circle me-1"></i> Add another row
-                </button>
             </div>
         </div>
 
         <!-- Settings -->
-        <div class="col-lg-3">
-            <div class="dash-card p-4 mb-4">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h6 class="fw-bold m-0"><i class="bi bi-gear-fill me-1"></i> Settings</h6>
-                    <span class="badge bg-danger-subtle text-danger" id="userCountBadge">1 user</span>
+        <div class="col-lg-4">
+            <div class="dash-card p-4 h-100">
+                <h6 class="fw-bold mb-3"><i class="bi bi-gear-fill me-1"></i> Settings</h6>
+                <label class="form-label fw-bold small m-0">Temporary Password</label>
+                <small class="text-muted d-block mb-2">Generate a secure random password for each account.</small>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" asp-for="AutoGeneratePassword" id="autoPass" />
+                    <label class="form-check-label fw-semibold small" for="autoPass">Auto-generate</label>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold small m-0">Temporary Password</label>
-                    <small class="text-muted d-block mb-2">Generate a secure random password for each account.</small>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" asp-for="AutoGeneratePassword" id="autoPass" />
-                        <label class="form-check-label fw-semibold small" for="autoPass">Auto-generate</label>
-                    </div>
-                </div>
-
-                <hr />
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold small m-0">Initial Account Status</label>
-                    <small class="text-muted d-block mb-2">Inactive accounts cannot log in.</small>
-                    <div class="form-check mb-1">
-                        <input class="form-check-input" type="radio" asp-for="IsActive" value="true" id="activeTrue" />
-                        <label class="form-check-label small" for="activeTrue"><strong>Active</strong></label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" asp-for="IsActive" value="false" id="activeFalse" />
-                        <label class="form-check-label small" for="activeFalse"><strong>Inactive</strong></label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="dash-card p-3 bg-light border">
                 <h6 class="fw-bold mb-2 small"><i class="bi bi-shield-check me-1"></i> Permissions (<span id="roleLabel">Student</span>)</h6>
                 <ul class="list-unstyled mb-0 text-secondary" id="permList" style="font-size: 0.825rem;"></ul>
             </div>
+        </div>
+    </div>
 
-            <div class="d-grid gap-2 mt-4">
-                <button type="submit" class="btn dash-btn-reserve py-2 text-white fw-bold" id="submitBtn">+ Create 1 User</button>
-                <a asp-controller="Admin" asp-action="Users" class="btn btn-outline-secondary py-2">Cancel</a>
+    <!-- Accounts -->
+    <div class="dash-card p-0 mb-0 overflow-hidden">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 p-4 pb-3">
+            <div>
+                <h6 class="fw-bold m-0"><i class="bi bi-person-lines-fill me-1"></i> Accounts to Create</h6>
+                <small class="text-muted">
+                    Type each person's details, paste rows from a spreadsheet, or import a CSV file. Up to 100 accounts at a time.
+                </small>
             </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" id="templateBtn" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-file-earmark-arrow-down me-1"></i> CSV template
+                </button>
+                <button type="button" id="importBtn" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-upload me-1"></i> Import CSV
+                </button>
+                <input type="file" id="csvFile" accept=".csv,text/csv" class="d-none" />
+                <button type="button" id="addRowBtn" class="btn btn-sm dash-btn-reserve text-white">
+                    <i class="bi bi-plus-lg me-1"></i> Add row
+                </button>
+            </div>
+        </div>
+
+        <div id="importMessage" class="alert mx-4 py-2 small d-none" role="status"></div>
+
+        <div class="accounts-scroll border-top">
+            <table class="table accounts-table align-top" id="usersTable">
+                <thead>
+                    <tr>
+                        <th class="ps-4">#</th>
+                        <th style="min-width: 160px;" id="idHeaderLabel">Student ID *</th>
+                        <th style="min-width: 160px;">First Name *</th>
+                        <th style="min-width: 140px;">Middle Name</th>
+                        <th style="min-width: 160px;">Last Name *</th>
+                        <th style="min-width: 230px;">Email *</th>
+                        <th style="min-width: 160px;">Contact No.</th>
+                        <th style="min-width: 170px;" class="col-password">Temp Password *</th>
+                        <th class="text-center pe-4" style="width: 60px;"><span class="visually-hidden">Remove</span></th>
+                    </tr>
+                </thead>
+                <tbody id="rowsContainer"></tbody>
+            </table>
+        </div>
+
+        <div class="px-4 py-2 border-top small text-muted">
+            <i class="bi bi-keyboard me-1"></i> Press <kbd>Enter</kbd> to move to the next row. A new row is added when you reach the end.
+        </div>
+    </div>
+
+    <div class="add-users-actions d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="small" id="summary"></div>
+        <div class="d-flex gap-2">
+            <a asp-controller="Admin" asp-action="Users" class="btn btn-outline-secondary px-4">Cancel</a>
+            <button type="submit" class="btn dash-btn-reserve text-white fw-bold px-4" id="submitBtn">+ Create 1 User</button>
         </div>
     </div>
 </form>
 
 @section Scripts {
     <script>
-        var ROLE_INFO = {
-            User: {
-                label: 'Student', idLabel: 'Student ID *', idPh: '2023-1001',
-                perms: ['Search available items', 'Submit reservation requests', 'Borrow assigned items', 'View personal logs']
-            },
-            Custodian: {
-                label: 'Custodian', idLabel: 'Employee ID *', idPh: 'EMP-2026-100',
-                perms: ['Manage equipment inventory', 'Approve or decline requests', 'Release and receive items', 'View history and reports']
-            },
-            Admin: {
-                label: 'Administrator', idLabel: 'Employee ID *', idPh: 'EMP-2026-001',
-                perms: ['Create and manage user accounts', 'Activate or deactivate accounts', 'View all reservations and reports', 'Configure system settings']
+        (function () {
+            var INITIAL = @Json.Serialize(initial);
+            var MAX_ROWS = 100;
+            var AT = '@@'; // Razor escape for the at sign
+            var BOM = String.fromCharCode(0xFEFF); // lets Excel read the template as UTF-8
+
+            var ROLE_INFO = {
+                User: {
+                    label: 'Student', idLabel: 'Student ID *', idPh: '2023-1001',
+                    perms: ['Search available items', 'Submit reservation requests', 'Borrow assigned items', 'View personal logs']
+                },
+                Custodian: {
+                    label: 'Custodian', idLabel: 'Employee ID *', idPh: 'EMP-2026-100',
+                    perms: ['Manage equipment inventory', 'Approve or decline requests', 'Release and receive items', 'View history and reports']
+                }
+            };
+
+            // Column order is also the default CSV column order
+            var FIELDS = [
+                { key: 'id', prop: 'StudentEmployeeId', max: 50 },
+                { key: 'first', prop: 'FirstName', max: 50, ph: 'Juan' },
+                { key: 'middle', prop: 'MiddleName', max: 50, ph: 'Optional' },
+                { key: 'last', prop: 'LastName', max: 50, ph: 'Dela Cruz' },
+                { key: 'email', prop: 'Email', max: 100, ph: 'name' + AT + 'school.edu.ph', type: 'email' },
+                { key: 'contact', prop: 'ContactNumber', max: 13, ph: '09171234567', type: 'tel' },
+                { key: 'password', prop: 'Password', max: 64, ph: 'Min. 8, letters + numbers' }
+            ];
+
+            // Same rules as UserFieldRules on the server
+            var RX = {
+                id: /^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/,
+                name: /^\p{L}[\p{L}\p{M} .'\-]*$/u,
+                email: new RegExp('^[^' + AT + '\\s]+' + AT + '[^' + AT + '\\s]+\\.[^' + AT + '\\s]+$'),
+                contact: /^(09\d{9}|\+639\d{9})$/
+            };
+
+            function checkName(v, label, required) {
+                if (!v) return required ? label + ' is required.' : '';
+                if (v.length > 50) return label + ' must be 50 characters or fewer.';
+                if (!RX.name.test(v)) return label + ' can only contain letters, spaces, periods, hyphens and apostrophes.';
+                return '';
             }
-        };
 
-        var selectedRole = 'User';
+            function checkField(key, raw) {
+                var v = (raw || '').trim();
+                switch (key) {
+                    case 'id':
+                        if (!v) return 'ID is required.';
+                        if (v.length > 50) return 'ID must be 50 characters or fewer.';
+                        if (!RX.id.test(v)) return 'Use letters and numbers only, separated by single hyphens (e.g. 2023-1001).';
+                        return '';
+                    case 'first': return checkName(v, 'First name', true);
+                    case 'middle': return checkName(v, 'Middle name', false);
+                    case 'last': return checkName(v, 'Last name', true);
+                    case 'email':
+                        if (!v) return 'Email is required.';
+                        if (v.length > 100) return 'Email must be 100 characters or fewer.';
+                        if (!RX.email.test(v)) return 'Enter a valid email address (e.g. name' + AT + 'school.edu.ph).';
+                        return '';
+                    case 'contact':
+                        if (!v) return '';
+                        if (!RX.contact.test(v)) return 'Use 11 digits starting with 09 (e.g. 09171234567) or +639 followed by 9 digits.';
+                        return '';
+                    case 'password':
+                        if (autoPass.checked) return '';
+                        if (raw.length < 8 || raw.length > 64) return 'Password must be 8 to 64 characters.';
+                        if (!/[A-Za-z]/.test(raw) || !/\d/.test(raw)) return 'Password must contain at least one letter and one number.';
+                        return '';
+                }
+                return '';
+            }
 
-        function selectRole(role) {
-            selectedRole = role;
-            var info = ROLE_INFO[role];
+            // Spaces, dashes and dots are dropped; spreadsheet apps also tend to strip the leading 0
+            function cleanContact(v) {
+                v = (v || '').replace(/[\s\-().]/g, '');
+                if (/^9\d{9}$/.test(v)) v = '0' + v;
+                if (/^639\d{9}$/.test(v)) v = '+' + v;
+                return v;
+            }
 
-            document.getElementById('roleUser').checked = role === 'User';
-            document.getElementById('roleCustodian').checked = role === 'Custodian';
-            document.getElementById('roleAdmin').checked = role === 'Admin';
-
-            document.querySelectorAll('.role-option-card').forEach(function (card) {
-                card.classList.toggle('selected', card.getAttribute('data-role') === role);
-            });
-
-            document.getElementById('idHeaderLabel').textContent = info.idLabel;
-            document.getElementById('roleLabel').textContent = info.label;
-            document.querySelectorAll('.id-input').forEach(function (i) { i.placeholder = info.idPh; });
-
-            var list = document.getElementById('permList');
-            list.innerHTML = '';
-            info.perms.forEach(function (text) {
-                var li = document.createElement('li');
-                li.className = 'mb-1';
-                var icon = document.createElement('i');
-                icon.className = 'bi bi-check2 text-success me-1';
-                li.appendChild(icon);
-                li.appendChild(document.createTextNode(text));
-                list.appendChild(li);
-            });
-        }
-
-        function rowHtml(i) {
-            var ph = ROLE_INFO[selectedRole].idPh;
-            return '' +
-                '<td class="row-number fw-bold text-muted"></td>' +
-                '<td><input type="text" name="UserRows[' + i + '].StudentEmployeeId" class="form-control form-control-sm id-input" placeholder="' + ph + '" maxlength="50" required /></td>' +
-                '<td><input type="text" name="UserRows[' + i + '].FirstName" class="form-control form-control-sm" placeholder="First Name" maxlength="50" required /></td>' +
-                '<td><input type="text" name="UserRows[' + i + '].MiddleName" class="form-control form-control-sm" placeholder="Middle Name" maxlength="50" /></td>' +
-                '<td><input type="text" name="UserRows[' + i + '].LastName" class="form-control form-control-sm" placeholder="Last Name" maxlength="50" required /></td>' +
-                '<td><input type="email" name="UserRows[' + i + '].Email" class="form-control form-control-sm" placeholder="Email" maxlength="100" required /></td>' +
-                '<td><input type="text" name="UserRows[' + i + '].ContactNumber" class="form-control form-control-sm" placeholder="Contact No." maxlength="20" /></td>' +
-                '<td><input type="text" name="UserRows[' + i + '].Password" class="form-control form-control-sm pass-input" autocomplete="off" /></td>' +
-                '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-trash"></i></button></td>';
-        }
-
-        // Renumber the rows AND their input names, so there are never gaps
-        // (ASP.NET stops binding a list at the first missing index).
-        function reindexRows() {
-            var rows = document.querySelectorAll('.user-row');
-            rows.forEach(function (row, i) {
-                row.querySelector('.row-number').textContent = i + 1;
-                row.querySelectorAll('input[name^="UserRows["]').forEach(function (inp) {
-                    inp.name = inp.name.replace(/^UserRows\[\d+\]/, 'UserRows[' + i + ']');
-                });
-            });
-            var count = rows.length;
-            document.getElementById('userCountBadge').textContent = count + ' user' + (count > 1 ? 's' : '');
-            document.getElementById('submitBtn').textContent = '+ Create ' + count + ' User' + (count > 1 ? 's' : '');
-        }
-
-        function toggleAutoPass() {
-            var auto = document.getElementById('autoPass').checked;
-            document.querySelectorAll('.pass-input').forEach(function (input) {
-                input.readOnly = auto;
-                input.required = !auto;
-                input.placeholder = auto ? 'Auto-generated' : 'Min. 8 characters';
-                if (auto) input.value = '';
-            });
-        }
-
-        function addRow() {
+            var form = document.getElementById('addUsersForm');
             var container = document.getElementById('rowsContainer');
-            var tr = document.createElement('tr');
-            tr.className = 'user-row';
-            tr.innerHTML = rowHtml(container.querySelectorAll('.user-row').length);
-            container.appendChild(tr);
-            reindexRows();
-            toggleAutoPass();
-        }
+            var table = document.getElementById('usersTable');
+            var autoPass = document.getElementById('autoPass');
+            var submitted = false;
+            var selectedRole = 'User';
 
-        document.getElementById('addRowBtn').addEventListener('click', addRow);
-        document.getElementById('autoPass').addEventListener('change', toggleAutoPass);
+            // ---------- Role ----------
+            function selectRole(role) {
+                if (!ROLE_INFO[role]) role = 'User';
+                selectedRole = role;
+                var info = ROLE_INFO[role];
 
-        document.addEventListener('click', function (e) {
-            var btn = e.target.closest('.remove-row');
-            if (btn && document.querySelectorAll('.user-row').length > 1) {
-                btn.closest('tr').remove();
-                reindexRows();
+                document.querySelectorAll('.role-option-card').forEach(function (card) {
+                    var on = card.getAttribute('data-role') === role;
+                    card.classList.toggle('selected', on);
+                    card.querySelector('input').checked = on;
+                });
+
+                document.getElementById('idHeaderLabel').textContent = info.idLabel;
+                document.getElementById('roleLabel').textContent = info.label;
+                container.querySelectorAll('input[data-key="id"]').forEach(function (i) { i.placeholder = info.idPh; });
+
+                var list = document.getElementById('permList');
+                list.innerHTML = '';
+                info.perms.forEach(function (text) {
+                    var li = document.createElement('li');
+                    li.className = 'mb-1';
+                    var icon = document.createElement('i');
+                    icon.className = 'bi bi-check2 text-success me-1';
+                    li.appendChild(icon);
+                    li.appendChild(document.createTextNode(text));
+                    list.appendChild(li);
+                });
             }
-        });
 
-        document.getElementById('addUsersForm').addEventListener('submit', function (e) {
-            var n = document.querySelectorAll('.user-row').length;
-            if (selectedRole === 'Admin' &&
-                !confirm('You are about to create ' + n + ' administrator account(s) with full system access. Continue?')) {
+            document.querySelectorAll('.role-option-card input').forEach(function (radio) {
+                radio.addEventListener('change', function () { selectRole(radio.value); });
+            });
+
+            // ---------- Rows ----------
+            function rows() { return Array.prototype.slice.call(container.querySelectorAll('tr.user-row')); }
+
+            function rowIsBlank(tr) {
+                return Array.prototype.every.call(tr.querySelectorAll('input[data-key]'), function (i) {
+                    return i.value.trim() === '';
+                });
+            }
+
+            function createRow(values, errors) {
+                values = values || {};
+                errors = errors || {};
+                var tr = document.createElement('tr');
+                tr.className = 'user-row';
+
+                var num = document.createElement('td');
+                num.className = 'row-number fw-bold text-muted ps-4';
+                tr.appendChild(num);
+
+                FIELDS.forEach(function (f) {
+                    var td = document.createElement('td');
+                    if (f.key === 'password') td.className = 'col-password';
+
+                    var input = document.createElement('input');
+                    input.type = f.type === 'email' ? 'email' : 'text';
+                    input.className = 'form-control';
+                    input.dataset.key = f.key;
+                    input.dataset.prop = f.prop;
+                    input.maxLength = f.max;
+                    input.autocomplete = 'off';
+                    input.placeholder = f.key === 'id' ? ROLE_INFO[selectedRole].idPh : f.ph;
+                    if (f.type === 'tel') input.inputMode = 'tel';
+                    input.value = values[f.key] || '';
+                    if (errors[f.key]) {
+                        input.dataset.serverError = errors[f.key];
+                        input.dataset.touched = '1';
+                    }
+
+                    var feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+
+                    td.appendChild(input);
+                    td.appendChild(feedback);
+                    tr.appendChild(td);
+                });
+
+                var action = document.createElement('td');
+                action.className = 'text-center pe-4';
+                action.innerHTML = '<button type="button" class="btn btn-outline-danger remove-row" title="Remove row"><i class="bi bi-trash"></i></button>';
+                tr.appendChild(action);
+
+                container.appendChild(tr);
+                return tr;
+            }
+
+            // Input names follow the row order so the list binds without gaps
+            function reindex() {
+                rows().forEach(function (tr, i) {
+                    tr.querySelector('.row-number').textContent = i + 1;
+                    tr.querySelectorAll('input[data-prop]').forEach(function (inp) {
+                        inp.name = 'UserRows[' + i + '].' + inp.dataset.prop;
+                    });
+                });
+            }
+
+            function addRow(focus) {
+                if (rows().length >= MAX_ROWS) {
+                    showImportMessage('warning', 'You can add at most ' + MAX_ROWS + ' accounts at a time.');
+                    return null;
+                }
+                var tr = createRow();
+                reindex();
+                applyAutoPass();
+                refreshAll();
+                if (focus) {
+                    tr.querySelector('input').focus();
+                    tr.scrollIntoView({ block: 'nearest' });
+                }
+                return tr;
+            }
+
+            // ---------- Validation ----------
+            function duplicateMessage(input) {
+                var key = input.dataset.key;
+                if (key !== 'id' && key !== 'email') return '';
+                var v = input.value.trim().toLowerCase();
+                if (!v) return '';
+                var count = 0;
+                container.querySelectorAll('input[data-key="' + key + '"]').forEach(function (other) {
+                    if (other.value.trim().toLowerCase() === v) count++;
+                });
+                return count > 1 ? (key === 'id' ? 'This ID' : 'This email') + ' appears more than once in this list.' : '';
+            }
+
+            function evaluate(input) {
+                if (input.dataset.serverError) return input.dataset.serverError;
+                var tr = input.closest('tr');
+                if (rowIsBlank(tr) && rows().length > 1) return '';
+                return checkField(input.dataset.key, input.value) || duplicateMessage(input);
+            }
+
+            function refreshInput(input) {
+                var msg = (submitted || input.dataset.touched) ? evaluate(input) : '';
+                input.classList.toggle('is-invalid', !!msg);
+                input.nextElementSibling.textContent = msg;
+            }
+
+            function refreshAll() {
+                container.querySelectorAll('input[data-key]').forEach(refreshInput);
+                rows().forEach(function (tr) {
+                    tr.classList.toggle('has-error', !!tr.querySelector('.is-invalid'));
+                });
+                updateSummary();
+            }
+
+            function updateSummary() {
+                var filled = rows().filter(function (tr) { return !rowIsBlank(tr); }).length;
+                var flagged = rows().filter(function (tr) { return tr.classList.contains('has-error'); }).length;
+                var n = Math.max(filled, 1);
+                document.getElementById('submitBtn').textContent = '+ Create ' + n + ' User' + (n > 1 ? 's' : '');
+
+                var summary = document.getElementById('summary');
+                summary.innerHTML = '';
+                var count = document.createElement('span');
+                count.className = 'fw-semibold';
+                count.textContent = filled + ' of ' + MAX_ROWS + ' accounts filled in';
+                summary.appendChild(count);
+                if (flagged > 0) {
+                    var warn = document.createElement('span');
+                    warn.className = 'text-danger ms-2';
+                    warn.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>';
+                    warn.appendChild(document.createTextNode(flagged + ' row' + (flagged > 1 ? 's need' : ' needs') + ' attention'));
+                    summary.appendChild(warn);
+                }
+            }
+
+            container.addEventListener('input', function (e) {
+                var input = e.target;
+                if (!input.dataset || !input.dataset.key) return;
+                if (input.dataset.key === 'contact') {
+                    // Digits only, with an optional leading +
+                    var cleaned = input.value.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+                    if (cleaned !== input.value) input.value = cleaned;
+                }
+                delete input.dataset.serverError;
+                // Duplicates depend on other rows, so recheck them all
+                if (input.dataset.key === 'id' || input.dataset.key === 'email') {
+                    container.querySelectorAll('input[data-key="' + input.dataset.key + '"]').forEach(function (i) {
+                        if (i !== input && i.dataset.serverError && /more than once/.test(i.dataset.serverError)) delete i.dataset.serverError;
+                    });
+                }
+                refreshAll();
+            });
+
+            container.addEventListener('focusout', function (e) {
+                var input = e.target;
+                if (!input.dataset || !input.dataset.key) return;
+                if (input.dataset.key === 'contact') input.value = cleanContact(input.value);
+                if (input.value.trim() !== '') input.dataset.touched = '1';
+                refreshAll();
+            });
+
+            // Enter moves down the same column, adding a row at the end
+            container.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || !e.target.dataset || !e.target.dataset.key) return;
                 e.preventDefault();
-            }
-        });
+                var tr = e.target.closest('tr');
+                var next = tr.nextElementSibling || addRow(false);
+                if (!next) return;
+                var target = next.querySelector('input[data-key="' + e.target.dataset.key + '"]');
+                if (target.closest('td').offsetParent === null) target = next.querySelector('input');
+                target.focus();
+                next.scrollIntoView({ block: 'nearest' });
+            });
 
-        selectRole('User');
-        addRow();
+            container.addEventListener('click', function (e) {
+                var btn = e.target.closest('.remove-row');
+                if (!btn) return;
+                var tr = btn.closest('tr');
+                if (rows().length > 1) {
+                    tr.remove();
+                } else {
+                    tr.querySelectorAll('input[data-key]').forEach(function (i) {
+                        i.value = '';
+                        delete i.dataset.serverError;
+                        delete i.dataset.touched;
+                    });
+                }
+                reindex();
+                refreshAll();
+            });
+
+            document.getElementById('addRowBtn').addEventListener('click', function () { addRow(true); });
+
+            // ---------- Passwords ----------
+            function applyAutoPass() {
+                var auto = autoPass.checked;
+                table.classList.toggle('auto-pass', auto);
+                container.querySelectorAll('input[data-key="password"]').forEach(function (input) {
+                    input.disabled = auto;   // disabled inputs are not posted
+                    if (auto) {
+                        input.value = '';
+                        delete input.dataset.serverError;
+                    }
+                });
+            }
+
+            autoPass.addEventListener('change', function () {
+                applyAutoPass();
+                refreshAll();
+            });
+
+            // ---------- Import (CSV file or pasted spreadsheet rows) ----------
+            var HEADER_ALIASES = {
+                id: ['id', 'studentid', 'employeeid', 'studentemployeeid', 'userid', 'idnumber', 'idno', 'studentno', 'studentnumber', 'employeeno', 'employeenumber'],
+                first: ['firstname', 'first', 'givenname'],
+                middle: ['middlename', 'middle', 'middleinitial', 'mi'],
+                last: ['lastname', 'last', 'surname', 'familyname'],
+                email: ['email', 'emailaddress', 'mail'],
+                contact: ['contact', 'contactno', 'contactnumber', 'mobile', 'mobileno', 'mobilenumber', 'phone', 'phonenumber', 'cellphone'],
+                password: ['password', 'temppassword', 'temporarypassword']
+            };
+
+            function headerKey(text) {
+                var h = (text || '').toLowerCase().replace(/[^a-z]/g, '');
+                for (var key in HEADER_ALIASES) {
+                    if (HEADER_ALIASES[key].indexOf(h) >= 0) return key;
+                }
+                return null;
+            }
+
+            function parseDelimited(text, delimiter) {
+                var out = [], row = [], field = '', quoted = false;
+                if (text.charAt(0) === BOM) text = text.slice(1);
+                for (var i = 0; i < text.length; i++) {
+                    var c = text[i];
+                    if (quoted) {
+                        if (c === '"') {
+                            if (text[i + 1] === '"') { field += '"'; i++; } else { quoted = false; }
+                        } else {
+                            field += c;
+                        }
+                    } else if (c === '"') {
+                        quoted = true;
+                    } else if (c === delimiter) {
+                        row.push(field); field = '';
+                    } else if (c === '\n' || c === '\r') {
+                        if (c === '\r' && text[i + 1] === '\n') i++;
+                        row.push(field); out.push(row); row = []; field = '';
+                    } else {
+                        field += c;
+                    }
+                }
+                if (field !== '' || row.length) { row.push(field); out.push(row); }
+                return out.filter(function (r) { return r.some(function (x) { return x.trim() !== ''; }); });
+            }
+
+            // Turns parsed rows into records, using the header row when there is one
+            function toRecords(table) {
+                if (!table.length) return [];
+                var columns = table[0].map(headerKey);
+                var recognised = columns.filter(Boolean).length;
+                var hasHeader = recognised >= 2;
+                if (!hasHeader) columns = FIELDS.map(function (f) { return f.key; });
+
+                return table.slice(hasHeader ? 1 : 0).map(function (cells) {
+                    var rec = {};
+                    columns.forEach(function (key, i) {
+                        if (key && cells[i] !== undefined) rec[key] = cells[i].trim();
+                    });
+                    if (rec.contact) rec.contact = cleanContact(rec.contact);
+                    return rec;
+                });
+            }
+
+            function fillRows(records, startRow) {
+                // An empty table is replaced instead of appended to
+                var existing = rows();
+                var start = startRow;
+                if (start === undefined) {
+                    if (existing.every(rowIsBlank)) {
+                        existing.forEach(function (tr) { tr.remove(); });
+                        start = 0;
+                    } else {
+                        start = existing.length;
+                    }
+                }
+
+                var added = 0, skipped = 0;
+                records.forEach(function (rec, i) {
+                    var tr = rows()[start + i];
+                    if (!tr) {
+                        if (rows().length >= MAX_ROWS) { skipped++; return; }
+                        tr = createRow();
+                    }
+                    Object.keys(rec).forEach(function (key) {
+                        var input = tr.querySelector('input[data-key="' + key + '"]');
+                        if (!input || (key === 'password' && autoPass.checked)) return;
+                        input.value = rec[key];
+                        delete input.dataset.serverError;
+                        input.dataset.touched = '1';
+                    });
+                    added++;
+                });
+
+                if (!rows().length) createRow();
+                reindex();
+                applyAutoPass();
+                refreshAll();
+                return { added: added, skipped: skipped };
+            }
+
+            function showImportMessage(kind, text) {
+                var box = document.getElementById('importMessage');
+                box.className = 'alert alert-' + kind + ' mx-4 py-2 small';
+                box.textContent = text;
+            }
+
+            var fileInput = document.getElementById('csvFile');
+            document.getElementById('importBtn').addEventListener('click', function () { fileInput.click(); });
+
+            fileInput.addEventListener('change', function () {
+                var file = fileInput.files[0];
+                fileInput.value = '';
+                if (!file) return;
+
+                if (!/\.csv$/i.test(file.name)) {
+                    showImportMessage('danger', '"' + file.name + '" is not a CSV file. Only .csv files can be imported.');
+                    return;
+                }
+                if (file.size > 1024 * 1024) {
+                    showImportMessage('danger', 'The file is too large. CSV files must be 1 MB or smaller.');
+                    return;
+                }
+
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var records = toRecords(parseDelimited(String(reader.result), ','));
+                    if (!records.length) {
+                        showImportMessage('warning', '"' + file.name + '" has no rows to import.');
+                        return;
+                    }
+                    var res = fillRows(records);
+                    var flagged = rows().filter(function (tr) { return tr.classList.contains('has-error'); }).length;
+                    var text = 'Imported ' + res.added + ' row' + (res.added === 1 ? '' : 's') + ' from "' + file.name + '".';
+                    if (res.skipped) text += ' ' + res.skipped + ' row(s) were left out because the limit is ' + MAX_ROWS + '.';
+                    if (flagged) text += ' ' + flagged + ' row(s) need attention.';
+                    showImportMessage(flagged || res.skipped ? 'warning' : 'success', text);
+                };
+                reader.onerror = function () {
+                    showImportMessage('danger', 'The file could not be read. Please try again.');
+                };
+                reader.readAsText(file);
+            });
+
+            // Pasting several cells copied from Excel or Google Sheets fills the rows from here down
+            container.addEventListener('paste', function (e) {
+                var input = e.target;
+                if (!input.dataset || !input.dataset.key) return;
+                var text = (e.clipboardData || window.clipboardData).getData('text');
+                if (!/[\t\n]/.test(text.trim())) return;
+                e.preventDefault();
+
+                var visible = FIELDS.map(function (f) { return f.key; })
+                    .filter(function (k) { return !(k === 'password' && autoPass.checked); });
+                var startCol = visible.indexOf(input.dataset.key);
+                var records = parseDelimited(text, '\t').map(function (cells) {
+                    var rec = {};
+                    cells.forEach(function (cell, i) {
+                        var key = visible[startCol + i];
+                        if (key) rec[key] = key === 'contact' ? cleanContact(cell.trim()) : cell.trim();
+                    });
+                    return rec;
+                });
+                fillRows(records, rows().indexOf(input.closest('tr')));
+            });
+
+            document.getElementById('templateBtn').addEventListener('click', function () {
+                var lines = [
+                    'Student/Employee ID,First Name,Middle Name,Last Name,Email,Contact Number',
+                    '2023-1001,Juan,Santos,Dela Cruz,juan.delacruz' + AT + 'school.edu.ph,09171234567'
+                ];
+                var blob = new Blob([BOM + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'add-users-template.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            // ---------- Submit ----------
+            form.addEventListener('submit', function (e) {
+                // Leftover empty rows are ignored
+                rows().forEach(function (tr) {
+                    if (rowIsBlank(tr) && rows().length > 1) tr.remove();
+                });
+                container.querySelectorAll('input[data-key="contact"]').forEach(function (i) { i.value = cleanContact(i.value); });
+                reindex();
+
+                submitted = true;
+                refreshAll();
+
+                var firstError = container.querySelector('.is-invalid');
+                if (firstError) {
+                    e.preventDefault();
+                    firstError.focus();
+                    firstError.closest('tr').scrollIntoView({ block: 'center' });
+                }
+            });
+
+            // ---------- Start ----------
+            selectRole(INITIAL.role);
+            var startRows = INITIAL.rows && INITIAL.rows.length ? INITIAL.rows : [{}];
+            startRows.forEach(function (values, i) {
+                createRow(values, INITIAL.errors ? INITIAL.errors[i] : null);
+            });
+            reindex();
+            applyAutoPass();
+            refreshAll();
+
+            var serverError = container.querySelector('.is-invalid');
+            if (serverError) serverError.closest('tr').scrollIntoView({ block: 'center' });
+        })();
     </script>
 }

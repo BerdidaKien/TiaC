@@ -9,86 +9,47 @@
 
 <div class="dash-header mb-3">
     <h1 class="dash-name m-0">Add Users - Result</h1>
-    <p class="dash-sub">
-        @Model.Created.Count account(s) created@(Model.Failed.Any() ? $", {Model.Failed.Count} failed" : "").
-    </p>
+    <p class="dash-sub">@Model.Created.Count account(s) created.</p>
 </div>
 
-@if (!string.IsNullOrEmpty(Model.GeneralError))
-{
-    <div class="alert alert-danger">@Model.GeneralError</div>
-}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>Save these credentials now.</strong> The temporary passwords are shown only once and cannot be viewed again.
+</div>
 
-@if (Model.Created.Any())
-{
-    <div class="alert alert-warning">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        <strong>Save these credentials now.</strong> The temporary passwords are shown only once and cannot be viewed again.
-        @if (!Model.IsActive)
-        {
-            <div class="mt-1">These accounts are <strong>inactive</strong> and cannot log in until activated.</div>
-        }
-    </div>
-
-    <div class="dash-card p-4 mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold m-0"><i class="bi bi-check-circle-fill text-success me-1"></i> Created accounts (@Model.Role)</h6>
-            <div class="d-flex gap-2">
-                <button type="button" id="downloadCsv" class="btn btn-outline-danger btn-sm fw-bold">
-                    <i class="bi bi-download me-1"></i> Download credentials (CSV)
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-                    <i class="bi bi-printer me-1"></i> Print
-                </button>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-sm align-middle" id="createdTable">
-                <thead class="table-light small">
-                    <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Temporary Password</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var u in Model.Created)
-                    {
-                        <tr>
-                            <td>@u.UserId</td>
-                            <td>@u.FullName</td>
-                            <td>@u.Email</td>
-                            <td>@u.Role</td>
-                            <td><code>@u.TempPassword</code></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+<div class="dash-card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold m-0"><i class="bi bi-check-circle-fill text-success me-1"></i> Created accounts (@(Model.Role == "User" ? "Student" : Model.Role))</h6>
+        <div class="d-flex gap-2">
+            <button type="button" id="downloadCsv" class="btn btn-outline-danger btn-sm fw-bold">
+                <i class="bi bi-download me-1"></i> Download credentials (CSV)
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Print
+            </button>
         </div>
     </div>
-}
 
-@if (Model.Failed.Any())
-{
-    <div class="dash-card p-4 mb-4">
-        <h6 class="fw-bold mb-3"><i class="bi bi-x-circle-fill text-danger me-1"></i> Not created</h6>
-        <div class="table-responsive">
-            <table class="table table-sm align-middle">
-                <thead class="table-light small">
-                    <tr><th>Row</th><th>ID</th><th>Reason</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var f in Model.Failed)
-                    {
-                        <tr>
-                            <td>@f.RowNumber</td>
-                            <td>@(string.IsNullOrEmpty(f.UserId) ? "-" : f.UserId)</td>
-                            <td class="text-danger">@f.Reason</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-        <div class="small text-muted">Fix these rows and add them again. The accounts above were already saved.</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle" id="createdTable">
+            <thead class="table-light small">
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Temporary Password</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Created)
+                {
+                    <tr>
+                        <td>@u.UserId</td>
+                        <td>@u.FullName</td>
+                        <td>@u.Email</td>
+                        <td>@(u.Role == "User" ? "Student" : u.Role)</td>
+                        <td><code>@u.TempPassword</code></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
-}
+</div>
 
 <div class="d-flex gap-2">
     <a asp-controller="Admin" asp-action="AddUsers" class="btn dash-btn-reserve text-white fw-bold">

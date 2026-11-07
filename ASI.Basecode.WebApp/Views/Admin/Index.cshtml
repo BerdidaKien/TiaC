@@ -59,10 +59,6 @@
         .stat-compact .stat-sub {
             font-size: .72rem;
         }
-
-        a:hover > .stat-compact {
-            box-shadow: 0 0 0 1px #800000 inset;
-        }
     </style>
 }
 
@@ -74,52 +70,44 @@
 <!-- 1. Compact metric cards -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-xl-3">
-        <a asp-controller="Admin" asp-action="Reservations" class="text-decoration-none">
-            <div class="dash-card stat-compact d-flex align-items-center gap-3">
-                <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-calendar-event"></i></div>
-                <div>
-                    <div class="dash-stat-label">Total Reservations</div>
-                    <div class="dash-stat-count">@Model.TotalReservations</div>
-                    <div class="stat-sub text-muted">@Model.PendingReservations pending</div>
-                </div>
+        <div class="dash-card stat-compact d-flex align-items-center gap-3">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-calendar-event"></i></div>
+            <div>
+                <div class="dash-stat-label">Total Reservations</div>
+                <div class="dash-stat-count">@Model.TotalReservations</div>
+                <div class="stat-sub text-muted">@Model.PendingReservations pending</div>
             </div>
-        </a>
+        </div>
     </div>
     <div class="col-6 col-xl-3">
-        <a asp-controller="Admin" asp-action="Reports" class="text-decoration-none">
-            <div class="dash-card stat-compact d-flex align-items-center gap-3">
-                <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-box-seam"></i></div>
-                <div>
-                    <div class="dash-stat-label">Total Items</div>
-                    <div class="dash-stat-count">@Model.TotalItems</div>
-                    <div class="stat-sub text-muted">@Model.BorrowedItems borrowed &middot; @Model.MaintenanceItems maintenance</div>
-                </div>
+        <div class="dash-card stat-compact d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-box-seam"></i></div>
+            <div>
+                <div class="dash-stat-label">Total Items</div>
+                <div class="dash-stat-count">@Model.TotalItems</div>
+                <div class="stat-sub text-muted">@Model.BorrowedItems borrowed &middot; @Model.MaintenanceItems maintenance</div>
             </div>
-        </a>
+        </div>
     </div>
     <div class="col-6 col-xl-3">
-        <a asp-controller="Admin" asp-action="Users" class="text-decoration-none">
-            <div class="dash-card stat-compact d-flex align-items-center gap-3">
-                <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-people"></i></div>
-                <div>
-                    <div class="dash-stat-label">Total Users</div>
-                    <div class="dash-stat-count">@Model.TotalUsers</div>
-                    <div class="stat-sub text-muted">@Model.ActiveUsers active</div>
-                </div>
+        <div class="dash-card stat-compact d-flex align-items-center gap-3">
+            <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="dash-stat-label">Total Users</div>
+                <div class="dash-stat-count">@Model.TotalUsers</div>
+                <div class="stat-sub text-muted">@Model.ActiveUsers active</div>
             </div>
-        </a>
+        </div>
     </div>
     <div class="col-6 col-xl-3">
-        <a asp-controller="Admin" asp-action="Reports" asp-route-status="available" class="text-decoration-none">
-            <div class="dash-card stat-compact d-flex align-items-center gap-3">
-                <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-check-circle"></i></div>
-                <div>
-                    <div class="dash-stat-label">Available Items</div>
-                    <div class="dash-stat-count">@Model.AvailableItems</div>
-                    <div class="stat-sub text-muted">@Model.AvailablePercent% of total items</div>
-                </div>
+        <div class="dash-card stat-compact d-flex align-items-center gap-3">
+            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-check-circle"></i></div>
+            <div>
+                <div class="dash-stat-label">Available Items</div>
+                <div class="dash-stat-count">@Model.AvailableItems</div>
+                <div class="stat-sub text-muted">@Model.AvailablePercent% of total items</div>
             </div>
-        </a>
+        </div>
     </div>
 </div>
 
