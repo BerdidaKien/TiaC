@@ -81,14 +81,26 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult AddUsers(AddUsersPostModel model)
         {
-            if (model == null || model.UserRows == null || !model.UserRows.Any())
+            model ??= new AddUsersPostModel();
+            model.UserRows = (model.UserRows ?? new List<AddUserRow>()).Where(r => r != null && !r.IsBlank()).ToList();
+            Response.Headers["Cache-Control"] = "no-store";
+
+            if (!model.UserRows.Any())
             {
-                return View(new AddUsersPostModel());
+                model.UserRows.Add(new AddUserRow());
+                model.FormError = "Add at least one user.";
+                return View(model);
             }
 
             var result = _adminUserService.CreateUsers(model, AdminCode);
+            if (!result.Success)
+            {
+                // Send everything back so the admin only fixes the flagged fields
+                model.FormError = result.GeneralError ?? $"{result.RowErrors.Count} row(s) need attention. Nothing was saved yet.";
+                model.RowErrors = result.RowErrors;
+                return View(model);
+            }
 
-            Response.Headers["Cache-Control"] = "no-store";
             return View("AddUsersResult", result);
         }
         // ---------- Edit user (account status) ----------
