@@ -35,9 +35,15 @@ namespace ASI.Basecode.WebApp
             // Services
             this._services.TryAddSingleton<TokenValidationParametersFactory>();
             this._services.AddScoped<IUserService, UserService>();
-
+            this._services.AddScoped<IPasswordResetService, PasswordResetService>();
+            // Services
+            this._services.TryAddSingleton<TokenValidationParametersFactory>();
+            this._services.AddScoped<IUserService, UserService>();
+            this._services.AddScoped<IEmailService, EmailService>();
 
             // Repositories
+            this._services.AddScoped<IUserRepository, UserRepository>();
+            this._services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
             this._services.AddScoped<IUserRepository, UserRepository>();
 
             // Equipment Master Data Dependency Injection
