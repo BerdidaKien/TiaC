@@ -26,6 +26,7 @@ public partial class TiaCContext : DbContext
     public virtual DbSet<InfoChangeRequestFile> InfoChangeRequestFiles { get; set; }
 
     public virtual DbSet<InfoChangeRequestItem> InfoChangeRequestItems { get; set; }
+    public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +91,12 @@ public partial class TiaCContext : DbContext
                 .HasForeignKey(d => d.ReturnedTo)
                 .HasConstraintName("FK_Transactions_ReturnedTo");
         });
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired().HasMaxLength(50).IsUnicode(false);
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64).IsUnicode(false);
+        });
 
         modelBuilder.Entity<EquipmentCategory>(entity =>
         {
@@ -146,6 +153,7 @@ public partial class TiaCContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("brand_model");
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.CustodianId).HasColumnName("custodian_id");
             entity.Property(e => e.ConditionRating)
                 .IsRequired()
                 .HasMaxLength(20)

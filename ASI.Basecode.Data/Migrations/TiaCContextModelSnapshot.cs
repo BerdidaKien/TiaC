@@ -92,17 +92,17 @@ namespace ASI.Basecode.Data.Migrations
                     b.HasKey("Id")
                         .HasName("PK__Borrowin__3213E83F58D0F761");
 
-                    b.HasIndex("BorrowerId");
+                    b.HasIndex(new[] { "BorrowerId" }, "IX_BorrowingTransactions_borrower_id");
 
-                    b.HasIndex("EquipmentItemId");
+                    b.HasIndex(new[] { "EquipmentItemId" }, "IX_BorrowingTransactions_equipment_item_id");
 
-                    b.HasIndex("ReleasedBy");
+                    b.HasIndex(new[] { "ReleasedBy" }, "IX_BorrowingTransactions_released_by");
 
-                    b.HasIndex("ReturnedTo");
+                    b.HasIndex(new[] { "ReturnedTo" }, "IX_BorrowingTransactions_returned_to");
 
                     b.HasIndex(new[] { "ReservationId" }, "UQ_Transaction_Reservation")
                         .IsUnique()
-                        .HasFilter("[reservation_id] IS NOT NULL");
+                        .HasFilter("([reservation_id] IS NOT NULL)");
 
                     b.ToTable("BorrowingTransactions");
                 });
@@ -188,9 +188,14 @@ namespace ASI.Basecode.Data.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("brand_model");
 
-                    b.Property<int>("CategoryId")
+                    b.Property<int?>("CategoryId")
                         .HasColumnType("int")
                         .HasColumnName("category_id");
+
+                    b.Property<string>("CategoryReviewNote")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("category_review_note");
 
                     b.Property<string>("ConditionRating")
                         .IsRequired()
@@ -212,6 +217,16 @@ namespace ASI.Basecode.Data.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("created_time")
                         .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int?>("CustodianId")
+                        .HasColumnType("int")
+                        .HasColumnName("custodian_id");
+
+                    b.Property<string>("ImagePath")
+                        .HasMaxLength(255)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("image_path");
 
                     b.Property<string>("ItemCode")
                         .IsRequired()
@@ -241,6 +256,11 @@ namespace ASI.Basecode.Data.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("storage_location");
 
+                    b.Property<string>("SuggestedCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("suggested_category");
+
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(50)
                         .IsUnicode(false)
@@ -256,16 +276,174 @@ namespace ASI.Basecode.Data.Migrations
                     b.HasKey("Id")
                         .HasName("PK__Equipmen__3213E83F8AE4C201");
 
-                    b.HasIndex("CategoryId");
+                    b.HasIndex(new[] { "CategoryId" }, "IX_EquipmentItems_category_id");
 
                     b.HasIndex(new[] { "ItemCode" }, "UQ_Item_Code")
                         .IsUnique();
 
                     b.HasIndex(new[] { "SerialNumber" }, "UQ_Item_Serial")
                         .IsUnique()
-                        .HasFilter("[serial_number] IS NOT NULL");
+                        .HasFilter("([serial_number] IS NOT NULL)");
 
                     b.ToTable("EquipmentItems");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.InfoChangeRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_time")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("review_note");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<int?>("ReviewedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("pending")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_time")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("PK_InfoChangeRequests");
+
+                    b.HasIndex("ReviewedBy");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("info_change_requests", (string)null);
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.InfoChangeRequestFile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("content_type");
+
+                    b.Property<string>("OriginalName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("original_name");
+
+                    b.Property<int>("RequestId")
+                        .HasColumnType("int")
+                        .HasColumnName("request_id");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StoredName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("stored_name");
+
+                    b.Property<DateTime>("UploadedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("uploaded_time")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.HasKey("Id")
+                        .HasName("PK_InfoRequestFiles");
+
+                    b.HasIndex("RequestId");
+
+                    b.ToTable("info_change_request_files", (string)null);
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.InfoChangeRequestItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApprovedValue")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("approved_value");
+
+                    b.Property<string>("FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("field_key");
+
+                    b.Property<string>("NewValue")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("new_value");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("old_value");
+
+                    b.Property<int>("RequestId")
+                        .HasColumnType("int")
+                        .HasColumnName("request_id");
+
+                    b.HasKey("Id")
+                        .HasName("PK_InfoRequestItems");
+
+                    b.HasIndex("RequestId");
+
+                    b.ToTable("info_change_request_items", (string)null);
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.Reservation", b =>
@@ -329,13 +507,45 @@ namespace ASI.Basecode.Data.Migrations
                     b.HasKey("Id")
                         .HasName("PK__Reservat__3213E83F95CD2E81");
 
-                    b.HasIndex("BorrowerId");
+                    b.HasIndex(new[] { "BorrowerId" }, "IX_Reservations_borrower_id");
 
-                    b.HasIndex("EquipmentItemId");
+                    b.HasIndex(new[] { "EquipmentItemId" }, "IX_Reservations_equipment_item_id");
 
-                    b.HasIndex("ReviewedBy");
+                    b.HasIndex(new[] { "ReviewedBy" }, "IX_Reservations_reviewed_by");
 
                     b.ToTable("Reservations");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.SystemSetting", b =>
+                {
+                    b.Property<string>("SettingKey")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("setting_key");
+
+                    b.Property<string>("SettingValue")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("setting_value");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime>("UpdatedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_time")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.HasKey("SettingKey")
+                        .HasName("PK_SystemSettings");
+
+                    b.ToTable("system_settings", (string)null);
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.User", b =>
@@ -346,6 +556,15 @@ namespace ASI.Basecode.Data.Migrations
                         .HasColumnName("id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("active")
+                        .HasColumnName("account_status");
 
                     b.Property<string>("BorrowerStatus")
                         .IsRequired()
@@ -413,6 +632,12 @@ namespace ASI.Basecode.Data.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(255)")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("ProfileImagePath")
+                        .HasMaxLength(255)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("profile_image_path");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -500,10 +725,51 @@ namespace ASI.Basecode.Data.Migrations
                     b.HasOne("ASI.Basecode.Data.Models.EquipmentCategory", "Category")
                         .WithMany("EquipmentItems")
                         .HasForeignKey("CategoryId")
-                        .IsRequired()
                         .HasConstraintName("FK_EquipmentItems_Categories");
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.InfoChangeRequest", b =>
+                {
+                    b.HasOne("ASI.Basecode.Data.Models.User", "ReviewedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .HasConstraintName("FK_InfoRequests_Reviewer");
+
+                    b.HasOne("ASI.Basecode.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .IsRequired()
+                        .HasConstraintName("FK_InfoRequests_User");
+
+                    b.Navigation("ReviewedByNavigation");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.InfoChangeRequestFile", b =>
+                {
+                    b.HasOne("ASI.Basecode.Data.Models.InfoChangeRequest", "Request")
+                        .WithMany("Files")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_InfoRequestFiles_Request");
+
+                    b.Navigation("Request");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.InfoChangeRequestItem", b =>
+                {
+                    b.HasOne("ASI.Basecode.Data.Models.InfoChangeRequest", "Request")
+                        .WithMany("Items")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_InfoRequestItems_Request");
+
+                    b.Navigation("Request");
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.Reservation", b =>
@@ -542,6 +808,13 @@ namespace ASI.Basecode.Data.Migrations
                     b.Navigation("BorrowingTransactions");
 
                     b.Navigation("Reservations");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.InfoChangeRequest", b =>
+                {
+                    b.Navigation("Files");
+
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.Reservation", b =>

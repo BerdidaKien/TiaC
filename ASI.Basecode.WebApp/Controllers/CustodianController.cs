@@ -56,7 +56,7 @@ namespace ASI.Basecode.WebApp.Controllers
         // ---------- Dashboard ----------
         public IActionResult Index(string search, int? categoryId, string status)
         {
-            var model = _equipmentService.GetDashboardSummary(search, categoryId, status);
+            var model = _equipmentService.GetDashboardSummary(search, categoryId, status, CurrentUserCode);
             return View(model);
         }
 
@@ -70,7 +70,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
         private IActionResult EquipmentPage(int page)
         {
-            var all = _equipmentService.GetAllEquipment()
+            var all = _equipmentService.GetAllEquipment(CurrentUserCode)
                 .OrderByDescending(i => i.CreatedTime)
                 .ThenByDescending(i => i.Id)
                 .ToList();
@@ -108,7 +108,7 @@ namespace ASI.Basecode.WebApp.Controllers
             var imagePath = SavePhoto(photo);
             model.ImagePath = imagePath;
 
-            var result = _equipmentService.AddEquipment(model);
+            var result = _equipmentService.AddEquipment(model, CurrentUserCode);
             if (!result.Success)
             {
                 DeletePhotoFile(imagePath);
@@ -142,7 +142,7 @@ namespace ASI.Basecode.WebApp.Controllers
             }
 
             model.UpdatedBy = CurrentUserCode ?? "Custodian";
-            var result = _equipmentService.UpdateEquipment(model);
+            var result = _equipmentService.UpdateEquipment(model, CurrentUserCode);
 
             if (result.Success)
             {
@@ -162,7 +162,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ArchiveEquipment(int id, int page = 1)
         {
-            var result = _equipmentService.ArchiveEquipment(id, User.Identity?.Name ?? "Custodian");
+            var result = _equipmentService.ArchiveEquipment(id, User.Identity?.Name ?? "Custodian", CurrentUserCode);
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
             return RedirectToAction(nameof(Equipment), new { page });
         }
@@ -242,7 +242,7 @@ namespace ASI.Basecode.WebApp.Controllers
         // ---------- Reservations ----------
         public IActionResult Reservations(string search, int? categoryId)
         {
-            var model = _reservationService.GetPage(search, categoryId);
+            var model = _reservationService.GetPage(search, categoryId, CurrentUserCode);
             return View(model);
         }
 
@@ -277,24 +277,24 @@ namespace ASI.Basecode.WebApp.Controllers
         // ---------- History ----------
         public IActionResult History(HistoryFilter filter)
         {
-            return View(_historyService.GetPage(filter));
+            return View(_historyService.GetPage(filter, CurrentUserCode));
         }
 
         public IActionResult ExportHistoryCsv(HistoryFilter filter)
         {
-            var bytes = _historyService.ExportCsv(filter);
+            var bytes = _historyService.ExportCsv(filter, CurrentUserCode);
             return File(bytes, "text/csv", $"borrowing-history-{DateTime.Now:yyyyMMdd-HHmm}.csv");
         }
 
         public IActionResult HistoryPrint(HistoryFilter filter)
         {
-            return View(_historyService.GetPage(filter));
+            return View(_historyService.GetPage(filter, CurrentUserCode));
         }
 
         // ---------- Reports ----------
         public IActionResult Reports(DateTime? from, DateTime? to)
         {
-            return View(_reportService.GetPage(from, to));
+            return View(_reportService.GetPage(from, to, CurrentUserCode));
         }
 
         [HttpGet]
@@ -304,7 +304,7 @@ namespace ASI.Basecode.WebApp.Controllers
             {
                 return BadRequest("Invalid date range.");
             }
-            return Json(_reportService.GetCalendar(start, end, categoryId, itemId));
+            return Json(_reportService.GetCalendar(start, end, categoryId, itemId, CurrentUserCode));
         }
 
         // ---------- Other pages ----------

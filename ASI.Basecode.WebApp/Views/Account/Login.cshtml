@@ -54,6 +54,9 @@
                             </button>
                         </div>
                         <span asp-validation-for="Password" class="text-danger small d-block"></span>
+                        <div class="text-end mb-2">
+                            <a asp-controller="Account" asp-action="ForgotPassword" class="small">Forgot password?</a>
+                        </div>
                     </div>
 
                     <div class="d-flex flex-column align-items-center mt-4">
@@ -71,6 +74,10 @@
         var errorMessage = '@TempData["ErrorMessage"]';
         if (errorMessage) {
             toastr.error(errorMessage);
+        }
+        var successMessage = '@TempData["SuccessMessage"]';
+        if (successMessage) {
+            toastr.success(successMessage);
         }
 
         // Show / hide password

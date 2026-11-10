@@ -9,7 +9,7 @@ namespace ASI.Basecode.Services.Interfaces
 {
     public interface IReportService
     {
-        ReportsPageViewModel GetPage(DateTime? from, DateTime? to);
-        CalendarDataDto GetCalendar(DateTime start, DateTime end, int? categoryId, int? itemId);
+        ReportsPageViewModel GetPage(DateTime? from, DateTime? to, string custodianCode = null);
+        CalendarDataDto GetCalendar(DateTime start, DateTime end, int? categoryId, int? itemId, string custodianCode = null);
     }
 }

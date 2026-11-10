@@ -29,6 +29,8 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IConfiguration _appConfiguration;
         private readonly IUserService _userService;
 
+        private readonly IPasswordResetService _passwordResetService;
+
         public AccountController(
             SignInManager signInManager,
             IHttpContextAccessor httpContextAccessor,
@@ -36,6 +38,7 @@ namespace ASI.Basecode.WebApp.Controllers
             IConfiguration configuration,
             IMapper mapper,
             IUserService userService,
+            IPasswordResetService passwordResetService,
             TokenValidationParametersFactory tokenValidationParametersFactory,
             TokenProviderOptionsFactory tokenProviderOptionsFactory) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
@@ -45,6 +48,7 @@ namespace ASI.Basecode.WebApp.Controllers
             this._tokenValidationParametersFactory = tokenValidationParametersFactory;
             this._appConfiguration = configuration;
             this._userService = userService;
+            this._passwordResetService = passwordResetService;
         }
 
         [HttpGet]
@@ -102,7 +106,59 @@ namespace ASI.Basecode.WebApp.Controllers
                 return View();
             }
         }
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordViewModel());
+        }
 
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public IActionResult ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            try
+            {
+                _passwordResetService.RequestReset(model.UserId, token =>
+                    Url.Action("ResetPassword", "Account", new { token }, Request.Scheme));
+            }
+            catch (Exception ex)
+            {
+                // Log it, but show the same message so IDs can't be guessed
+                _logger.LogError(ex, "Failed to send password reset email.");
+            }
+
+            TempData["SuccessMessage"] = "If that User ID exists, a reset link has been sent to its email.";
+            return RedirectToAction("ForgotPassword");
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ResetPassword(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return RedirectToAction("Login");
+            return View(new ResetPasswordViewModel { Token = token });
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public IActionResult ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            if (_passwordResetService.ResetPassword(model.Token, model.NewPassword))
+            {
+                TempData["SuccessMessage"] = "Password updated. You can log in now.";
+                return RedirectToAction("Login");
+            }
+
+            TempData["ErrorMessage"] = "This reset link is invalid or has expired. Please request a new one.";
+            return RedirectToAction("ForgotPassword");
+        }
         [HttpGet]
         [AllowAnonymous]
         public IActionResult Register()
