@@ -2,6 +2,7 @@
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.Manager;
 using ASI.Basecode.Services.ServiceModels;
+using ASI.Basecode.Services.Services;
 using ASI.Basecode.WebApp.Authentication;
 using ASI.Basecode.WebApp.Models;
 using ASI.Basecode.WebApp.Mvc;
@@ -159,40 +160,76 @@ namespace ASI.Basecode.WebApp.Controllers
             TempData["ErrorMessage"] = "This reset link is invalid or has expired. Please request a new one.";
             return RedirectToAction("ForgotPassword");
         }
-        [HttpGet]
-        [AllowAnonymous]
-        public IActionResult Register()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        [AllowAnonymous]
-        public IActionResult Register(UserViewModel model)
-        {
-            try
-            {
-                _userService.AddUser(model);
-                return RedirectToAction("Login", "Account");
-            }
-            catch (InvalidDataException ex)
-            {
-                TempData["ErrorMessage"] = ex.Message;
-            }
-            catch (Exception)
-            {
-                TempData["ErrorMessage"] = Resources.Messages.Errors.ServerError;
-            }
-
-            return View();
-        }
-
         [AllowAnonymous]
         public async Task<IActionResult> SignOutUser()
         {
             await this._signInManager.SignOutAsync();
 
             return RedirectToAction("Login", "Account");
+        }
+
+        // ---------- First login (accounts created by an admin) ----------
+        private string CurrentUserId =>
+            User.FindFirst("UserId")?.Value ?? this._session.GetString("UserId");
+
+        private IActionResult RedirectToOwnHome()
+        {
+            if (User.IsInRole("Admin")) return RedirectToAction("Index", "Admin");
+            if (User.IsInRole("Custodian")) return RedirectToAction("Index", "Custodian");
+            return RedirectToAction("Index", "Student");
+        }
+
+        private FirstLoginViewModel BuildFirstLoginModel(string userId)
+        {
+            var profile = _userService.GetProfile(userId);
+            if (profile == null) return null;
+
+            return new FirstLoginViewModel
+            {
+                FullName = profile.FullName,
+                UserId = profile.UserId,
+                Email = profile.Email,
+                Role = profile.Role
+            };
+        }
+
+        [HttpGet]
+        public IActionResult FirstLogin()
+        {
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Account");
+            if (!_userService.MustCompleteSetup(userId)) return RedirectToOwnHome();
+
+            var model = BuildFirstLoginModel(userId);
+            if (model == null) return RedirectToAction("Login", "Account");
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult FirstLogin(FirstLoginViewModel posted)
+        {
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Account");
+            if (!_userService.MustCompleteSetup(userId)) return RedirectToOwnHome();
+
+            posted ??= new FirstLoginViewModel();
+
+            ServiceResult result = posted.NewPassword != posted.ConfirmPassword
+                ? ServiceResult.Fail("New password and confirmation do not match.")
+                : _userService.CompleteFirstLogin(userId, posted.NewPassword);
+
+            if (result.Success)
+            {
+                TempData["SuccessMessage"] = result.Message;
+                return RedirectToOwnHome();
+            }
+
+            // Passwords are never sent back; show what to fix
+            var model = BuildFirstLoginModel(userId);
+            if (model == null) return RedirectToAction("Login", "Account");
+            TempData["ErrorMessage"] = result.Message;
+            return View(model);
         }
 
         // Each role has its own profile page; this one is the student's
@@ -280,6 +317,19 @@ namespace ASI.Basecode.WebApp.Controllers
             if (string.IsNullOrWhiteSpace(NewPassword) || NewPassword != ConfirmPassword)
             {
                 TempData["ErrorMessage"] = "New password and confirmation do not match.";
+                return RedirectToOwnProfile();
+            }
+
+            var passwordError = UserFieldRules.CheckPassword(NewPassword);
+            if (passwordError != null)
+            {
+                TempData["ErrorMessage"] = passwordError;
+                return RedirectToOwnProfile();
+            }
+
+            if (NewPassword == CurrentPassword)
+            {
+                TempData["ErrorMessage"] = "New password must be different from the current one.";
                 return RedirectToOwnProfile();
             }
 

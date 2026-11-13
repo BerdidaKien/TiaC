@@ -372,12 +372,12 @@
                                        class="form-control profile-input"
                                        autocomplete="new-password"
                                        placeholder="Enter a new password"
-                                       minlength="8"
+                                       minlength="8" maxlength="64"
                                        required />
                             </div>
 
                             <small class="dash-muted">
-                                At least 8 characters.
+                                8 to 64 characters, with at least one letter and one number.
                             </small>
                         </div>
 
@@ -524,9 +524,9 @@
                     return showError('Please fill in all fields.');
                 }
 
-                if (next.length < 8) {
+                if (next.length < 8 || next.length > 64 || !/[A-Za-z]/.test(next) || !/\d/.test(next)) {
                     e.preventDefault();
-                    return showError('New password must be at least 8 characters.');
+                    return showError('New password must be 8 to 64 characters with at least one letter and one number.');
                 }
 
                 if (next !== confirm) {

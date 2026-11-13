@@ -38,6 +38,10 @@ public partial class User
     public string ProfileImagePath { get; set; }
     public string AccountStatus { get; set; } = "active";
 
+    // True for accounts an admin created: the user must set a new password and
+    // fill in their details at first login before using the system
+    public bool MustCompleteSetup { get; set; }
+
     public virtual ICollection<BorrowingTransaction> BorrowingTransactionBorrowers { get; set; } = new List<BorrowingTransaction>();
 
     public virtual ICollection<BorrowingTransaction> BorrowingTransactionReleasedByNavigations { get; set; } = new List<BorrowingTransaction>();

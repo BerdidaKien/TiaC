@@ -128,6 +128,7 @@ namespace ASI.Basecode.Services.Services
                     Role = role,
                     IsActive = true,
                     AccountStatus = "active",
+                    MustCompleteSetup = true,
                     BorrowerStatus = "Active",
                     CreatedBy = adminCode,
                     UpdatedBy = adminCode,

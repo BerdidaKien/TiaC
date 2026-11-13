@@ -84,6 +84,7 @@ namespace ASI.Basecode.Services.Services
             if (user == null) return false;
 
             user.PasswordHash = PasswordManager.EncryptPassword(newPassword);
+            user.MustCompleteSetup = false;   // they chose their own password, so first-login setup is done
             user.UpdatedTime = now;
             user.UpdatedBy = user.UserId;
             _users.UpdateUser(user);

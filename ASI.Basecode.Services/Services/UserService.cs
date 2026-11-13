@@ -40,40 +40,6 @@ namespace ASI.Basecode.Services.Services
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
 
-        public void AddUser(UserViewModel model)
-        {
-            var user = new User();
-
-            if (!_repository.UserExists(model.UserId))
-            {
-                _mapper.Map(model, user);
-
-                user.UserId = model.UserId;
-                user.FirstName = model.FirstName;
-                user.MiddleName = model.MiddleName;
-                user.LastName = model.LastName;
-                user.ContactNumber = model.ContactNumber;
-                user.Email = model.Email;
-                user.Role = string.IsNullOrWhiteSpace(model.Role) ? "Custodian" : model.Role;
-                user.PasswordHash = PasswordManager.EncryptPassword(model.Password);
-
-                user.BorrowerStatus = "eligible";
-                user.IsActive = true;
-                user.AccountStatus = "active";
-
-                user.CreatedTime = DateTime.Now;
-                user.UpdatedTime = DateTime.Now;
-                user.CreatedBy = Environment.UserName;
-                user.UpdatedBy = Environment.UserName;
-
-                _repository.AddUser(user);
-            }
-            else
-            {
-                throw new InvalidDataException(Resources.Messages.Errors.UserExists);
-            }
-        }
-
         public bool ChangePassword(string userId, string currentPassword, string newPassword)
         {
             var user = _repository.GetUsers()
@@ -92,6 +58,44 @@ namespace ASI.Basecode.Services.Services
             _repository.UpdateUser(user);
 
             return true;
+        }
+
+        public bool MustCompleteSetup(string userId)
+        {
+            return _repository.GetUsers().Any(u => u.UserId == userId && u.MustCompleteSetup);
+        }
+
+        // Sets the user's own password, then lifts the setup requirement.
+        // The rules are checked here, so they apply even if the browser checks are skipped.
+        public ServiceResult CompleteFirstLogin(string userId, string newPassword)
+        {
+            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userId);
+            if (user == null)
+                return ServiceResult.Fail("Your account was not found. Please log in again.");
+
+            var passwordError = UserFieldRules.CheckPassword(newPassword ?? "");
+            if (passwordError != null)
+                return ServiceResult.Fail(passwordError);
+
+            var newHash = PasswordManager.EncryptPassword(newPassword);
+            if (newHash == user.PasswordHash)
+                return ServiceResult.Fail("Choose a new password that is different from your temporary one.");
+
+            user.PasswordHash = newHash;
+            user.MustCompleteSetup = false;
+            user.UpdatedBy = userId;
+            user.UpdatedTime = DateTime.Now;
+
+            try
+            {
+                _repository.UpdateUser(user);
+            }
+            catch (Exception)
+            {
+                return ServiceResult.Fail("Could not save your new password. Please try again.");
+            }
+
+            return ServiceResult.Ok("Your password was updated. Welcome!");
         }
 
         public UserManagementViewModel GetUserManagementData(string search, string role, string status)

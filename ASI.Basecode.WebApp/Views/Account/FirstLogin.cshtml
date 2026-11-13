@@ -1,0 +1,180 @@
+@model ASI.Basecode.WebApp.Models.FirstLoginViewModel
+@{
+    ViewBag.LoginView = true;   // plain layout: no sidebar until setup is done
+    ViewData["Title"] = "Set Up Your Account";
+
+    var roleText = Model.Role == "Custodian" ? "Custodian" : "Student";
+    var idLabel = Model.Role == "Custodian" ? "Employee ID" : "Student ID";
+
+    var words = (Model.FullName ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var initials = words.Length == 0 ? "?"
+        : words.Length == 1 ? words[0].Substring(0, 1).ToUpperInvariant()
+        : (words[0].Substring(0, 1) + words[words.Length - 1].Substring(0, 1)).ToUpperInvariant();
+}
+
+@section Styles {
+    <style>
+        body { background: var(--d-bg, #fdf0e6); }
+        .setup-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+        .setup-card { width: 100%; max-width: 480px; padding: 2rem; }
+
+        .setup-head { display: flex; gap: .9rem; align-items: flex-start; margin-bottom: 1.25rem; }
+        .setup-icon {
+            flex-shrink: 0; width: 2.75rem; height: 2.75rem; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--d-circle, #efc4ae); color: var(--d-maroon, #5a0000); font-size: 1.25rem;
+        }
+        .setup-title { font-size: 1.35rem; line-height: 1.2; margin: 0 0 .25rem; }
+        .setup-sub { font-size: .875rem; margin: 0; }
+
+        .account-chip {
+            display: flex; align-items: center; gap: .75rem; padding: .7rem .85rem;
+            background: #fff; border: 1px solid #ecd5c7; border-radius: 12px; margin-bottom: 1.25rem;
+        }
+        .account-chip .avatar {
+            flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--d-maroon, #5a0000); color: #fff; font-size: .85rem; font-weight: 700;
+        }
+        .account-chip .who { min-width: 0; line-height: 1.3; }
+        .account-chip .who strong { display: block; color: #2b1d1a; }
+        .account-chip .who span { display: block; font-size: .8rem; color: #6c757d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .setup-card .form-label { font-size: .8rem; font-weight: 600; color: #3b2a26; margin-bottom: .3rem; }
+        .setup-card .form-control { padding: .55rem .75rem; }
+        .setup-card .form-control:focus { border-color: var(--d-orange, #b32d0e); box-shadow: 0 0 0 .2rem rgba(179, 45, 14, .15); }
+        .setup-card .pw-toggle { background: #fff; color: #6c757d; }
+
+        .req-panel { background: rgba(255, 255, 255, .65); border: 1px solid #ecd5c7; border-radius: 12px; padding: .7rem .9rem; margin-bottom: 1.25rem; }
+        .req-title { font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #8a5a4a; margin-bottom: .4rem; }
+        .req-list { list-style: none; margin: 0; padding: 0; }
+        .req-list li { display: flex; align-items: center; gap: .55rem; padding: .15rem 0; font-size: .85rem; color: #6c757d; transition: color .15s ease-in-out; }
+        .req-list li i { font-size: 1rem; line-height: 1; transition: color .15s ease-in-out; }
+        .req-list li.ok { color: #146c43; }
+        .req-list li.ok i { color: #198754; }
+
+        .setup-submit { width: 100%; padding: .65rem 1rem; }
+        .setup-submit:disabled { opacity: .55; cursor: not-allowed; }
+        .setup-foot { font-size: .78rem; color: #6c757d; text-align: center; margin: 1rem 0 0; }
+    </style>
+}
+
+<div class="setup-wrap">
+    <div class="dash-card setup-card">
+        <div class="setup-head">
+            <span class="setup-icon"><i class="bi bi-shield-lock"></i></span>
+            <div>
+                <h1 class="dash-name setup-title">Create your password</h1>
+                <p class="dash-sub setup-sub">You're signed in with a temporary password. Choose your own to continue.</p>
+            </div>
+        </div>
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger py-2 small" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>@TempData["ErrorMessage"]
+            </div>
+        }
+
+        <div class="account-chip">
+            <span class="avatar" aria-hidden="true">@initials</span>
+            <div class="who">
+                <strong>@Model.FullName</strong>
+                <span>@idLabel @Model.UserId &middot; @roleText</span>
+                <span>@Model.Email</span>
+            </div>
+        </div>
+
+        <form asp-controller="Account" asp-action="FirstLogin" method="post" id="setupForm" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label class="form-label" for="NewPassword">New password</label>
+                <div class="input-group">
+                    <input type="password" id="NewPassword" name="NewPassword" class="form-control"
+                           maxlength="64" autocomplete="new-password" autofocus />
+                    <button type="button" class="btn btn-outline-secondary pw-toggle" id="togglePw" aria-label="Show passwords" aria-pressed="false">
+                        <i class="bi bi-eye-slash" id="togglePwIcon" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="ConfirmPassword">Confirm new password</label>
+                <input type="password" id="ConfirmPassword" name="ConfirmPassword" class="form-control"
+                       maxlength="64" autocomplete="new-password" />
+            </div>
+
+            <div class="req-panel" aria-live="polite">
+                <div class="req-title">Your password needs</div>
+                <ul class="req-list" id="pwRules">
+                    <li data-rule="len"><i class="bi bi-circle"></i><span>8 to 64 characters</span></li>
+                    <li data-rule="mix"><i class="bi bi-circle"></i><span>At least one letter and one number</span></li>
+                    <li data-rule="match"><i class="bi bi-circle"></i><span>Both passwords match</span></li>
+                </ul>
+            </div>
+
+            <button type="submit" class="btn dash-btn-reserve text-white fw-bold setup-submit" id="submitBtn">
+                <i class="bi bi-check2-circle me-1"></i> Save and continue
+            </button>
+        </form>
+
+        <p class="setup-foot">
+            Details wrong? Finish here first, then send an information change request from your profile.
+            &nbsp;&middot;&nbsp; <a asp-controller="Account" asp-action="SignOutUser" class="text-muted">Log out</a>
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Same password rules as the server (UserFieldRules); the server still checks everything
+        (function () {
+            var form = document.getElementById('setupForm');
+            var pw = document.getElementById('NewPassword');
+            var confirmPw = document.getElementById('ConfirmPassword');
+            var submitBtn = document.getElementById('submitBtn');
+
+            function state() {
+                var v = pw.value;
+                return {
+                    len: v.length >= 8 && v.length <= 64,
+                    mix: /[A-Za-z]/.test(v) && /\d/.test(v),
+                    match: v.length > 0 && v === confirmPw.value
+                };
+            }
+
+            function paint() {
+                var s = state();
+                document.querySelectorAll('#pwRules li').forEach(function (li) {
+                    var ok = s[li.dataset.rule];
+                    li.classList.toggle('ok', ok);
+                    li.querySelector('i').className = ok ? 'bi bi-check-circle-fill' : 'bi bi-circle';
+                });
+                submitBtn.disabled = !(s.len && s.mix && s.match);
+            }
+
+            pw.addEventListener('input', paint);
+            confirmPw.addEventListener('input', paint);
+
+            document.getElementById('togglePw').addEventListener('click', function () {
+                var show = pw.type === 'password';
+                pw.type = show ? 'text' : 'password';
+                confirmPw.type = pw.type;
+                document.getElementById('togglePwIcon').className = show ? 'bi bi-eye' : 'bi bi-eye-slash';
+                this.setAttribute('aria-pressed', show);
+                this.setAttribute('aria-label', show ? 'Hide passwords' : 'Show passwords');
+            });
+
+            form.addEventListener('submit', function (e) {
+                var s = state();
+                if (!(s.len && s.mix && s.match)) {
+                    e.preventDefault();
+                    (!(s.len && s.mix) ? pw : confirmPw).focus();
+                }
+            });
+
+            paint();
+        })();
+    </script>
+}

@@ -8,9 +8,11 @@ namespace ASI.Basecode.Services.Interfaces
     {
         LoginResult AuthenticateUser(string userId, string password, ref User user);
 
-        void AddUser(UserViewModel model);
-
         bool ChangePassword(string userId, string currentPassword, string newPassword);
+
+        // First login of an account an admin created
+        bool MustCompleteSetup(string userId);
+        ServiceResult CompleteFirstLogin(string userId, string newPassword);
 
         // Admin User Management
         UserManagementViewModel GetUserManagementData(string search, string role, string status);

@@ -279,6 +279,9 @@ public partial class TiaCContext : DbContext
                 .IsUnicode(false)
                 .HasDefaultValue("active")
                 .HasColumnName("account_status");
+            entity.Property(e => e.MustCompleteSetup)
+                .HasDefaultValue(false)
+                .HasColumnName("must_complete_setup");
             entity.Property(e => e.ContactNumber)
                 .HasMaxLength(20)
                 .IsUnicode(false)
