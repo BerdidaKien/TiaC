@@ -11,6 +11,10 @@
     var badgePhoto = session.GetString("UserPhoto");
     var badgeRole = User.IsInRole("Admin") ? "Admin" : User.IsInRole("Custodian") ? "Custodian" : "Student";
 
+    // Each role has its own profile page
+    var profileController = badgeRole == "Admin" ? "Admin" : badgeRole == "Custodian" ? "Custodian" : "Account";
+    var profileAction = badgeRole == "Admin" ? "Account" : "Profile";
+
     // Shown instead of a photo: first letters of the first and last word of the name
     var parts = badgeName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
     var initials = parts.Length == 0 ? "?"
@@ -46,7 +50,7 @@
     }
 </style>
 
-<a asp-controller="Account" asp-action="Profile" title="View my profile"
+<a asp-controller="@profileController" asp-action="@profileAction" title="View my profile"
    class="user-badge d-flex align-items-center text-decoration-none text-reset flex-shrink-0" style="gap: .65rem;">
 
     <span class="user-badge__avatar d-inline-flex align-items-center justify-content-center rounded-circle overflow-hidden bg-secondary-subtle fw-bold flex-shrink-0"

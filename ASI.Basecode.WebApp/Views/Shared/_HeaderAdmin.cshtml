@@ -66,6 +66,13 @@
                     <span class="side-nav__text">Reports</span>
                 </a>
             </li>
+            <li>
+                <a class="side-nav__link @(IsActive("Admin", "Account") ? "is-active" : "")"
+                   asp-controller="Admin" asp-action="Account">
+                    <i class="fa-solid fa-user-gear"></i>
+                    <span class="side-nav__text">My Account</span>
+                </a>
+            </li>
         </ul>
 
         <div class="side-nav__user">

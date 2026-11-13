@@ -259,6 +259,19 @@ namespace ASI.Basecode.WebApp.Controllers
             return RedirectToAction(nameof(Categories));
         }
 
+        /// <summary>The signed-in admin's own account details and password change</summary>
+        [HttpGet]
+        public IActionResult Account()
+        {
+            var profile = _userService.GetProfile(AdminCode);
+            if (profile == null)
+            {
+                TempData["ErrorMessage"] = "Your account could not be found. Please log in again.";
+                return RedirectToAction("Login", "Account");
+            }
+            return View(profile);
+        }
+
         /// <summary>System Settings</summary>
         public IActionResult Settings()
         {

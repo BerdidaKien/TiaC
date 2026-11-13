@@ -195,9 +195,22 @@ namespace ASI.Basecode.WebApp.Controllers
             return RedirectToAction("Login", "Account");
         }
 
+        // Each role has its own profile page; this one is the student's
+        private IActionResult RedirectToOwnProfile()
+        {
+            if (User.IsInRole("Admin")) return RedirectToAction("Account", "Admin");
+            if (User.IsInRole("Custodian")) return RedirectToAction("Profile", "Custodian");
+            return RedirectToAction(nameof(Profile));
+        }
+
         [HttpGet]
         public IActionResult Profile()
         {
+            if (User.IsInRole("Admin") || User.IsInRole("Custodian"))
+            {
+                return RedirectToOwnProfile();
+            }
+
             var userId = this._session.GetString("UserId");
 
             if (string.IsNullOrEmpty(userId))
@@ -267,7 +280,7 @@ namespace ASI.Basecode.WebApp.Controllers
             if (string.IsNullOrWhiteSpace(NewPassword) || NewPassword != ConfirmPassword)
             {
                 TempData["ErrorMessage"] = "New password and confirmation do not match.";
-                return RedirectToAction(nameof(Profile));
+                return RedirectToOwnProfile();
             }
 
             var userId = this._session.GetString("UserId");
@@ -286,7 +299,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 TempData["ErrorMessage"] = "Current password is incorrect.";
             }
 
-            return RedirectToAction(nameof(Profile));
+            return RedirectToOwnProfile();
         }
     }
 }

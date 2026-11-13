@@ -24,46 +24,85 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
     <style>
-        .role-option-card { cursor: pointer; transition: all 0.2s ease-in-out; }
-        .role-option-card:hover { border-color: #800000 !important; background-color: #fdf8f8; }
-        .role-option-card.selected { border-color: #800000 !important; background-color: #fcf0f0; box-shadow: 0 0 0 1px #800000; }
+        /* ----- Setup strip ----- */
+        .setup-label {
+            font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+            text-transform: uppercase; color: #8a5a4a; margin-bottom: .35rem;
+        }
+        .setup-divider { border-left: 1px solid rgba(90, 0, 0, .12); }
 
-        .accounts-scroll { max-height: 58vh; overflow: auto; }
-        .accounts-table { min-width: 1180px; margin-bottom: 0; }
+        .role-toggle {
+            display: inline-flex; gap: 2px; padding: 3px;
+            background: #fff; border: 1px solid #e5cbbb; border-radius: 999px;
+        }
+        .role-option-card {
+            position: relative; display: inline-flex; align-items: center; gap: .4rem;
+            margin: 0; padding: .3rem .95rem; border-radius: 999px;
+            font-size: .85rem; font-weight: 600; color: #5a0000;
+            cursor: pointer; transition: background-color .15s ease-in-out, color .15s ease-in-out;
+        }
+        .role-option-card input { position: absolute; opacity: 0; pointer-events: none; }
+        .role-option-card:hover { background-color: #fcf0f0; }
+        .role-option-card.selected { background-color: #800000; color: #fff; }
+        .role-option-card:has(input:focus-visible) { outline: 2px solid #b32d0e; outline-offset: 2px; }
+
+        #permList { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+        #permList li {
+            margin: 0 !important; padding: .15rem .6rem; font-size: .75rem; color: #5c4a44;
+            background: #fff; border: 1px solid #ecd5c7; border-radius: 999px;
+        }
+
+        /* ----- Accounts table ----- */
+        .accounts-card { padding: 0; }
+        .accounts-scroll { max-height: 55vh; overflow: auto; background: #fff; }
+        .accounts-table { margin-bottom: 0; }
         .accounts-table thead th {
             position: sticky; top: 0; z-index: 2;
-            background: #f8f9fa; font-size: .8rem; white-space: nowrap;
-            border-bottom: 1px solid #dee2e6;
+            background: #fbf3ee; color: #5a0000; font-size: .75rem; font-weight: 700;
+            white-space: nowrap; border-bottom: 1px solid #ecd5c7;
+            padding-top: .55rem; padding-bottom: .55rem;
         }
-        .accounts-table td { vertical-align: top; padding-top: .6rem; padding-bottom: .6rem; }
-        .accounts-table .row-number { padding-top: 1.05rem; width: 2.5rem; }
-        .accounts-table .invalid-feedback { font-size: .75rem; white-space: normal; }
+        .accounts-table td { vertical-align: top; padding: .45rem .4rem; border-color: #f3e6de; }
+        .accounts-table .form-control { padding: .3rem .55rem; font-size: .85rem; border-radius: 6px; }
+        .accounts-table .row-number { padding-top: .75rem; width: 2.5rem; font-size: .8rem; }
+        .accounts-table .remove-row { padding: .2rem .45rem; font-size: .8rem; }
+        .accounts-table .invalid-feedback { font-size: .72rem; white-space: normal; }
         .accounts-table.auto-pass .col-password { display: none; }
-        .accounts-table tr.has-error { background-color: #fff5f5; }
+        .accounts-table tr.has-error > td { background-color: #fff5f5; }
 
+        /* Remove button stays in view when the table scrolls sideways on narrow screens */
+        .accounts-table .col-remove {
+            position: sticky; right: 0; z-index: 1;
+            width: 48px; background-color: #fff;
+            box-shadow: inset 1px 0 0 #f3e6de;
+        }
+        .accounts-table thead th.col-remove { z-index: 3; background: #fbf3ee; }
+
+        /* Footer of the accounts card; stays visible while scrolling a long list */
         .add-users-actions {
             position: sticky; bottom: 0; z-index: 5;
-            background: var(--d-bg, #fdf0e6);
-            border-top: 1px solid rgba(90, 0, 0, .15);
-            padding: .85rem 0;
+            background: var(--d-card, #fbe5d6);
+            border-top: 1px solid rgba(90, 0, 0, .1);
+            border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;
+            padding: .7rem 1.25rem;
         }
     </style>
 }
 
 <div class="dash-header mb-3">
     <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-1">
+        <ol class="breadcrumb mb-1 small">
             <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Users" class="text-decoration-none text-secondary">User Management</a></li>
             <li class="breadcrumb-item active" aria-current="page">Add Users</li>
         </ol>
     </nav>
     <h1 class="dash-name m-0">Add Users</h1>
-    <p class="dash-sub">Create student and custodian accounts. New accounts are active and can log in right away.</p>
+    <p class="dash-sub mb-0">Create student and custodian accounts. New accounts are active and can log in right away.</p>
 </div>
 
 @if (!string.IsNullOrEmpty(Model.FormError))
 {
-    <div class="alert alert-danger d-flex align-items-start" role="alert">
+    <div class="alert alert-danger d-flex align-items-start py-2" role="alert">
         <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
         <div>
             <strong>@Model.FormError</strong>
@@ -75,74 +114,50 @@
 <form asp-controller="Admin" asp-action="AddUsers" method="post" id="addUsersForm" novalidate>
     @Html.AntiForgeryToken()
 
-    <div class="row g-4 mb-4">
-        <!-- Role -->
-        <div class="col-lg-8">
-            <div class="dash-card p-4 h-100">
-                <div class="d-flex align-items-center mb-3">
-                    <i class="bi bi-people-fill text-danger fs-4 me-2"></i>
-                    <div>
-                        <h6 class="fw-bold m-0">Account Role</h6>
-                        <small class="text-muted">Applies to every account in this list.</small>
-                    </div>
-                </div>
-
-                <div class="row g-3">
-                    <div class="col-sm-6">
-                        <label class="card p-3 border role-option-card h-100 mb-0" data-role="User">
-                            <div class="form-check m-0">
-                                <input class="form-check-input" type="radio" name="Role" value="User" />
-                                <span class="form-check-label w-100 ps-2 d-block">
-                                    <strong class="d-block text-dark"><i class="bi bi-mortarboard me-1"></i> Student</strong>
-                                    <small class="text-muted">Borrow and reserve school equipment</small>
-                                </span>
-                            </div>
-                        </label>
-                    </div>
-                    <div class="col-sm-6">
-                        <label class="card p-3 border role-option-card h-100 mb-0" data-role="Custodian">
-                            <div class="form-check m-0">
-                                <input class="form-check-input" type="radio" name="Role" value="Custodian" />
-                                <span class="form-check-label w-100 ps-2 d-block">
-                                    <strong class="d-block text-dark"><i class="bi bi-person-badge me-1"></i> Custodian</strong>
-                                    <small class="text-muted">Manage item inventory and transactions</small>
-                                </span>
-                            </div>
-                        </label>
-                    </div>
+    <!-- Setup: role, password option and what the role can do -->
+    <div class="dash-card py-3 px-4 mb-3">
+        <div class="row g-3 align-items-start">
+            <div class="col-md-auto">
+                <div class="setup-label">Role</div>
+                <div class="role-toggle" role="radiogroup" aria-label="Account role">
+                    <label class="role-option-card" data-role="User">
+                        <input type="radio" name="Role" value="User" />
+                        <i class="bi bi-mortarboard"></i> Student
+                    </label>
+                    <label class="role-option-card" data-role="Custodian">
+                        <input type="radio" name="Role" value="Custodian" />
+                        <i class="bi bi-person-badge"></i> Custodian
+                    </label>
                 </div>
             </div>
-        </div>
 
-        <!-- Settings -->
-        <div class="col-lg-4">
-            <div class="dash-card p-4 h-100">
-                <h6 class="fw-bold mb-3"><i class="bi bi-gear-fill me-1"></i> Settings</h6>
-                <label class="form-label fw-bold small m-0">Temporary Password</label>
-                <small class="text-muted d-block mb-2">Generate a secure random password for each account.</small>
-                <div class="form-check form-switch mb-3">
+            <div class="col-md-auto setup-divider ps-md-4">
+                <div class="setup-label">Temporary password</div>
+                <div class="form-check form-switch m-0 pt-1">
                     <input class="form-check-input" type="checkbox" asp-for="AutoGeneratePassword" id="autoPass" />
-                    <label class="form-check-label fw-semibold small" for="autoPass">Auto-generate</label>
+                    <label class="form-check-label small fw-semibold" for="autoPass">Auto-generate for each account</label>
                 </div>
+            </div>
 
-                <h6 class="fw-bold mb-2 small"><i class="bi bi-shield-check me-1"></i> Permissions (<span id="roleLabel">Student</span>)</h6>
-                <ul class="list-unstyled mb-0 text-secondary" id="permList" style="font-size: 0.825rem;"></ul>
+            <div class="col-md setup-divider ps-md-4">
+                <div class="setup-label">Permissions &middot; <span id="roleLabel">Student</span></div>
+                <ul id="permList"></ul>
             </div>
         </div>
     </div>
 
     <!-- Accounts -->
-    <div class="dash-card p-0 mb-0 overflow-hidden">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 p-4 pb-3">
+    <div class="dash-card accounts-card mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-4 py-3">
             <div>
                 <h6 class="fw-bold m-0"><i class="bi bi-person-lines-fill me-1"></i> Accounts to Create</h6>
                 <small class="text-muted">
-                    Type each person's details, paste rows from a spreadsheet, or import a CSV file. Up to 100 accounts at a time.
+                    Type, paste from a spreadsheet, or import a CSV (up to 100). Press <kbd class="py-0 px-1">Enter</kbd> to jump to the next row.
                 </small>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <button type="button" id="templateBtn" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-file-earmark-arrow-down me-1"></i> CSV template
+                    <i class="bi bi-file-earmark-arrow-down me-1"></i> Template
                 </button>
                 <button type="button" id="importBtn" class="btn btn-sm btn-outline-danger">
                     <i class="bi bi-upload me-1"></i> Import CSV
@@ -161,30 +176,26 @@
                 <thead>
                     <tr>
                         <th class="ps-4">#</th>
-                        <th style="min-width: 160px;" id="idHeaderLabel">Student ID *</th>
-                        <th style="min-width: 160px;">First Name *</th>
-                        <th style="min-width: 140px;">Middle Name</th>
-                        <th style="min-width: 160px;">Last Name *</th>
-                        <th style="min-width: 230px;">Email *</th>
-                        <th style="min-width: 160px;">Contact No.</th>
-                        <th style="min-width: 170px;" class="col-password">Temp Password *</th>
-                        <th class="text-center pe-4" style="width: 60px;"><span class="visually-hidden">Remove</span></th>
+                        <th style="min-width: 130px;" id="idHeaderLabel">Student ID *</th>
+                        <th style="min-width: 150px;">First Name *</th>
+                        <th style="min-width: 130px;">Middle Name</th>
+                        <th style="min-width: 150px;">Last Name *</th>
+                        <th style="min-width: 220px;">Email *</th>
+                        <th style="min-width: 130px;">Contact No.</th>
+                        <th style="min-width: 160px;" class="col-password">Temp Password *</th>
+                        <th class="text-center col-remove"><span class="visually-hidden">Remove</span></th>
                     </tr>
                 </thead>
                 <tbody id="rowsContainer"></tbody>
             </table>
         </div>
 
-        <div class="px-4 py-2 border-top small text-muted">
-            <i class="bi bi-keyboard me-1"></i> Press <kbd>Enter</kbd> to move to the next row. A new row is added when you reach the end.
-        </div>
-    </div>
-
-    <div class="add-users-actions d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div class="small" id="summary"></div>
-        <div class="d-flex gap-2">
-            <a asp-controller="Admin" asp-action="Users" class="btn btn-outline-secondary px-4">Cancel</a>
-            <button type="submit" class="btn dash-btn-reserve text-white fw-bold px-4" id="submitBtn">+ Create 1 User</button>
+        <div class="add-users-actions d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="small" id="summary"></div>
+            <div class="d-flex gap-2">
+                <a asp-controller="Admin" asp-action="Users" class="btn btn-sm btn-outline-secondary px-3">Cancel</a>
+                <button type="submit" class="btn btn-sm dash-btn-reserve text-white fw-bold px-3" id="submitBtn">+ Create 1 User</button>
+            </div>
         </div>
     </div>
 </form>
@@ -358,7 +369,7 @@
                 });
 
                 var action = document.createElement('td');
-                action.className = 'text-center pe-4';
+                action.className = 'text-center col-remove';
                 action.innerHTML = '<button type="button" class="btn btn-outline-danger remove-row" title="Remove row"><i class="bi bi-trash"></i></button>';
                 tr.appendChild(action);
 
