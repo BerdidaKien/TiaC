@@ -19,7 +19,10 @@
         @* ===== Left: Brand Panel ===== *@
         <aside class="col-lg-6 login-brand position-relative d-flex align-items-center justify-content-center text-center p-4 p-md-5">
             <div class="login-brand-inner mx-auto">
-                <h1 class="login-welcome mb-4">Welcome back</h1>
+                @* Logo placed directly above Welcome back *@
+                <img src="~/img/tiac-logo.png" alt="TiaC Logo" class="login-logo mb-4 img-fluid" style="max-height: 140px; width: auto;" />
+
+                <h1 class="login-welcome mb-3">Welcome back</h1>
                 <p class="login-tagline mb-0">
                     Borrow what you need, return it when you're through,
                     everything you left behind is waiting here for you.
@@ -81,12 +84,12 @@
         }
 
         // Show / hide password
-        (function () {
+        (function() {
             var btn = document.getElementById('togglePassword');
             var input = document.getElementById('Password');
             var icon = document.getElementById('togglePasswordIcon');
             if (!btn || !input || !icon) return;
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function() {
                 var show = input.type === 'password';
                 input.type = show ? 'text' : 'password';
                 icon.className = show ? 'bi bi-eye' : 'bi bi-eye-slash';
