@@ -480,6 +480,78 @@ namespace ASI.Basecode.Data.Migrations
                     b.ToTable("PasswordResetTokens");
                 });
 
+            modelBuilder.Entity("ASI.Basecode.Data.Models.Penalty", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("BorrowerId")
+                        .HasColumnType("int")
+                        .HasColumnName("borrower_id");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_time")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<DateTime>("DueBy")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("due_by");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("PenaltyType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("penalty_type");
+
+                    b.Property<int?>("ResolvedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<DateTime?>("ResolvedTime")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("resolved_time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("unresolved")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TransactionId")
+                        .HasColumnType("int")
+                        .HasColumnName("transaction_id");
+
+                    b.HasKey("Id")
+                        .HasName("PK_Penalties");
+
+                    b.HasIndex("BorrowerId");
+
+                    b.HasIndex("ResolvedBy");
+
+                    b.HasIndex("TransactionId");
+
+                    b.ToTable("Penalties", (string)null);
+                });
+
             modelBuilder.Entity("ASI.Basecode.Data.Models.Reservation", b =>
                 {
                     b.Property<int>("Id")
@@ -812,6 +884,32 @@ namespace ASI.Basecode.Data.Migrations
                     b.Navigation("Request");
                 });
 
+            modelBuilder.Entity("ASI.Basecode.Data.Models.Penalty", b =>
+                {
+                    b.HasOne("ASI.Basecode.Data.Models.User", "Borrower")
+                        .WithMany()
+                        .HasForeignKey("BorrowerId")
+                        .IsRequired()
+                        .HasConstraintName("FK_Penalties_Borrower");
+
+                    b.HasOne("ASI.Basecode.Data.Models.User", "ResolvedByNavigation")
+                        .WithMany()
+                        .HasForeignKey("ResolvedBy")
+                        .HasConstraintName("FK_Penalties_ResolvedBy");
+
+                    b.HasOne("ASI.Basecode.Data.Models.BorrowingTransaction", "Transaction")
+                        .WithMany("Penalties")
+                        .HasForeignKey("TransactionId")
+                        .IsRequired()
+                        .HasConstraintName("FK_Penalties_Transaction");
+
+                    b.Navigation("Borrower");
+
+                    b.Navigation("ResolvedByNavigation");
+
+                    b.Navigation("Transaction");
+                });
+
             modelBuilder.Entity("ASI.Basecode.Data.Models.Reservation", b =>
                 {
                     b.HasOne("ASI.Basecode.Data.Models.User", "Borrower")
@@ -836,6 +934,11 @@ namespace ASI.Basecode.Data.Migrations
                     b.Navigation("EquipmentItem");
 
                     b.Navigation("ReviewedByNavigation");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.BorrowingTransaction", b =>
+                {
+                    b.Navigation("Penalties");
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.EquipmentCategory", b =>

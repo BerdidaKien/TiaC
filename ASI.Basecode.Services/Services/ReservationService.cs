@@ -108,13 +108,11 @@ namespace ASI.Basecode.Services.Services
         // All reservations of one borrower (userCode = Borrower.UserId, i.e. the session "UserId"), newest first
         public List<Reservation> GetForUser(string userCode)
         {
-<<<<<<< HEAD
             ExpireMissedPickups();
 
-=======
             var borrowerDbId = _repo.GetUserDbId(userCode);
             if (borrowerDbId != 0) RefreshRestriction(borrowerDbId);
->>>>>>> 59e62c808d04d8c773ef6dd1d7982e9312f4dea4
+
             return _repo.GetReservations()
                 .Where(r => r.Borrower.UserId == userCode)
                 .OrderByDescending(r => r.CreatedTime)
@@ -141,15 +139,13 @@ namespace ASI.Basecode.Services.Services
         {
             var borrowerId = _repo.GetUserDbId(borrowerCode);
             if (borrowerId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
-<<<<<<< HEAD
 
             ExpireMissedPickups();
 
-=======
             RefreshRestriction(borrowerId);
             if (_repo.GetUserByDbId(borrowerId)?.BorrowerStatus == PenaltyRules.Restricted)
                 return ServiceResult.Fail("Your borrowing is restricted because of an unresolved penalty (overdue or damaged equipment). Settle it with the custodian, then ask an administrator to reactivate your account.");
->>>>>>> 59e62c808d04d8c773ef6dd1d7982e9312f4dea4
+
             var item = _repo.GetEquipmentItemById(equipmentItemId);
             if (item == null || item.Status == "archived")
                 return ServiceResult.Fail("This equipment item was not found.");

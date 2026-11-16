@@ -8,32 +8,18 @@ namespace ASI.Basecode.Data.Migrations
     /// <inheritdoc />
     public partial class UpdDBthree : Migration
     {
+        // Same table as 20261113124324_SyncModel (made on another branch), so it is created
+        // only if it isn't there yet. See PasswordResetTokensSql in that file.
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "PasswordResetTokens",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: false),
-                    TokenHash = table.Column<string>(type: "varchar(64)", unicode: false, maxLength: 64, nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UsedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedTime = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PasswordResetTokens", x => x.Id);
-                });
+            migrationBuilder.Sql(PasswordResetTokensSql.CreateIfMissing);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "PasswordResetTokens");
+            migrationBuilder.Sql(PasswordResetTokensSql.DropIfExists);
         }
     }
 }
