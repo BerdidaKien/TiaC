@@ -29,31 +29,80 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/dashboard.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
     <style>
-        .eq-pager .page-link {
-            color: var(--d-maroon, #800000);
+        .eq-table {
+            --bs-table-bg: transparent;
+            --bs-table-color: var(--d-maroon);
+            --bs-table-hover-bg: rgba(90, 0, 0, 0.05);
+            --bs-table-hover-color: var(--d-maroon);
+            background-color: transparent !important;
+            color: var(--d-maroon);
+            font-size: 0.88rem;
         }
 
-        .eq-pager .page-item.active .page-link {
-            background-color: var(--d-maroon, #800000);
-            border-color: var(--d-maroon, #800000);
-            color: #fff;
-        }
+            .eq-table thead th {
+                background-color: #f1d3c0 !important;
+                color: var(--d-maroon);
+                border: 0;
+                font-size: 0.75rem;
+                letter-spacing: 0.5px;
+                padding: 0.85rem 1rem;
+                white-space: nowrap;
+            }
 
-        .eq-pager .page-link:focus {
-            box-shadow: 0 0 0 .2rem rgba(128, 0, 0, .2);
+                .eq-table thead th:first-child {
+                    border-radius: 8px 0 0 8px;
+                }
+
+                .eq-table thead th:last-child {
+                    border-radius: 0 8px 8px 0;
+                }
+
+            .eq-table tbody td {
+                background-color: transparent !important;
+                border-top: 0;
+                border-bottom: 1px solid rgba(90, 0, 0, 0.2);
+                padding: 0.85rem 1rem;
+                vertical-align: middle;
+            }
+
+            .eq-table tbody tr:hover td {
+                background-color: rgba(90, 0, 0, 0.04) !important;
+            }
+
+            .eq-table tbody tr:last-child td {
+                border-bottom: 0;
+            }
+
+            .eq-table code {
+                background: rgba(90, 0, 0, 0.07);
+                color: var(--d-red);
+                padding: 0.2rem 0.45rem;
+                border-radius: 5px;
+                font-size: 0.8rem;
+            }
+
+        .eq-img-placeholder {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background-color: var(--d-circle);
+            color: var(--d-maroon);
         }
     </style>
 }
 
-<div class="dash-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="dash">
+    <div class="dash-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-            <h1 class="dash-title">Equipment Item Management</h1>
-            <p class="dash-subtitle">Register, track physical condition, update locations, and archive inventory items.</p>
+            <h1 class="dash-name m-0">Equipment Item Management</h1>
+            <p class="dash-sub mb-0">Register, track physical condition, update locations, and archive inventory items.</p>
         </div>
-        <button type="button" class="btn text-white px-4 py-2 fw-bold" style="background-color: var(--d-maroon, #800000);" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">
+        <button type="button" class="btn dash-btn-reserve px-4 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">
             <i class="bi bi-plus-lg me-1"></i> Register New Equipment
         </button>
     </div>
@@ -74,162 +123,159 @@
         </div>
     }
 
-    <div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead style="background-color: #f8f9fa;">
-                        <tr class="text-uppercase fs-7 text-muted fw-bold">
-                            <th class="ps-4">Item Code</th>
-                            <th>Brand & Model</th>
-                            <th>Category</th>
-                            <th>Serial Number</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                            <th>Condition</th>
-                            <th class="text-end pe-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (items.Any())
+    <div class="dash-card">
+        <div class="table-responsive">
+            <table class="table eq-table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="text-uppercase fw-bold">
+                        <th>Item Code</th>
+                        <th>Brand &amp; Model</th>
+                        <th>Category</th>
+                        <th>Serial Number</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Condition</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (items.Any())
+                    {
+                        foreach (var item in items)
                         {
-                            foreach (var item in items)
-                            {
-                                var isBorrowed = item.Status == "borrowed";
-                                var badge = StatusBadge(item.Status);
-                                <tr>
-                                    <td class="ps-4 fw-semibold">@item.ItemCode</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            @if (!string.IsNullOrEmpty(item.ImagePath))
-                                            {
-                                                <img src="@item.ImagePath" alt="@item.BrandModel"
-                                                     style="width:44px;height:44px;object-fit:cover;border-radius:6px;" />
-                                            }
-                                            else
-                                            {
-                                                <span class="d-inline-flex align-items-center justify-content-center bg-light text-secondary"
-                                                      style="width:44px;height:44px;border-radius:6px;">
-                                                    <i class="bi bi-image"></i>
-                                                </span>
-                                            }
-                                            <div class="fw-bold text-dark">@item.BrandModel</div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if (item.Category != null)
+                            var isBorrowed = item.Status == "borrowed";
+                            var badge = StatusBadge(item.Status);
+                            <tr>
+                                <td class="fw-semibold">@item.ItemCode</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (!string.IsNullOrEmpty(item.ImagePath))
                                         {
-                                            @item.Category.CategoryName
-                                            @if (!item.Category.IsActive)
-                                            {
-                                                <span class="text-muted small">(disabled)</span>
-                                            }
-                                        }
-                                        else if (item.Status == "pending_category")
-                                        {
-                                            <span class="text-muted fst-italic">Other: @item.SuggestedCategory</span>
-                                        }
-                                        else if (item.Status == "category_rejected")
-                                        {
-                                            <span class="text-danger small">Rejected: @item.CategoryReviewNote</span>
+                                            <img src="@item.ImagePath" alt="@item.BrandModel"
+                                                 style="width:44px;height:44px;object-fit:cover;border-radius:8px;" />
                                         }
                                         else
                                         {
-                                            <span>General</span>
+                                            <span class="d-inline-flex align-items-center justify-content-center eq-img-placeholder">
+                                                <i class="bi bi-image"></i>
+                                            </span>
                                         }
-                                    </td>
-                                    <td><code>@Na(item.SerialNumber)</code></td>
-                                    <td>@Na(item.StorageLocation)</td>
-                                    <td><span class="badge @badge.Css">@badge.Text</span></td>
-                                    <td>
-                                        <span class="badge bg-info text-dark">
-                                            @item.ConditionRating
-                                        </span>
-                                    </td>
-                                    <td class="text-end pe-4">
-                                        <div class="btn-group btn-group-sm">
-                                            <button type="button" class="btn dash-btn-view" title="Edit Item"
-                                                    data-bs-toggle="modal" data-bs-target="#editEquipmentModal"
-                                                    data-id="@item.Id"
-                                                    data-itemcode="@item.ItemCode"
-                                                    data-category="@item.CategoryId"
-                                                    data-suggested="@item.SuggestedCategory"
-                                                    data-note="@item.CategoryReviewNote"
-                                                    data-brand="@item.BrandModel"
-                                                    data-serial="@item.SerialNumber"
-                                                    data-location="@item.StorageLocation"
-                                                    data-condition="@item.ConditionRating"
-                                                    data-status="@item.Status"
-                                                    data-image="@item.ImagePath">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button type="button" class="btn dash-btn-view text-danger"
-                                                    title="@(isBorrowed ? "Currently borrowed - cannot archive" : "Archive Item")"
-                                                    data-bs-toggle="modal" data-bs-target="#archiveEquipmentModal"
-                                                    data-id="@item.Id"
-                                                    data-name="@item.BrandModel (@item.ItemCode)"
-                                                    disabled="@isBorrowed">
-                                                <i class="bi bi-archive"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="8" class="text-center text-muted py-5">
-                                    <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                                    No equipment items registered in database yet. Click <strong>Register New Equipment</strong> to add one.
+                                        <div class="fw-bold" style="color: var(--d-maroon);">@item.BrandModel</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (item.Category != null)
+                                    {
+                                        @item.Category.CategoryName
+                                        @if (!item.Category.IsActive)
+                                        {
+                                            <span class="dash-muted small">(disabled)</span>
+                                        }
+                                    }
+                                    else if (item.Status == "pending_category")
+                                    {
+                                        <span class="dash-muted fst-italic">Other: @item.SuggestedCategory</span>
+                                    }
+                                    else if (item.Status == "category_rejected")
+                                    {
+                                        <span class="text-danger small">Rejected: @item.CategoryReviewNote</span>
+                                    }
+                                    else
+                                    {
+                                        <span>General</span>
+                                    }
+                                </td>
+                                <td><code>@Na(item.SerialNumber)</code></td>
+                                <td>@Na(item.StorageLocation)</td>
+                                <td><span class="badge @badge.Css">@badge.Text</span></td>
+                                <td>
+                                    <span class="badge bg-info text-dark">
+                                        @item.ConditionRating
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn dash-btn-view" title="Edit Item"
+                                                data-bs-toggle="modal" data-bs-target="#editEquipmentModal"
+                                                data-id="@item.Id"
+                                                data-itemcode="@item.ItemCode"
+                                                data-category="@item.CategoryId"
+                                                data-suggested="@item.SuggestedCategory"
+                                                data-note="@item.CategoryReviewNote"
+                                                data-brand="@item.BrandModel"
+                                                data-serial="@item.SerialNumber"
+                                                data-location="@item.StorageLocation"
+                                                data-condition="@item.ConditionRating"
+                                                data-status="@item.Status"
+                                                data-image="@item.ImagePath">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="btn dash-btn-view text-danger"
+                                                title="@(isBorrowed ? "Currently borrowed - cannot archive" : "Archive Item")"
+                                                data-bs-toggle="modal" data-bs-target="#archiveEquipmentModal"
+                                                data-id="@item.Id"
+                                                data-name="@item.BrandModel (@item.ItemCode)"
+                                                disabled="@isBorrowed">
+                                            <i class="bi bi-archive"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
-                    </tbody>
-                </table>
-            </div>
-
-            @if (totalItems > 0)
-            {
-                var firstShown = (currentPage - 1) * pageSize + 1;
-                var lastShown = Math.Min(currentPage * pageSize, totalItems);
-                var winStart = Math.Max(1, currentPage - 2);
-                var winEnd = Math.Min(totalPages, winStart + 4);
-                winStart = Math.Max(1, winEnd - 4);
-
-                <div class="d-flex flex-wrap align-items-center justify-content-between px-4 py-3 border-top gap-2">
-                    <span class="text-muted small">Showing @firstShown–@lastShown of @totalItems</span>
-
-                    @if (totalPages > 1)
-                    {
-                        <nav aria-label="Equipment pages">
-                            <ul class="pagination pagination-sm eq-pager mb-0">
-                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                                    <a class="page-link" asp-action="Equipment" asp-route-page="@(currentPage - 1)">&laquo;</a>
-                                </li>
-                                @for (var n = winStart; n <= winEnd; n++)
-                                {
-                                    <li class="page-item @(n == currentPage ? "active" : "")">
-                                        <a class="page-link" asp-action="Equipment" asp-route-page="@n">@n</a>
-                                    </li>
-                                }
-                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                                    <a class="page-link" asp-action="Equipment" asp-route-page="@(currentPage + 1)">&raquo;</a>
-                                </li>
-                            </ul>
-                        </nav>
                     }
-                </div>
-            }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center dash-muted py-5">
+                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                No equipment items registered in database yet. Click <strong>Register New Equipment</strong> to add one.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
+
+        @if (totalItems > 0)
+        {
+            var firstShown = (currentPage - 1) * pageSize + 1;
+            var lastShown = Math.Min(currentPage * pageSize, totalItems);
+            var winStart = Math.Max(1, currentPage - 2);
+            var winEnd = Math.Min(totalPages, winStart + 4);
+            winStart = Math.Max(1, winEnd - 4);
+
+            <div class="d-flex flex-wrap align-items-center justify-content-between pt-3 mt-3 border-top gap-2" style="border-color: rgba(90, 0, 0, 0.2) !important;">
+                <span class="dash-muted small">Showing @firstShown–@lastShown of @totalItems</span>
+
+                @if (totalPages > 1)
+                {
+                    <nav aria-label="Equipment pages">
+                        <ul class="pagination dash-pagination mb-0">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <a class="page-link" asp-action="Equipment" asp-route-page="@(currentPage - 1)">&laquo;</a>
+                            </li>
+                            @for (var n = winStart; n <= winEnd; n++)
+                            {
+                                <li class="page-item @(n == currentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Equipment" asp-route-page="@n">@n</a>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <a class="page-link" asp-action="Equipment" asp-route-page="@(currentPage + 1)">&raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            </div>
+        }
     </div>
 </div>
 
 <!-- Register Equipment Modal -->
 <div class="modal fade" id="addEquipmentModal" tabindex="-1" aria-labelledby="addEquipmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header text-white px-4 py-3" style="background-color: var(--d-maroon, #800000);">
+        <div class="modal-content border-0 shadow-lg" style="background-color: var(--d-bg); color: var(--d-maroon); border-radius: 14px; overflow: hidden;">
+            <div class="modal-header text-white px-4 py-3" style="background-color: var(--d-maroon);">
                 <h5 class="modal-title fw-bold" id="addEquipmentModalLabel">
                     <i class="bi bi-box-seam me-2"></i>Register New Equipment Item
                 </h5>
@@ -260,11 +306,11 @@
                             <label class="dash-stat-label mb-1">WHAT CATEGORY DOES THIS ITEM NEED? *</label>
                             <input type="text" name="SuggestedCategory" id="suggestedInput" class="form-control dash-search-input"
                                    placeholder="e.g. Sewing & Garments" maxlength="100" />
-                            <div class="form-text">An admin will review this and create the category. The item stays hidden from students until then.</div>
+                            <div class="form-text dash-muted">An admin will review this and create the category. The item stays hidden from students until then.</div>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="dash-stat-label mb-1">BRAND & MODEL NAME *</label>
+                            <label class="dash-stat-label mb-1">BRAND &amp; MODEL NAME *</label>
                             <input type="text" name="BrandModel" class="form-control dash-search-input" placeholder="e.g. Canon EOS 2000D" maxlength="100" required />
                         </div>
 
@@ -283,7 +329,7 @@
                             <select name="ConditionRating" class="form-select dash-search-input" required>
                                 <option value="excellent">Excellent / Brand New</option>
                                 <option value="good" selected>Good Condition</option>
-                                <option value="minor_wear">Minor Wear & Tear</option>
+                                <option value="minor_wear">Minor Wear &amp; Tear</option>
                                 <option value="needs_maintenance">Needs Maintenance</option>
                             </select>
                         </div>
@@ -292,15 +338,15 @@
                             <label class="dash-stat-label mb-1">EQUIPMENT PHOTO (OPTIONAL)</label>
                             <input type="file" name="photo" id="photoInput" class="form-control dash-search-input"
                                    accept="image/png,image/jpeg,image/webp" />
-                            <div class="form-text">JPG, PNG or WEBP, up to 5 MB.</div>
+                            <div class="form-text dash-muted">JPG, PNG or WEBP, up to 5 MB.</div>
                             <img id="photoPreview" alt="Photo preview" class="mt-2 d-none"
                                  style="max-height:140px;max-width:100%;border-radius:8px;object-fit:cover;" />
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light px-4 py-3">
-                    <button type="button" class="btn btn-outline-secondary px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white px-4 fw-bold" style="background-color: var(--d-maroon, #800000);">
+                <div class="modal-footer px-4 py-3" style="background-color: var(--d-card); border-top: 1px solid rgba(90, 0, 0, 0.15);">
+                    <button type="button" class="btn dash-btn-view px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn dash-btn-reserve px-4 fw-bold">
                         <i class="bi bi-floppy me-1"></i> Save Asset Record
                     </button>
                 </div>
@@ -312,8 +358,8 @@
 <!-- Edit Equipment Modal -->
 <div class="modal fade" id="editEquipmentModal" tabindex="-1" aria-labelledby="editEquipmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header text-white px-4 py-3" style="background-color: var(--d-maroon, #800000);">
+        <div class="modal-content border-0 shadow-lg" style="background-color: var(--d-bg); color: var(--d-maroon); border-radius: 14px; overflow: hidden;">
+            <div class="modal-header text-white px-4 py-3" style="background-color: var(--d-maroon);">
                 <h5 class="modal-title fw-bold" id="editEquipmentModalLabel">
                     <i class="bi bi-pencil-square me-2"></i>Edit Equipment Item
                 </h5>
@@ -348,11 +394,11 @@
                             <label class="dash-stat-label mb-1">WHAT CATEGORY DOES THIS ITEM NEED? *</label>
                             <input type="text" name="SuggestedCategory" id="editSuggestedInput" class="form-control dash-search-input"
                                    placeholder="e.g. Sewing & Garments" maxlength="100" />
-                            <div class="form-text">An admin will review this and create the category.</div>
+                            <div class="form-text dash-muted">An admin will review this and create the category.</div>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="dash-stat-label mb-1">BRAND & MODEL NAME *</label>
+                            <label class="dash-stat-label mb-1">BRAND &amp; MODEL NAME *</label>
                             <input type="text" name="BrandModel" id="editBrandModel" class="form-control dash-search-input" maxlength="100" required />
                         </div>
 
@@ -371,7 +417,7 @@
                             <select name="ConditionRating" id="editCondition" class="form-select dash-search-input" required>
                                 <option value="excellent">Excellent / Brand New</option>
                                 <option value="good">Good Condition</option>
-                                <option value="minor_wear">Minor Wear & Tear</option>
+                                <option value="minor_wear">Minor Wear &amp; Tear</option>
                                 <option value="needs_maintenance">Needs Maintenance</option>
                             </select>
                         </div>
@@ -382,14 +428,14 @@
                                 <option value="available">Available</option>
                                 <option value="maintenance">Under maintenance (hidden from students)</option>
                             </select>
-                            <div class="form-text d-none" id="editStatusNote"></div>
+                            <div class="form-text dash-muted d-none" id="editStatusNote"></div>
                         </div>
 
                         <div class="col-md-6">
                             <label class="dash-stat-label mb-1">REPLACE PHOTO (OPTIONAL)</label>
                             <input type="file" name="photo" id="editPhotoInput" class="form-control dash-search-input"
                                    accept="image/png,image/jpeg,image/webp" />
-                            <div class="form-text">JPG, PNG or WEBP, up to 5 MB. Leave empty to keep the current photo.</div>
+                            <div class="form-text dash-muted">JPG, PNG or WEBP, up to 5 MB. Leave empty to keep the current photo.</div>
                         </div>
 
                         <div class="col-12">
@@ -398,9 +444,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light px-4 py-3">
-                    <button type="button" class="btn btn-outline-secondary px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn text-white px-4 fw-bold" style="background-color: var(--d-maroon, #800000);">
+                <div class="modal-footer px-4 py-3" style="background-color: var(--d-card); border-top: 1px solid rgba(90, 0, 0, 0.15);">
+                    <button type="button" class="btn dash-btn-view px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn dash-btn-reserve px-4 fw-bold">
                         <i class="bi bi-floppy me-1"></i> Save Changes
                     </button>
                 </div>
@@ -412,7 +458,7 @@
 <!-- Archive Confirmation Modal -->
 <div class="modal fade" id="archiveEquipmentModal" tabindex="-1" aria-labelledby="archiveEquipmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+        <div class="modal-content border-0 shadow-lg" style="background-color: var(--d-bg); color: var(--d-maroon); border-radius: 14px; overflow: hidden;">
             <div class="modal-header bg-danger text-white px-4 py-3">
                 <h5 class="modal-title fw-bold" id="archiveEquipmentModalLabel">
                     <i class="bi bi-archive me-2"></i>Archive Equipment
@@ -426,13 +472,13 @@
 
                 <div class="modal-body p-4">
                     <p class="mb-2">Archive <strong id="archiveName"></strong>?</p>
-                    <p class="text-muted small mb-0">
+                    <p class="dash-muted small mb-0">
                         It will be removed from the inventory list and from the student catalog.
                         Its borrowing history is kept.
                     </p>
                 </div>
-                <div class="modal-footer bg-light px-4 py-3">
-                    <button type="button" class="btn btn-outline-secondary px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
+                <div class="modal-footer px-4 py-3" style="background-color: var(--d-card); border-top: 1px solid rgba(90, 0, 0, 0.15);">
+                    <button type="button" class="btn dash-btn-view px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger px-4 fw-bold">
                         <i class="bi bi-archive me-1"></i> Archive
                     </button>
