@@ -65,15 +65,61 @@
         <partial name="_UserBadge" />
     </div>
 </div>
-
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 <!-- Summary metrics -->
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Total Transactions</div><div class="dash-stat-count">@Model.TotalTransactions</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Active Loans</div><div class="dash-stat-count">@Model.ActiveLoans</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Late Returns</div><div class="dash-stat-count text-warning">@Model.LateReturns</div><div class="small text-muted">@Model.TotalDelayHours total delay hrs</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Overdue Now</div><div class="dash-stat-count text-danger">@Model.CurrentlyOverdue</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Damaged Returns</div><div class="dash-stat-count text-danger">@Model.DamagedReturns</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">On-Time Rate</div><div class="dash-stat-count text-success">@Model.OnTimeRate%</div></div></div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div class="dash-stat-label">Total Transactions</div>
+            <div class="dash-stat-count">@Model.TotalTransactions</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div class="dash-stat-label">Active Loans</div>
+            <div class="dash-stat-count">@Model.ActiveLoans</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div class="dash-stat-label">Late Returns</div>
+            <div>
+                <div class="dash-stat-count text-warning">@Model.LateReturns</div>
+                <div class="small text-muted">@Model.TotalDelayHours total delay hrs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div class="dash-stat-label">Overdue Now</div>
+            <div class="dash-stat-count text-danger">@Model.CurrentlyOverdue</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div class="dash-stat-label">Damaged Returns</div>
+            <div class="dash-stat-count text-danger">@Model.DamagedReturns</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
+            <div class="dash-stat-label">On-Time Rate</div>
+            <div class="dash-stat-count text-success">@Model.OnTimeRate%</div>
+        </div>
+    </div>
 </div>
 
 <!-- Filter & Search Bar -->
@@ -201,7 +247,122 @@
         </table>
     </div>
 </div>
+<!-- Student charges -->
+<div class="dash-card mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-2 mb-3">
+        <h5 class="dash fw-bold m-0"><i class="bi bi-cash-coin me-1"></i> Student Charges (unresolved)</h5>
+        <span class="small">
+            Late fees owed: <strong class="text-danger">₱@Model.TotalLateOwed.ToString("N2")</strong>
+            &middot; Replacements pending: <strong class="text-danger">@Model.TotalReplacementsPending</strong>
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table dash-table table-sm align-middle">
+            <thead>
+                <tr><th>Student</th><th>Late fees owed</th><th>Replacements</th><th>Earliest deadline</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model.StudentCharges)
+                {
+                    <tr>
+                        <td>
+                            <div class="fw-bold">@c.Name</div>
+                            <div class="text-muted small">ID: @c.UserCode</div>
+                        </td>
+                        <td>
+                            @if (c.LateCount > 0)
+                            {
+                                <strong class="text-danger">₱@c.LateTotal.ToString("N2")</strong>
+                                <span class="text-muted small">(@c.LateCount)</span>
+                            }
+                            else
+                            {
 
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>
+                            @if (c.ReplacementCount > 0)
+                            {
+                                <strong class="text-danger">@c.ReplacementCount to replace</strong>
+                            }
+                            else
+                            {
+
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>@c.EarliestDeadline.ToString("MMM d, yyyy")</td>
+                        <td>
+                            @if (c.Restricted)
+                            {
+                                <span class="badge bg-danger">Restricted</span>
+                            }
+                            else if (c.PastDeadline)
+                            {
+                                <span class="badge bg-danger">Past deadline</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Within deadline</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.StudentCharges.Any())
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-3">No unresolved charges.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.OpenPenalties.Any())
+    {
+        <h6 class="fw-bold mt-4 mb-2">Open penalties</h6>
+        <div class="table-responsive">
+            <table class="table dash-table table-sm align-middle mb-0">
+                <thead>
+                    <tr><th>Txn ID</th><th>Student</th><th>Item</th><th>Charge</th><th>Deadline</th><th>Notes</th><th class="text-end">Action</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.OpenPenalties)
+                    {
+                        var isLate = p.PenaltyType == PenaltyRules.Late;
+                        <tr>
+                            <td>@HistoryPageViewModel.TxnCode(p.Transaction)</td>
+                            <td>@p.Borrower.FirstName @p.Borrower.LastName</td>
+                            <td>@p.Transaction.EquipmentItem.BrandModel</td>
+                            <td>
+                                @if (isLate)
+                                {
+                                    <strong>₱@p.Amount.ToString("N2")</strong>
+                                }
+                                else
+                                {
+
+                                    <strong>Replace the item</strong>
+                                }
+                            </td>
+                            <td class="@(p.DueBy < DateTime.Now ? "text-danger fw-semibold" : "")">@p.DueBy.ToString("MMM d, yyyy")</td>
+                            <td class="small text-muted">@(string.IsNullOrWhiteSpace(p.Notes) ? "-" : p.Notes)</td>
+                            <td class="text-end">
+                                <form method="post" asp-controller="Custodian" asp-action="ResolvePenalty"
+                                      onsubmit="return confirm('@(isLate ? "Confirm you received the payment?" : "Confirm the replacement was received?")');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@p.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success fw-bold">
+                                        @(isLate ? "Mark as paid" : "Mark as replaced")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
 <!-- Overdue & Damage Penalty Summary -->
 <div class="dash-card">
     <h5 class="dash fw-bold border-bottom pb-2 mb-3">

@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using ASI.Basecode.Services.Interfaces;
 using ASI.Basecode.Services.ServiceModels;
+using ASI.Basecode.Services.Services;
 using ASI.Basecode.WebApp.Mvc;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -9,8 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.IO;
+
 namespace ASI.Basecode.WebApp.Controllers
 {
     [Authorize(Roles = "Admin")]
@@ -24,6 +26,7 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly ICategoryService _categoryService;
         private readonly IUserStatusService _userStatusService;
         private readonly IInfoRequestService _infoRequestService;
+        private readonly IPenaltyService _penaltyService;
         private readonly ProofStorage _proofStorage;
 
         public AdminController(
@@ -38,6 +41,7 @@ namespace ASI.Basecode.WebApp.Controllers
             IAdminDashboardService adminDashboardService,
             IUserStatusService userStatusService,
             IInfoRequestService infoRequestService,
+            IPenaltyService penaltyService,
             ProofStorage proofStorage,
             ICategoryService categoryService) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
@@ -49,6 +53,7 @@ namespace ASI.Basecode.WebApp.Controllers
             _categoryService = categoryService;
             _userStatusService = userStatusService;
             _infoRequestService = infoRequestService;
+            _penaltyService = penaltyService;
             _proofStorage = proofStorage;
         }
 
@@ -103,6 +108,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
             return View("AddUsersResult", result);
         }
+
         // ---------- Edit user (account status) ----------
         [HttpGet]
         public IActionResult EditUser(int id)
@@ -113,6 +119,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 TempData["ErrorMessage"] = "User not found.";
                 return RedirectToAction(nameof(Users));
             }
+            model.Penalties = _penaltyService.GetSummary(id);
             return View(model);
         }
 
@@ -121,6 +128,16 @@ namespace ASI.Basecode.WebApp.Controllers
         public IActionResult ChangeUserStatus(int id, string status)
         {
             var result = _userStatusService.ChangeStatus(id, status, AdminCode);
+            TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(EditUser), new { id });
+        }
+
+        // Lifts a borrowing restriction once the custodian has settled every penalty
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult LiftRestriction(int id)
+        {
+            var result = _penaltyService.LiftRestriction(id, AdminCode);
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
             return RedirectToAction(nameof(EditUser), new { id });
         }

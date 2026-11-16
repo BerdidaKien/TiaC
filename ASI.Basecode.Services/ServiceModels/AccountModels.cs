@@ -242,6 +242,7 @@ namespace ASI.Basecode.Services.ServiceModels
 
     public class UserEditViewModel
     {
+
         public int Id { get; set; }
         public string UserCode { get; set; }
         public string FullName { get; set; }
@@ -255,6 +256,7 @@ namespace ASI.Basecode.Services.ServiceModels
         public int OpenRequests { get; set; }
         public bool IsSelf { get; set; }
         public bool IsLastActiveAdmin { get; set; }
+        public BorrowerPenaltySummary Penalties { get; set; }
 
         public List<InfoRequestRow> Requests { get; set; } = new List<InfoRequestRow>();
     }

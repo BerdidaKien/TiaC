@@ -13,11 +13,37 @@
         .cal-inner { min-width: 760px; }
         .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
         .cal-dow { text-align: center; font-weight: 600; font-size: .8rem; padding: 4px 0; }
-        .cal-cell { background: #fff; border: 1px solid #e5d3c8; border-radius: 8px; min-height: 100px; padding: 4px; cursor: pointer; overflow: hidden; }
-        .cal-cell:hover { border-color: #800000; }
-        .cal-cell.is-week { min-height: 240px; }
-        .cal-cell.is-out { opacity: .45; }
-        .cal-cell.is-today { border-color: #800000; box-shadow: 0 0 0 1px #800000 inset; }
+
+        .cal-cell {
+            background: rgba(255, 255, 255, 0.35);
+            border: 1px solid rgba(128, 0, 0, 0.14);
+            border-radius: 8px;
+            min-height: 100px;
+            padding: 6px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .cal-cell:hover {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: #800000;
+        }
+
+        .cal-cell.is-week {
+            min-height: 240px;
+        }
+
+        .cal-cell.is-out {
+            background: rgba(0, 0, 0, 0.03);
+            opacity: .55;
+        }
+
+        .cal-cell.is-today {
+            background: rgba(128, 0, 0, 0.06);
+            border-color: #800000;
+            box-shadow: 0 0 0 1px #800000 inset;
+        }
         .cal-daynum { font-weight: 700; font-size: .85rem; }
         .cal-free { font-size: .7rem; color: #198754; }
         .cal-free.none { color: #dc3545; }
@@ -67,30 +93,34 @@
 
 <!-- Metric cards -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="dash-card">
+    <div class="col-6 col-md-3">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
             <div class="dash-stat-label">Total Transactions</div>
             <div class="dash-stat-count">@Model.TotalTransactions</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="dash-card">
+    <div class="col-6 col-md-3">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
             <div class="dash-stat-label">Overdue Items Flagged</div>
-            <div class="dash-stat-count text-danger">@Model.OverdueFlagged</div>
-            <div class="small text-muted">@Model.TotalDelayHours total delay hrs</div>
+            <div>
+                <div class="dash-stat-count text-danger">@Model.OverdueFlagged</div>
+                <div class="small text-muted">@Model.TotalDelayHours total delay hrs</div>
+            </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="dash-card">
+    <div class="col-6 col-md-3">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
             <div class="dash-stat-label">Damaged Asset Logs</div>
             <div class="dash-stat-count text-warning">@Model.DamagedLogs</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="dash-card">
+    <div class="col-6 col-md-3">
+        <div class="dash-card h-100 d-flex flex-column justify-content-between">
             <div class="dash-stat-label">Utilization Rate</div>
-            <div class="dash-stat-count text-success">@Model.UtilizationRate%</div>
-            <div class="small text-muted">of @Model.TotalItems items borrowed at least once</div>
+            <div>
+                <div class="dash-stat-count text-success">@Model.UtilizationRate%</div>
+                <div class="small text-muted">of @Model.TotalItems items borrowed at least once</div>
+            </div>
         </div>
     </div>
 </div>
