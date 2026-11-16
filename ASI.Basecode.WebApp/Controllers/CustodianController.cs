@@ -56,9 +56,23 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         // ---------- Dashboard ----------
-        public IActionResult Index(string search, int? categoryId, string status)
+        // ---------- Dashboard ----------
+        public IActionResult Index(string search, int? categoryId, string status, int page = 1)
         {
+            const int pageSize = 4;
+
             var model = _equipmentService.GetDashboardSummary(search, categoryId, status, CurrentUserCode);
+
+            var all = model.Items.ToList();
+            var totalPages = Math.Max(1, (int)Math.Ceiling(all.Count / (double)pageSize));
+            page = Math.Clamp(page, 1, totalPages);
+
+            ViewBag.PagedItems = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            ViewBag.Page = page;
+            ViewBag.PageSize = pageSize;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.TotalItems = all.Count;
+
             return View(model);
         }
 
