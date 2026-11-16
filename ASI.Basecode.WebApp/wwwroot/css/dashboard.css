@@ -149,7 +149,9 @@
 .dash-search-input {
     padding-left: 1rem;
     height: 2.6rem;
-    background: #f6e6da;
+    /* background-color, not the background shorthand: the shorthand would erase
+       the dropdown arrow image that Bootstrap's .form-select draws */
+    background-color: #f6e6da;
     border: 1.5px solid var(--d-red);
     border-radius: 6px;
     font-family: Inter, system-ui, sans-serif;
@@ -158,10 +160,55 @@
 }
 
     .dash-search-input:focus {
-        background: #f6e6da;
+        background-color: #f6e6da;
         border-color: var(--d-orange);
         box-shadow: 0 0 0 .2rem rgba(179, 45, 14, .2);
     }
+
+/* Text areas: grow to their rows="" instead of the one-line fixed height */
+textarea.dash-search-input {
+    height: auto;
+    min-height: 6rem;
+    padding: .6rem 1rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+/* File pickers: same height as the other fields, with the button and the
+   "No file chosen" text both vertically centred */
+input[type="file"].dash-search-input {
+    height: auto;
+    padding: .55rem 1rem .55rem .75rem;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+    input[type="file"].dash-search-input::file-selector-button {
+        /* stretch the button to the field's edges (cancels the padding above) */
+        margin: -.55rem 1rem -.55rem -.75rem;
+        padding: .55rem 1rem;
+        border: 0;
+        border-inline-end: 1.5px solid var(--d-red);
+        border-radius: 0;
+        background-color: #f1d3c0;
+        color: var(--d-maroon);
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    input[type="file"].dash-search-input:hover:not(:disabled)::file-selector-button {
+        background-color: #ebc3ab;
+    }
+
+/* Dropdowns: a maroon chevron on the right so they read as dropdowns */
+.form-select.dash-search-input {
+    padding-right: 2.5rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%235a0000' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right .9rem center;
+    background-size: 14px 10px;
+}
 
 /* ----- Table ----- */
 .dash-table {

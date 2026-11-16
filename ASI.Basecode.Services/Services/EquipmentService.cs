@@ -29,7 +29,17 @@ namespace ASI.Basecode.Services.Services
             var q = _equipmentRepository.GetEquipmentItems();
             var owner = OwnerId(custodianCode);
             if (owner.HasValue) q = q.Where(e => e.CustodianId == owner.Value);
+            else q = HideInactiveCustodians(q);
             return q.ToList();
+        }
+
+        // Students and the catalog never show equipment whose custodian is inactive or disabled,
+        // because nobody could approve a request for it
+        private IQueryable<EquipmentItem> HideInactiveCustodians(IQueryable<EquipmentItem> items)
+        {
+            var inactive = _equipmentRepository.GetInactiveCustodianIds().ToList();
+            if (inactive.Count == 0) return items;
+            return items.Where(e => e.CustodianId == null || !inactive.Contains(e.CustodianId.Value));
         }
 
         public IEnumerable<EquipmentCategory> GetCategories()
@@ -270,6 +280,10 @@ namespace ASI.Basecode.Services.Services
                 items = items.Where(i => i.CustodianId == owner.Value);
                 openLoans = openLoans.Where(t => t.EquipmentItem.CustodianId == owner.Value);
                 pending = pending.Where(r => r.EquipmentItem.CustodianId == owner.Value);
+            }
+            else
+            {
+                items = HideInactiveCustodians(items);
             }
 
             var borrowedIds = openLoans

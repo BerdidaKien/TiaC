@@ -58,7 +58,7 @@ namespace ASI.Basecode.WebApp
             this._services.AddMvc(options =>
             {
                 options.Filters.Add(new AuthorizeFilter("RequireAuthenticatedUser"));
-                options.Filters.Add<ASI.Basecode.WebApp.Mvc.FirstLoginFilter>();
+                options.Filters.Add<ASI.Basecode.WebApp.Mvc.AccountAccessFilter>();
             });
         }
     }

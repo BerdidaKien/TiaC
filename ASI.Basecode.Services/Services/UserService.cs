@@ -60,6 +60,19 @@ namespace ASI.Basecode.Services.Services
             return true;
         }
 
+        public AccountAccess GetAccountAccess(string userId)
+        {
+            var row = _repository.GetUsers()
+                .Where(u => u.UserId == userId)
+                .Select(u => new { u.IsActive, u.AccountStatus, u.MustCompleteSetup })
+                .FirstOrDefault();
+
+            if (row == null || !row.IsActive || row.AccountStatus != AccountStatuses.Active)
+                return AccountAccess.Blocked;
+
+            return row.MustCompleteSetup ? AccountAccess.MustSetUp : AccountAccess.Allowed;
+        }
+
         public bool MustCompleteSetup(string userId)
         {
             return _repository.GetUsers().Any(u => u.UserId == userId && u.MustCompleteSetup);
@@ -247,11 +260,17 @@ namespace ASI.Basecode.Services.Services
             if (user == null)
                 return ServiceResult.Fail("Your account was not found. Please log in again.");
 
-            if (!string.IsNullOrWhiteSpace(contactNumber))
+            // Same contact rule as Add Users. Only a changed number is checked, so saving a new photo
+            // never fails because of a number saved before this rule existed.
+            var contact = UserFieldRules.NormalizeContact(contactNumber);
+            if (contact != UserFieldRules.NormalizeContact(user.ContactNumber))
             {
-                var contact = contactNumber.Trim();
-                if (!Regex.IsMatch(contact, @"^[0-9+()\-\s]{7,20}$"))
-                    return ServiceResult.Fail("Please enter a valid contact number (7 to 20 digits, spaces, + or -).");
+                if (contact.Length == 0)
+                    return ServiceResult.Fail("Contact number can't be removed. Enter a new one to replace it.");
+
+                var contactError = UserFieldRules.CheckContact(contact);
+                if (contactError != null)
+                    return ServiceResult.Fail(contactError);
 
                 user.ContactNumber = contact;
             }

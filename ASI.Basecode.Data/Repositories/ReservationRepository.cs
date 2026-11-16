@@ -60,6 +60,11 @@ namespace ASI.Basecode.Data.Repositories
                            .FirstOrDefault();
         }
 
+        public bool IsAccountActive(int userId)
+        {
+            return _context.Users.Any(u => u.Id == userId && u.IsActive && u.AccountStatus == "active");
+        }
+
         public void AddTransaction(BorrowingTransaction transaction)
         {
             _context.BorrowingTransactions.Add(transaction);

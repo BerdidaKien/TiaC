@@ -114,6 +114,9 @@
                                 <i class="bi bi-box-arrow-right me-1"></i> Release Item to Borrower
                             </button>
                         </form>
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-2" data-bs-toggle="modal" data-bs-target="#cancelApprovedModal" data-id="@r.Id">
+                            <i class="bi bi-x-circle me-1"></i> Cancel Reservation
+                        </button>
                     </div>
                 }
                 @if (!Model.Approved.Any())
@@ -197,6 +200,29 @@
                     <div class="modal-footer border-top border-secondary">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-danger fw-bold">Confirm Decline</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="cancelApprovedModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold text-danger">Cancel Approved Reservation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" asp-controller="Custodian" asp-action="CancelApprovedReservation">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" class="modal-id" />
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">The borrower will see this reason. Use it for no-shows or when the item can't be released (3 to 255 characters):</p>
+                        <textarea name="cancelReason" class="form-control dash-search-input" rows="3" minlength="3" maxlength="255" placeholder="e.g. Borrower did not pick up the item..." required></textarea>
+                    </div>
+                    <div class="modal-footer border-top border-secondary">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep Reservation</button>
+                        <button type="submit" class="btn btn-danger fw-bold">Confirm Cancel</button>
                     </div>
                 </form>
             </div>

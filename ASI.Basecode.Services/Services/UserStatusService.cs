@@ -45,8 +45,8 @@ namespace ASI.Basecode.Services.Services
                 Role = u.Role,
                 Status = u.AccountStatus,
                 CreatedTime = u.CreatedTime,
-                ItemsOut = _repo.GetTransactions().Count(t => t.BorrowerId == id && t.ActualReturnTime == null),
-                OpenRequests = OpenReservations(id).Count(),
+                ItemsOut = OpenLoans(u).Count(),
+                OpenRequests = OpenReservations(u).Count(),
                 IsSelf = u.UserId == adminCode,
                 IsLastActiveAdmin = isLastAdmin,
                 Requests = requests.Select(InfoRequestMapper.ToRow).ToList()
@@ -81,17 +81,25 @@ namespace ASI.Basecode.Services.Services
                                                o.IsActive && o.AccountStatus == "active"))
                     return ServiceResult.Fail("This is the only active administrator. Create or activate another admin first.");
 
-                var itemsOut = _repo.GetTransactions().Count(t => t.BorrowerId == id && t.ActualReturnTime == null);
-                if (itemsOut > 0)
-                    return ServiceResult.Fail($"{name} still has {itemsOut} item(s) that haven't been returned. Process the return first.");
+                var isCustodian = user.Role == "Custodian";
 
-                // Requests that can no longer be picked up are cancelled
-                var open = OpenReservations(id).ToList();
+                // A borrower can't leave with items out; a custodian can't leave while their equipment is on loan,
+                // because only the owning custodian can receive the return
+                var itemsOut = OpenLoans(user).Count();
+                if (itemsOut > 0)
+                    return ServiceResult.Fail(isCustodian
+                        ? $"{name} still has {itemsOut} item(s) out on loan. Process the return first."
+                        : $"{name} still has {itemsOut} item(s) that haven't been returned. Process the return first.");
+
+                // Requests that can no longer be picked up (or approved) are cancelled
+                var open = OpenReservations(user).ToList();
                 foreach (var r in open)
                 {
                     r.Status = "cancelled";
                     r.UpdatedTime = now;
-                    if (string.IsNullOrWhiteSpace(r.ReviewNotes))
+                    if (isCustodian)
+                        r.ReviewNotes = "Cancelled because the equipment's custodian account was " + newStatus + ".";
+                    else if (string.IsNullOrWhiteSpace(r.ReviewNotes))
                         r.ReviewNotes = "Cancelled because the borrower's account was " + newStatus + ".";
                 }
                 cancelled = open.Count;
@@ -129,12 +137,26 @@ namespace ASI.Basecode.Services.Services
             return ServiceResult.Ok(message);
         }
 
-        // Pending requests, plus approved ones that haven't been picked up yet
-        private IQueryable<Data.Models.Reservation> OpenReservations(int userId)
+        // Pending requests, plus approved ones that haven't been picked up yet.
+        // For a custodian these are the requests for the equipment they own; for everyone else, their own requests.
+        private IQueryable<Data.Models.Reservation> OpenReservations(Data.Models.User user)
         {
-            return _repo.GetReservations().Where(r =>
-                r.BorrowerId == userId &&
-                (r.Status == "pending" || (r.Status == "approved" && r.BorrowingTransaction == null)));
+            var open = _repo.GetReservations().Where(r =>
+                r.Status == "pending" || (r.Status == "approved" && r.BorrowingTransaction == null));
+
+            return user.Role == "Custodian"
+                ? open.Where(r => r.EquipmentItem.CustodianId == user.Id)
+                : open.Where(r => r.BorrowerId == user.Id);
+        }
+
+        // Loans not returned yet: items the user holds, or (for a custodian) their equipment that is out on loan
+        private IQueryable<Data.Models.BorrowingTransaction> OpenLoans(Data.Models.User user)
+        {
+            var loans = _repo.GetTransactions().Where(t => t.ActualReturnTime == null);
+
+            return user.Role == "Custodian"
+                ? loans.Where(t => t.EquipmentItem.CustodianId == user.Id)
+                : loans.Where(t => t.BorrowerId == user.Id);
         }
     }
 }

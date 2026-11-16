@@ -95,31 +95,20 @@ namespace ASI.Basecode.Services.ServiceModels
             if (value.Length > Max(key))
                 return $"{label} must be {Max(key)} characters or fewer.";
 
+            // Same rules as Add Users, so an approved change can never produce a value
+            // that Add Users itself would have refused
             switch (key)
             {
                 case "first_name":
                 case "middle_name":
                 case "last_name":
-                    if (!Regex.IsMatch(value, @"^[\p{L}][\p{L} .'\-]*$"))
-                        return label + " can only contain letters, spaces, apostrophes, hyphens and periods.";
-                    break;
+                    return Services.UserFieldRules.CheckName(value, label, key != "middle_name");
 
                 case "user_code":
-                    if (!Regex.IsMatch(value, @"^[A-Za-z0-9._\-]+$"))
-                        return label + " can only contain letters, numbers, dots, hyphens and underscores.";
-                    break;
+                    return Services.UserFieldRules.CheckId(value);
 
                 case "email":
-                    try
-                    {
-                        var addr = new MailAddress(value);
-                        if (addr.Address != value) return "Email address is not valid.";
-                    }
-                    catch (FormatException)
-                    {
-                        return "Email address is not valid.";
-                    }
-                    break;
+                    return Services.UserFieldRules.CheckEmail(value);
             }
 
             return null;

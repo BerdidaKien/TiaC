@@ -12,6 +12,10 @@
     var maxValue = nowTime.AddDays(rules.AdvanceBookingDays).ToString("yyyy-MM-dd'T'HH:mm");
     string Clock(string hhmm) => DateTime.Today.Add(TimeSpan.Parse(hhmm)).ToString("h:mm tt");
 
+    // Values from a request the server rejected, so the form is not cleared
+    var pickupValue = TempData["ReservePickup"] as string ?? "";
+    var returnValue = TempData["ReserveReturn"] as string ?? "";
+
     string IconFor(string categoryCode) => (categoryCode ?? "") switch
     {
         "AV-MEDIA" => "bi-camera",
@@ -117,13 +121,13 @@
                         <div class="mb-3">
                             <label class="dash-stat-label mb-1" for="pickupDate">Pickup date &amp; time</label>
                             <input type="datetime-local" id="pickupDate" name="pickupDate" min="@minValue" max="@maxValue"
-                                   class="form-control dash-search-input" required />
+                                   value="@pickupValue" class="form-control dash-search-input" required />
                         </div>
 
                         <div class="mb-3">
                             <label class="dash-stat-label mb-1" for="returnDate">Return date &amp; time</label>
                             <input type="datetime-local" id="returnDate" name="returnDate" min="@minValue"
-                                   class="form-control dash-search-input" required />
+                                   value="@returnValue" class="form-control dash-search-input" required />
                             <div class="form-text">Pick the pickup time first. The return time is filled in for you.</div>
                         </div>
 
@@ -167,30 +171,67 @@
         (function () {
             var DEFAULT_HOURS = @rules.DefaultDurationHours;
             var MAX_DAYS = @rules.MaxDurationDays;
+            var OPEN = '@rules.OpeningTime';     // "HH:mm"
+            var CLOSE = '@rules.ClosingTime';
+            var HOURS_MSG = 'Pickup and return times must be between @Clock(rules.OpeningTime) and @Clock(rules.ClosingTime).';
 
             var pickup = document.getElementById('pickupDate');
-                    var ret = document.getElementById('returnDate');
+            var ret = document.getElementById('returnDate');
             if (!pickup || !ret) return;
 
-                 function pad(n) { return (n < 10 ? '0' : '') + n; }
-                function fmt(d) {
+            function pad(n) { return (n < 10 ? '0' : '') + n; }
+            function fmt(d) {
                 return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
                        'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
             }
 
-                    pickup.addEventListener('change', function () {
-                        if (!pickup.value) return;
-                        var start = new Date(pickup.value);
+            // "yyyy-MM-ddTHH:mm" -> "HH:mm", compared as text (both are zero-padded)
+            function withinHours(value) {
+                var t = value.slice(11, 16);
+                return t >= OPEN && t <= CLOSE;
+            }
 
-                        // The return time can't be before the pickup or later than the longest allowed borrowing
-                        ret.min = pickup.value;
-                        ret.max = fmt(new Date(start.getTime() + MAX_DAYS * 86400000));
+            // Shows the message on the field itself; the entered values are never cleared.
+            // The server still runs the same check (BorrowingRules.CheckSchedule).
+            function checkHours(input) {
+                input.setCustomValidity(input.value && !withinHours(input.value) ? HOURS_MSG : '');
+            }
 
-                        // Fill in the default duration when empty or no longer valid
-                        if (!ret.value || ret.value <= pickup.value || ret.value > ret.max) {
-                            ret.value = fmt(new Date(start.getTime() + DEFAULT_HOURS * 3600000));
-                        }
-                    });
-                })();
+            // The return time can't be before the pickup or later than the longest allowed borrowing
+            function setReturnLimits() {
+                if (!pickup.value) return;
+                ret.min = pickup.value;
+                ret.max = fmt(new Date(new Date(pickup.value).getTime() + MAX_DAYS * 86400000));
+            }
+
+            pickup.addEventListener('change', function () {
+                checkHours(pickup);
+                if (!pickup.value) return;
+                setReturnLimits();
+
+                // Fill in the default duration only when the return is empty or no longer valid
+                if (!ret.value || ret.value <= pickup.value || ret.value > ret.max) {
+                    ret.value = fmt(new Date(new Date(pickup.value).getTime() + DEFAULT_HOURS * 3600000));
+                }
+                checkHours(ret);
+            });
+
+            ret.addEventListener('change', function () { checkHours(ret); });
+
+            // Values restored after a rejected request: apply the limits without overwriting them
+            setReturnLimits();
+            checkHours(pickup);
+            checkHours(ret);
+
+            // Point the student to the wrong field instead of submitting
+            pickup.form.addEventListener('submit', function (e) {
+                checkHours(pickup);
+                checkHours(ret);
+                if (!pickup.form.checkValidity()) {
+                    e.preventDefault();
+                    pickup.form.reportValidity();
+                }
+            });
+        })();
     </script>
 }

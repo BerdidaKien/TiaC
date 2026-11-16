@@ -258,6 +258,11 @@ namespace ASI.Basecode.WebApp.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public IActionResult CancelApprovedReservation(int id, string cancelReason)
+            => HandleResult(_reservationService.CancelApproved(id, cancelReason, CurrentUserCode));
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult ReleaseItem(int id)
             => HandleResult(_reservationService.Release(id, CurrentUserCode));
 

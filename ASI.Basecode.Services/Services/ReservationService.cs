@@ -23,6 +23,8 @@ namespace ASI.Basecode.Services.Services
 
         public ReservationsPageViewModel GetPage(string search, int? categoryId, string custodianCode = null)
         {
+            ExpireMissedPickups();
+
             var term = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
 
             var reservations = _repo.GetReservations();
@@ -83,6 +85,8 @@ namespace ASI.Basecode.Services.Services
         // All reservations of one borrower (userCode = Borrower.UserId, i.e. the session "UserId"), newest first
         public List<Reservation> GetForUser(string userCode)
         {
+            ExpireMissedPickups();
+
             return _repo.GetReservations()
                 .Where(r => r.Borrower.UserId == userCode)
                 .OrderByDescending(r => r.CreatedTime)
@@ -110,10 +114,14 @@ namespace ASI.Basecode.Services.Services
             var borrowerId = _repo.GetUserDbId(borrowerCode);
             if (borrowerId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
+            ExpireMissedPickups();
+
             var item = _repo.GetEquipmentItemById(equipmentItemId);
             if (item == null || item.Status == "archived")
                 return ServiceResult.Fail("This equipment item was not found.");
             if (item.Status != "available")
+                return ServiceResult.Fail("This item is not available for reservation right now.");
+            if (item.CustodianId.HasValue && !_repo.IsAccountActive(item.CustodianId.Value))
                 return ServiceResult.Fail("This item is not available for reservation right now.");
 
             if (pickup == default || returnDate == default)
@@ -186,6 +194,7 @@ namespace ASI.Basecode.Services.Services
                 return ServiceResult.Fail("This reservation can no longer be cancelled.");
 
             r.Status = "cancelled";
+            r.ReviewNotes = null;   // a cancelled request that has a note was cancelled by someone else
             r.UpdatedTime = DateTime.Now;
 
             try
@@ -207,6 +216,8 @@ namespace ASI.Basecode.Services.Services
             var custodianId = _repo.GetUserDbId(custodianCode);
             if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
+            ExpireMissedPickups();
+
             var r = _repo.GetReservationById(reservationId);
             if (r == null) return ServiceResult.Fail("Reservation not found.");
             if (r.EquipmentItem.CustodianId != custodianId)
@@ -215,11 +226,15 @@ namespace ASI.Basecode.Services.Services
             if (r.EquipmentItem.Status != "available")
                 return ServiceResult.Fail("This item is not available right now.");
 
-            var alreadyReserved = _repo.GetReservations().Any(x =>
+            // Only an approved reservation that covers part of the same time blocks this one
+            // (the same rule students are held to when they request)
+            var overlapsApproved = _repo.GetReservations().Any(x =>
                 x.Id != r.Id && x.EquipmentItemId == r.EquipmentItemId &&
-                x.Status == "approved" && x.BorrowingTransaction == null);
-            if (alreadyReserved)
-                return ServiceResult.Fail("Another approved request is already waiting to pick up this item.");
+                x.Status == "approved" && x.BorrowingTransaction == null &&
+                x.RequestedPickupDate < r.EstimatedReturnDate &&
+                x.EstimatedReturnDate > r.RequestedPickupDate);
+            if (overlapsApproved)
+                return ServiceResult.Fail("Another approved reservation already covers part of this time for the item. Cancel that one first, or decline this request.");
             var limit = _settings.Get().MaxActiveItems;
             var holding = _repo.GetReservations().Count(x =>
                 x.Id != r.Id &&
@@ -259,7 +274,8 @@ namespace ASI.Basecode.Services.Services
             return ServiceResult.Ok("Request declined.");
         }
 
-        public ServiceResult Release(int reservationId, string custodianCode)
+        // The custodian cancels an approved reservation that hasn't been picked up (no-show, maintenance, ...)
+        public ServiceResult CancelApproved(int reservationId, string reason, string custodianCode)
         {
             var custodianId = _repo.GetUserDbId(custodianCode);
             if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
@@ -267,9 +283,65 @@ namespace ASI.Basecode.Services.Services
             var r = _repo.GetReservationById(reservationId);
             if (r == null) return ServiceResult.Fail("Reservation not found.");
             if (r.EquipmentItem.CustodianId != custodianId)
+                return ServiceResult.Fail("This reservation belongs to another custodian.");
+            if (r.Status != "approved" || r.BorrowingTransaction != null)
+                return ServiceResult.Fail("Only an approved reservation that hasn't been picked up can be cancelled.");
+
+            reason = (reason ?? "").Trim();
+            if (reason.Length < 3 || reason.Length > 255)
+                return ServiceResult.Fail("Please give a reason (3 to 255 characters).");
+
+            var now = DateTime.Now;
+            r.Status = "cancelled";
+            r.ReviewNotes = reason;
+            r.ReviewedBy = custodianId;
+            r.ReviewedAt = now;
+            r.UpdatedTime = now;
+
+            try
+            {
+                _repo.SaveChanges();
+            }
+            catch (Exception)
+            {
+                return ServiceResult.Fail("Could not cancel the reservation. Please try again.");
+            }
+
+            return ServiceResult.Ok("Reservation cancelled. The borrower will see your reason.");
+        }
+
+        // An approved reservation that was never picked up expires once its return time has passed,
+        // so a no-show can't keep blocking the item. Runs whenever reservations are read or changed.
+        private void ExpireMissedPickups()
+        {
+            var now = DateTime.Now;
+            var missed = _repo.GetReservations()
+                .Where(r => r.Status == "approved" && r.BorrowingTransaction == null && r.EstimatedReturnDate < now)
+                .ToList();
+            if (missed.Count == 0) return;
+
+            foreach (var r in missed)
+            {
+                r.Status = "cancelled";
+                r.ReviewNotes = "Expired: the item was not picked up before the return time.";
+                r.UpdatedTime = now;
+            }
+            _repo.SaveChanges();
+        }
+
+        public ServiceResult Release(int reservationId, string custodianCode)
+        {
+            var custodianId = _repo.GetUserDbId(custodianCode);
+            if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+
+            ExpireMissedPickups();
+
+            var r = _repo.GetReservationById(reservationId);
+            if (r == null) return ServiceResult.Fail("Reservation not found.");
+            if (r.EquipmentItem.CustodianId != custodianId)
                 return ServiceResult.Fail("This request belongs to another custodian.");
             if (r.Status != "approved" || r.BorrowingTransaction != null)
-                return ServiceResult.Fail("This reservation can't be released.");
+                return ServiceResult.Fail("This reservation can't be released. It may have expired or been cancelled.");
             if (r.EquipmentItem.Status != "available")
                 return ServiceResult.Fail("This item is not available right now.");
 

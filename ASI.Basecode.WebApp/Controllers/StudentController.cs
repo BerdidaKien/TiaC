@@ -268,6 +268,12 @@ namespace ASI.Basecode.WebApp.Controllers
 
             TempData["ErrorMessage"] = result.Message;
 
+            // Keep what the student entered so they only have to fix the wrong part
+            if (pickupDate != default)
+                TempData["ReservePickup"] = pickupDate.ToString("yyyy-MM-dd'T'HH:mm");
+            if (returnDate != default)
+                TempData["ReserveReturn"] = returnDate.ToString("yyyy-MM-dd'T'HH:mm");
+
             return RedirectToAction(
                 nameof(EquipmentDetails),
                 new { id = equipmentItemId });

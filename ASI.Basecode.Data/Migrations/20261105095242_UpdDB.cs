@@ -28,6 +28,9 @@ namespace ASI.Basecode.Data.Migrations
                 nullable: false,
                 defaultValue: "active");
 
+            // Accounts that were already deactivated keep that state instead of showing as "active"
+            migrationBuilder.Sql("UPDATE [user] SET account_status = 'inactive' WHERE is_active = 0");
+
             migrationBuilder.AddColumn<string>(
                 name: "profile_image_path",
                 table: "user",

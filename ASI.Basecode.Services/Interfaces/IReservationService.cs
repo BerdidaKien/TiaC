@@ -13,6 +13,7 @@ namespace ASI.Basecode.Services.Interfaces
         ReservationsPageViewModel GetPage(string search, int? categoryId, string custodianCode = null);
         ServiceResult Approve(int reservationId, string notes, string custodianCode);
         ServiceResult Decline(int reservationId, string reason, string custodianCode);
+        ServiceResult CancelApproved(int reservationId, string reason, string custodianCode);
         ServiceResult Release(int reservationId, string custodianCode);
         ServiceResult Return(int transactionId, string condition, string notes, string custodianCode);
 

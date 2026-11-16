@@ -21,5 +21,7 @@ namespace ASI.Basecode.Data.Interfaces
 
         // Converts the login code (user.user_id) into the numeric primary key (user.id)
         int GetUserDbId(string userCode);
+        // Custodians who are inactive or disabled: students must not see or reserve their equipment
+        IQueryable<int> GetInactiveCustodianIds();
     }
 }

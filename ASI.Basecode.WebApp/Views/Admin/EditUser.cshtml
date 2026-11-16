@@ -29,7 +29,9 @@
     string lockReason =
         Model.IsSelf ? "You can't deactivate or disable your own account." :
         Model.IsLastActiveAdmin ? "This is the only active administrator." :
-        Model.ItemsOut > 0 ? $"This user still has {Model.ItemsOut} item(s) that haven't been returned." :
+        Model.ItemsOut > 0 ? (Model.Role == "Custodian"
+            ? $"{Model.ItemsOut} item(s) of this custodian are still out on loan. Process the return first."
+            : $"This user still has {Model.ItemsOut} item(s) that haven't been returned.") :
         null;
 
     var options = new[]
@@ -128,7 +130,15 @@
             @if (Model.OpenRequests > 0 && Model.Status == "active")
             {
                 <div class="small text-muted mb-2">
-                    <i class="bi bi-info-circle me-1"></i> @Model.OpenRequests open reservation(s) will be cancelled if the account is deactivated or disabled.
+                    <i class="bi bi-info-circle me-1"></i>
+                    @if (Model.Role == "Custodian")
+                    {
+                        <text>@Model.OpenRequests open request(s) for this custodian's equipment will be cancelled if the account is deactivated or disabled, and their equipment will be hidden from students.</text>
+                    }
+                    else
+                    {
+                        <text>@Model.OpenRequests open reservation(s) will be cancelled if the account is deactivated or disabled.</text>
+                    }
                 </div>
             }
 

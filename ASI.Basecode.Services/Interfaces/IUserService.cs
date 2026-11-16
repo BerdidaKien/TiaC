@@ -12,6 +12,9 @@ namespace ASI.Basecode.Services.Interfaces
 
         // First login of an account an admin created
         bool MustCompleteSetup(string userId);
+
+        // Checked on every request: an account that is disabled or made inactive is signed out
+        AccountAccess GetAccountAccess(string userId);
         ServiceResult CompleteFirstLogin(string userId, string newPassword);
 
         // Admin User Management
