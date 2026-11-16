@@ -29,13 +29,14 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IUserService _userService; // Added field
         private readonly IWebHostEnvironment _env;
         private readonly ISettingsService _settingsService;
-
+        private readonly IPenaltyService _penaltyService;
         public CustodianController(
             IEquipmentService equipmentService,
             IReservationService reservationService,
             IHistoryService historyService,
             IReportService reportService,
             ISettingsService settingsService,
+            IPenaltyService penaltyService,
             IUserService userService, // Injected dependency
             IWebHostEnvironment env,
             IHttpContextAccessor httpContextAccessor,
@@ -51,12 +52,27 @@ namespace ASI.Basecode.WebApp.Controllers
             _userService = userService;
             _settingsService = settingsService;// Assigned field
             _env = env;
+            _penaltyService = penaltyService;
         }
 
         // ---------- Dashboard ----------
-        public IActionResult Index(string search, int? categoryId, string status)
+        // ---------- Dashboard ----------
+        public IActionResult Index(string search, int? categoryId, string status, int page = 1)
         {
+            const int pageSize = 4;
+
             var model = _equipmentService.GetDashboardSummary(search, categoryId, status, CurrentUserCode);
+
+            var all = model.Items.ToList();
+            var totalPages = Math.Max(1, (int)Math.Ceiling(all.Count / (double)pageSize));
+            page = Math.Clamp(page, 1, totalPages);
+
+            ViewBag.PagedItems = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            ViewBag.Page = page;
+            ViewBag.PageSize = pageSize;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.TotalItems = all.Count;
+
             return View(model);
         }
 
@@ -283,6 +299,14 @@ namespace ASI.Basecode.WebApp.Controllers
         public IActionResult History(HistoryFilter filter)
         {
             return View(_historyService.GetPage(filter, CurrentUserCode));
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ResolvePenalty(int id)
+        {
+            var result = _penaltyService.Resolve(id, CurrentUserCode);
+            TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
+            return RedirectToAction(nameof(History));
         }
 
         public IActionResult ExportHistoryCsv(HistoryFilter filter)

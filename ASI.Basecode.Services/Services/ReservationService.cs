@@ -14,7 +14,30 @@ namespace ASI.Basecode.Services.Services
     {
         private readonly IReservationRepository _repo;
         private readonly ISettingsService _settings;
+        // Restricts a borrower with an unresolved penalty past its deadline, or an item
+        // still out more than 3 days past its due date. Never lifts a restriction (admin only).
+        private void RefreshRestriction(int borrowerId)
+        {
+            var user = _repo.GetUserByDbId(borrowerId);
+            if (user == null || user.BorrowerStatus == PenaltyRules.Restricted) return;
 
+            var now = DateTime.Now;
+            var cutoff = now.AddDays(-PenaltyRules.SettleLateWithinDays);
+
+            var pastDeadline = _repo.GetPenalties().Any(p =>
+                p.BorrowerId == borrowerId && p.Status == PenaltyRules.Unresolved && p.DueBy < now);
+
+            var notReturned = _repo.GetTransactions().Any(t =>
+                t.BorrowerId == borrowerId && t.ActualReturnTime == null &&
+                t.Reservation.EstimatedReturnDate < cutoff);
+
+            if (pastDeadline || notReturned)
+            {
+                user.BorrowerStatus = PenaltyRules.Restricted;
+                user.UpdatedTime = now;
+                _repo.SaveChanges();
+            }
+        }
         public ReservationService(IReservationRepository repo, ISettingsService settings)
         {
             _repo = repo;
@@ -85,8 +108,13 @@ namespace ASI.Basecode.Services.Services
         // All reservations of one borrower (userCode = Borrower.UserId, i.e. the session "UserId"), newest first
         public List<Reservation> GetForUser(string userCode)
         {
+<<<<<<< HEAD
             ExpireMissedPickups();
 
+=======
+            var borrowerDbId = _repo.GetUserDbId(userCode);
+            if (borrowerDbId != 0) RefreshRestriction(borrowerDbId);
+>>>>>>> 59e62c808d04d8c773ef6dd1d7982e9312f4dea4
             return _repo.GetReservations()
                 .Where(r => r.Borrower.UserId == userCode)
                 .OrderByDescending(r => r.CreatedTime)
@@ -113,9 +141,15 @@ namespace ASI.Basecode.Services.Services
         {
             var borrowerId = _repo.GetUserDbId(borrowerCode);
             if (borrowerId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+<<<<<<< HEAD
 
             ExpireMissedPickups();
 
+=======
+            RefreshRestriction(borrowerId);
+            if (_repo.GetUserByDbId(borrowerId)?.BorrowerStatus == PenaltyRules.Restricted)
+                return ServiceResult.Fail("Your borrowing is restricted because of an unresolved penalty (overdue or damaged equipment). Settle it with the custodian, then ask an administrator to reactivate your account.");
+>>>>>>> 59e62c808d04d8c773ef6dd1d7982e9312f4dea4
             var item = _repo.GetEquipmentItemById(equipmentItemId);
             if (item == null || item.Status == "archived")
                 return ServiceResult.Fail("This equipment item was not found.");
@@ -223,6 +257,8 @@ namespace ASI.Basecode.Services.Services
             if (r.EquipmentItem.CustodianId != custodianId)
                 return ServiceResult.Fail("This request belongs to another custodian.");
             if (r.Status != "pending") return ServiceResult.Fail("This request was already processed.");
+            if (r.Borrower?.BorrowerStatus == PenaltyRules.Restricted)
+                return ServiceResult.Fail("This borrower is restricted because of an unresolved penalty.");
             if (r.EquipmentItem.Status != "available")
                 return ServiceResult.Fail("This item is not available right now.");
 
@@ -393,6 +429,37 @@ namespace ASI.Basecode.Services.Services
                     t.DelayDurationHours = (int)Math.Ceiling(lateBy.TotalHours);
                 }
             }
+            // ---- Penalties ----
+            if (t.IsOverdue && due.HasValue)
+            {
+                var days = PenaltyRules.LateDays(due.Value, now);
+                _repo.AddPenalty(new Penalty
+                {
+                    TransactionId = t.Id,
+                    BorrowerId = t.BorrowerId,
+                    PenaltyType = PenaltyRules.Late,
+                    Amount = days * PenaltyRules.LateFeePerDay,
+                    Notes = $"{days} day(s) late",
+                    Status = PenaltyRules.Unresolved,
+                    DueBy = now.AddDays(PenaltyRules.SettleLateWithinDays),
+                    CreatedTime = now
+                });
+            }
+
+            if (PenaltyRules.IsDamage(condition))
+            {
+                _repo.AddPenalty(new Penalty
+                {
+                    TransactionId = t.Id,
+                    BorrowerId = t.BorrowerId,
+                    PenaltyType = PenaltyRules.Damage,
+                    Amount = 0,
+                    Notes = notes,
+                    Status = PenaltyRules.Unresolved,
+                    DueBy = now.AddDays(PenaltyRules.ReplaceWithinDays),
+                    CreatedTime = now
+                });
+            }
 
             t.EquipmentItem.ConditionRating = condition;
             t.EquipmentItem.Status = condition == "needs_maintenance" ? "maintenance" : "available";
@@ -401,5 +468,6 @@ namespace ASI.Basecode.Services.Services
 
             return ServiceResult.Ok("Item marked as returned.");
         }
+
     }
 }

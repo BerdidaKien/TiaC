@@ -21,9 +21,9 @@ namespace ASI.Basecode.Data.Repositories
         public IQueryable<Reservation> GetReservations()
         {
             return _context.Reservations
-                           .Include(r => r.Borrower)
-                           .Include(r => r.BorrowingTransaction)
-                           .Include(r => r.EquipmentItem).ThenInclude(i => i.Category);
+               .Include(r => r.Borrower)
+               .Include(r => r.BorrowingTransaction).ThenInclude(t => t.Penalties)
+               .Include(r => r.EquipmentItem).ThenInclude(i => i.Category);
         }
 
         public IQueryable<BorrowingTransaction> GetTransactions()
@@ -87,6 +87,22 @@ namespace ASI.Basecode.Data.Repositories
         public void SaveChanges()
         {
             _context.SaveChanges();
+        }
+        public IQueryable<Penalty> GetPenalties()
+        {
+            return _context.Penalties
+                           .Include(p => p.Borrower)
+                           .Include(p => p.Transaction).ThenInclude(t => t.EquipmentItem);
+        }
+
+        public void AddPenalty(Penalty penalty)
+        {
+            _context.Penalties.Add(penalty);
+        }
+
+        public User GetUserByDbId(int id)
+        {
+            return _context.Users.FirstOrDefault(u => u.Id == id);
         }
     }
 }

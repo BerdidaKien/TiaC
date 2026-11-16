@@ -90,7 +90,41 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
+@if (Model.Penalties != null && (Model.Penalties.Restricted || Model.Penalties.UnresolvedCount > 0))
+{
+    <div class="dash-card mb-4 p-4 @(Model.Penalties.Restricted ? "border border-danger" : "")">
+        <h6 class="dash fw-bold border-bottom pb-2 mb-3">
+            <i class="bi bi-exclamation-octagon me-1"></i> Borrowing status
+            @if (Model.Penalties.Restricted)
+            {
+                <span class="badge bg-danger ms-2">Restricted</span>
+            }
+        </h6>
+        <ul class="small mb-3">
+            <li>Unresolved late fees: <strong>₱@Model.Penalties.LateTotal.ToString("N2")</strong></li>
+            <li>Replacements pending: <strong>@Model.Penalties.ReplacementCount</strong></li>
+            <li>Items still out 3+ days past due: <strong>@Model.Penalties.UnreturnedOverdue</strong></li>
+        </ul>
 
+        @if (Model.Penalties.Restricted)
+        {
+            <form method="post" asp-controller="Admin" asp-action="LiftRestriction"
+                  onsubmit="return confirm('Restore borrowing for this student?');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button type="submit" class="btn dash-btn-reserve text-white fw-bold" disabled="@(!Model.Penalties.CanLift)">
+                    Reactivate borrowing
+                </button>
+                @if (!Model.Penalties.CanLift)
+                {
+                    <div class="form-text text-danger">
+                        Available after the custodian marks every penalty as paid or replaced, and any overdue item is returned.
+                    </div>
+                }
+            </form>
+        }
+    </div>
+}
 <div class="row g-4 mb-4">
     <!-- Account details (read-only) -->
     <div class="col-lg-5">

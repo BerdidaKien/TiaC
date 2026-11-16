@@ -32,7 +32,11 @@ namespace ASI.Basecode.Services.ServiceModels
         public int TotalDelayHours { get; set; }
         public int DamagedReturns { get; set; }
         public int OnTimeRate { get; set; }      // percent of returned items
-
+                                                 // Unresolved penalties (late fees and replacements)
+        public List<StudentChargeRow> StudentCharges { get; set; } = new List<StudentChargeRow>();
+        public List<Penalty> OpenPenalties { get; set; } = new List<Penalty>();
+        public decimal TotalLateOwed => StudentCharges.Sum(s => s.LateTotal);
+        public int TotalReplacementsPending => StudentCharges.Sum(s => s.ReplacementCount);
         public static string TxnCode(BorrowingTransaction t) => $"TXN-{t.ActualPickupTime:yyyy}-{t.Id:D4}";
     }
 }

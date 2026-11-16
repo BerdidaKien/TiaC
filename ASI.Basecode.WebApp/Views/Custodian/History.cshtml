@@ -42,6 +42,34 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .history-tab-btn {
+            border-radius: 999px;
+            font-family: Inter, system-ui, sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.45rem 1rem;
+            border: 1.5px solid var(--d-orange);
+            background: transparent;
+            color: var(--d-maroon);
+            transition: all 0.15s ease;
+        }
+
+            .history-tab-btn:hover {
+                background: rgba(179, 45, 14, 0.1);
+                color: var(--d-maroon);
+            }
+
+            .history-tab-btn.active {
+                background: var(--d-orange);
+                color: #fff;
+            }
+
+            .history-tab-btn .badge {
+                font-size: 0.72rem;
+                vertical-align: middle;
+            }
+    </style>
 }
 
 <div class="dash-header mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -66,14 +94,78 @@
     </div>
 </div>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <!-- Summary metrics -->
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Total Transactions</div><div class="dash-stat-count">@Model.TotalTransactions</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Active Loans</div><div class="dash-stat-count">@Model.ActiveLoans</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Late Returns</div><div class="dash-stat-count text-warning">@Model.LateReturns</div><div class="small text-muted">@Model.TotalDelayHours total delay hrs</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Overdue Now</div><div class="dash-stat-count text-danger">@Model.CurrentlyOverdue</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">Damaged Returns</div><div class="dash-stat-count text-danger">@Model.DamagedReturns</div></div></div>
-    <div class="col-6 col-md-4 col-xl-2"><div class="dash-card"><div class="dash-stat-label">On-Time Rate</div><div class="dash-stat-count text-success">@Model.OnTimeRate%</div></div></div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card res-card h-100">
+            <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-journal-text"></i></div>
+            <div>
+                <div class="dash-stat-label">Total Transactions</div>
+                <div class="dash-stat-count">@Model.TotalTransactions</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card res-card h-100">
+            <div class="res-card-icon bg-primary-subtle text-primary"><i class="bi bi-box-arrow-up-right"></i></div>
+            <div>
+                <div class="dash-stat-label">Active Loans</div>
+                <div class="dash-stat-count">@Model.ActiveLoans</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card res-card h-100">
+            <div class="res-card-icon bg-warning-subtle text-warning"><i class="bi bi-clock-history"></i></div>
+            <div>
+                <div class="dash-stat-label">Late Returns</div>
+                <div class="dash-stat-count">@Model.LateReturns</div>
+                <div class="stat-sub text-muted">@Model.TotalDelayHours delay hrs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card res-card h-100">
+            <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+                <div class="dash-stat-label">Overdue Now</div>
+                <div class="dash-stat-count">@Model.CurrentlyOverdue</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card res-card h-100">
+            <div class="res-card-icon bg-danger-subtle text-danger"><i class="bi bi-wrench"></i></div>
+            <div>
+                <div class="dash-stat-label">Damaged Returns</div>
+                <div class="dash-stat-count">@Model.DamagedReturns</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="dash-card res-card h-100">
+            <div class="res-card-icon bg-success-subtle text-success"><i class="bi bi-check-circle"></i></div>
+            <div>
+                <div class="dash-stat-label">On-Time Rate</div>
+                <div class="dash-stat-count">@Model.OnTimeRate%</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Filter & Search Bar -->
@@ -121,129 +213,287 @@
     </div>
 </form>
 
-<!-- History Table -->
+<!-- Unified Table Card with View Switcher & Pagination -->
 <div class="dash-card mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="dash fs-3 fw-bold m-0">Transaction Audit Log</h3>
-        <span class="text-muted small">Showing <strong>@Model.Rows.Count</strong> of @Model.TotalTransactions records</span>
+    <!-- Top Switcher Buttons -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom pb-3 mb-3">
+        <div class="d-flex flex-wrap gap-2" role="tablist" aria-label="History table views">
+            <button type="button" class="history-tab-btn active" data-tab="audit">
+                <i class="bi bi-journal-check me-1"></i> Transaction Audit Log
+                <span class="badge bg-light text-dark ms-1">@Model.Rows.Count</span>
+            </button>
+            <button type="button" class="history-tab-btn" data-tab="charges">
+                <i class="bi bi-cash-coin me-1"></i> Student Charges
+                <span class="badge bg-danger text-white ms-1">@Model.StudentCharges.Count</span>
+            </button>
+            <button type="button" class="history-tab-btn" data-tab="penalties">
+                <i class="bi bi-exclamation-triangle me-1"></i> Overdue &amp; Damage Penalty Summary
+                <span class="badge bg-warning text-dark ms-1">@Model.PenaltyRows.Count</span>
+            </button>
+        </div>
+
+        <span id="activeTabSummary" class="text-muted small"></span>
     </div>
 
-    <div class="table-responsive">
-        <table class="table dash-table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>Txn ID</th>
-                    <th>Equipment</th>
-                    <th>Borrower</th>
-                    <th>Handover</th>
-                    <th>Returned</th>
-                    <th>Condition</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var t in Model.Rows)
-                {
-                    var status = StatusOf(t);
-                    var releasedBy = t.ReleasedByNavigation == null ? "-" : $"{t.ReleasedByNavigation.FirstName} {t.ReleasedByNavigation.LastName}";
-                    var receivedBy = t.ReturnedToNavigation == null ? "-" : $"{t.ReturnedToNavigation.FirstName} {t.ReturnedToNavigation.LastName}";
+    <!-- TAB 1: Transaction Audit Log -->
+    <div id="panel-audit" class="history-panel">
+        <div class="table-responsive">
+            <table class="table dash-table table-hover align-middle mb-0">
+                <thead>
                     <tr>
-                        <td class="fw-semibold">@HistoryPageViewModel.TxnCode(t)</td>
-                        <td>
-                            <div class="fw-bold">@t.EquipmentItem.BrandModel</div>
-                            <div class="text-muted small">@t.EquipmentItem.ItemCode - @t.EquipmentItem.Category?.CategoryName</div>
-                        </td>
-                        <td>
-                            <div class="fw-bold">@t.Borrower.LastName, @t.Borrower.FirstName</div>
-                            <div class="text-muted small">ID: @t.Borrower.UserId</div>
-                        </td>
-                        <td>
-                            @($"{t.ActualPickupTime:MMM d, yyyy}")<br />
-                            <span class="text-muted small">@($"{t.ActualPickupTime:h:mm tt}") &middot; by @releasedBy</span>
-                        </td>
-                        <td>
-                            @if (t.ActualReturnTime == null)
-                            {
-                                <span class="text-muted">-</span>
-                            }
-                            else
-                            {
-                                @($"{t.ActualReturnTime:MMM d, yyyy}")<br />
-                                <span class="text-muted small">@($"{t.ActualReturnTime:h:mm tt}") &middot; to @receivedBy</span>
-                            }
-                        </td>
-                        <td><span class="badge @ConditionCss(t.ReturnCondition)">@ConditionLabel(t.ReturnCondition)</span></td>
-                        <td><span class="@status.Css">@status.Text</span></td>
-                        <td>
-                            <button type="button" class="btn dash-btn-view btn-sm" data-bs-toggle="modal" data-bs-target="#logModal"
-                                    data-txn="@HistoryPageViewModel.TxnCode(t)"
-                                    data-item="@t.EquipmentItem.BrandModel (@t.EquipmentItem.ItemCode)"
-                                    data-borrower="@t.Borrower.FirstName @t.Borrower.LastName (@t.Borrower.UserId)"
-                                    data-handover="@($"{t.ActualPickupTime:MMM d, yyyy h:mm tt}")"
-                                    data-releasedby="@releasedBy"
-                                    data-due="@($"{t.Reservation?.EstimatedReturnDate:MMM d, yyyy h:mm tt}")"
-                                    data-returned="@(t.ActualReturnTime == null ? "Not yet returned" : $"{t.ActualReturnTime:MMM d, yyyy h:mm tt}")"
-                                    data-receivedby="@receivedBy"
-                                    data-condition="@ConditionLabel(t.ReturnCondition)"
-                                    data-delay="@(t.IsOverdue ? t.DelayDurationHours + " hour(s) late" : "None")"
-                                    data-notes="@(string.IsNullOrWhiteSpace(t.DamageNotes) ? "None" : t.DamageNotes)">
-                                <i class="bi bi-eye"></i> View Log
-                            </button>
-                        </td>
+                        <th>Txn ID</th>
+                        <th>Equipment</th>
+                        <th>Borrower</th>
+                        <th>Handover</th>
+                        <th>Returned</th>
+                        <th>Condition</th>
+                        <th>Status</th>
+                        <th>Action</th>
                     </tr>
-                }
-                @if (!Model.Rows.Any())
-                {
-                    <tr><td colspan="8" class="text-center text-muted py-4">No transactions match your filters.</td></tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="tbody-audit">
+                    @foreach (var t in Model.Rows)
+                    {
+                        var status = StatusOf(t);
+                        var releasedBy = t.ReleasedByNavigation == null ? "-" : $"{t.ReleasedByNavigation.FirstName} {t.ReleasedByNavigation.LastName}";
+                        var receivedBy = t.ReturnedToNavigation == null ? "-" : $"{t.ReturnedToNavigation.FirstName} {t.ReturnedToNavigation.LastName}";
+                        <tr class="paged-row">
+                            <td class="fw-semibold">@HistoryPageViewModel.TxnCode(t)</td>
+                            <td>
+                                <div class="fw-bold">@t.EquipmentItem.BrandModel</div>
+                                <div class="text-muted small">@t.EquipmentItem.ItemCode - @t.EquipmentItem.Category?.CategoryName</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">@t.Borrower.LastName, @t.Borrower.FirstName</div>
+                                <div class="text-muted small">ID: @t.Borrower.UserId</div>
+                            </td>
+                            <td>
+                                @($"{t.ActualPickupTime:MMM d, yyyy}")<br />
+                                <span class="text-muted small">@($"{t.ActualPickupTime:h:mm tt}") &middot; by @releasedBy</span>
+                            </td>
+                            <td>
+                                @if (t.ActualReturnTime == null)
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                                else
+                                {
+                                    @($"{t.ActualReturnTime:MMM d, yyyy}")
+                                    <br />
+                                    <span class="text-muted small">@($"{t.ActualReturnTime:h:mm tt}") &middot; to @receivedBy</span>
+                                }
+                            </td>
+                            <td><span class="badge @ConditionCss(t.ReturnCondition)">@ConditionLabel(t.ReturnCondition)</span></td>
+                            <td><span class="@status.Css">@status.Text</span></td>
+                            <td>
+                                <button type="button" class="btn dash-btn-view btn-sm" data-bs-toggle="modal" data-bs-target="#logModal"
+                                        data-txn="@HistoryPageViewModel.TxnCode(t)"
+                                        data-item="@t.EquipmentItem.BrandModel (@t.EquipmentItem.ItemCode)"
+                                        data-borrower="@t.Borrower.FirstName @t.Borrower.LastName (@t.Borrower.UserId)"
+                                        data-handover="@($"{t.ActualPickupTime:MMM d, yyyy h:mm tt}")"
+                                        data-releasedby="@releasedBy"
+                                        data-due="@($"{t.Reservation?.EstimatedReturnDate:MMM d, yyyy h:mm tt}")"
+                                        data-returned="@(t.ActualReturnTime == null ? "Not yet returned" : $"{t.ActualReturnTime:MMM d, yyyy h:mm tt}")"
+                                        data-receivedby="@receivedBy"
+                                        data-condition="@ConditionLabel(t.ReturnCondition)"
+                                        data-delay="@(t.IsOverdue ? t.DelayDurationHours + " hour(s) late" : "None")"
+                                        data-notes="@(string.IsNullOrWhiteSpace(t.DamageNotes) ? "None" : t.DamageNotes)">
+                                    <i class="bi bi-eye"></i> View Log
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr class="empty-row"><td colspan="8" class="text-center text-muted py-4">No transactions match your filters.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
-<!-- Overdue & Damage Penalty Summary -->
-<div class="dash-card">
-    <h5 class="dash fw-bold border-bottom pb-2 mb-3">
-        <i class="bi bi-exclamation-triangle me-1"></i> Overdue & Damage Penalty Summary
-        <span class="text-muted small fw-normal">(latest 10)</span>
-    </h5>
-    <div class="table-responsive">
-        <table class="table dash-table table-sm align-middle">
-            <thead>
-                <tr><th>Txn ID</th><th>Borrower</th><th>Item</th><th>Issue</th><th>Notes</th></tr>
-            </thead>
-            <tbody>
-                @foreach (var t in Model.PenaltyRows)
-                {
-                    var due = t.Reservation?.EstimatedReturnDate;
+    <!-- TAB 2: Student Charges (Unresolved & Open Penalties) -->
+    <div id="panel-charges" class="history-panel d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 small">
+            <span class="fw-semibold">Unresolved Student Balances</span>
+            <span>
+                Late fees owed: <strong class="text-danger">₱@Model.TotalLateOwed.ToString("N2")</strong>
+                &middot; Replacements pending: <strong class="text-danger">@Model.TotalReplacementsPending</strong>
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table dash-table table-hover align-middle mb-0">
+                <thead>
                     <tr>
-                        <td>@HistoryPageViewModel.TxnCode(t)</td>
-                        <td>@t.Borrower.FirstName @t.Borrower.LastName</td>
-                        <td>@t.EquipmentItem.BrandModel</td>
-                        <td>
-                            @if (t.ActualReturnTime != null && t.IsOverdue)
-                            {
-                                <span class="badge bg-warning text-dark">Late +@t.DelayDurationHours h</span>
-                            }
-                            @if (t.ActualReturnTime == null && due.HasValue && due.Value < DateTime.Now)
-                            {
-                                <span class="badge bg-danger">Overdue - not returned</span>
-                            }
-                            @if (t.ReturnCondition == "needs_maintenance")
-                            {
-                                <span class="badge bg-danger">Damaged</span>
-                            }
-                        </td>
-                        <td>@(string.IsNullOrWhiteSpace(t.DamageNotes) ? "-" : t.DamageNotes)</td>
+                        <th>Student</th>
+                        <th>Late Fees Owed</th>
+                        <th>Replacements</th>
+                        <th>Earliest Deadline</th>
+                        <th>Status</th>
                     </tr>
-                }
-                @if (!Model.PenaltyRows.Any())
-                {
-                    <tr><td colspan="5" class="text-center text-muted py-3">No late returns or damaged assets.</td></tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="tbody-charges">
+                    @foreach (var c in Model.StudentCharges)
+                    {
+                        <tr class="paged-row">
+                            <td>
+                                <div class="fw-bold">@c.Name</div>
+                                <div class="text-muted small">ID: @c.UserCode</div>
+                            </td>
+                            <td>
+                                @if (c.LateCount > 0)
+                                {
+                                    <strong class="text-danger">₱@c.LateTotal.ToString("N2")</strong>
+                                    <span class="text-muted small">(@c.LateCount)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (c.ReplacementCount > 0)
+                                {
+                                    <strong class="text-danger">@c.ReplacementCount to replace</strong>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>@c.EarliestDeadline.ToString("MMM d, yyyy")</td>
+                            <td>
+                                @if (c.Restricted)
+                                {
+                                    <span class="badge bg-danger">Restricted</span>
+                                }
+                                else if (c.PastDeadline)
+                                {
+                                    <span class="badge bg-danger">Past deadline</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Within deadline</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.StudentCharges.Any())
+                    {
+                        <tr class="empty-row"><td colspan="5" class="text-center text-muted py-4">No unresolved charges.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.OpenPenalties.Any())
+        {
+            <h6 class="fw-bold mt-4 mb-2">Open Penalty Items (Resolve Payment / Replacement)</h6>
+            <div class="table-responsive">
+                <table class="table dash-table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Txn ID</th>
+                            <th>Student</th>
+                            <th>Item</th>
+                            <th>Charge</th>
+                            <th>Deadline</th>
+                            <th>Notes</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.OpenPenalties)
+                        {
+                            var isLate = p.PenaltyType == PenaltyRules.Late;
+                            <tr>
+                                <td>@HistoryPageViewModel.TxnCode(p.Transaction)</td>
+                                <td>@p.Borrower.FirstName @p.Borrower.LastName</td>
+                                <td>@p.Transaction.EquipmentItem.BrandModel</td>
+                                <td>
+                                    @if (isLate)
+                                    {
+                                        <strong>₱@p.Amount.ToString("N2")</strong>
+                                    }
+                                    else
+                                    {
+                                        <strong>Replace the item</strong>
+                                    }
+                                </td>
+                                <td class="@(p.DueBy < DateTime.Now ? "text-danger fw-semibold" : "")">@p.DueBy.ToString("MMM d, yyyy")</td>
+                                <td class="small text-muted">@(string.IsNullOrWhiteSpace(p.Notes) ? "-" : p.Notes)</td>
+                                <td class="text-end">
+                                    <form method="post" asp-controller="Custodian" asp-action="ResolvePenalty"
+                                          onsubmit="return confirm('@(isLate ? "Confirm you received the payment?" : "Confirm the replacement was received?")');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@p.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success fw-bold">
+                                            @(isLate ? "Mark as paid" : "Mark as replaced")
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- TAB 3: Overdue & Damage Penalty Summary -->
+    <div id="panel-penalties" class="history-panel d-none">
+        <div class="table-responsive">
+            <table class="table dash-table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Txn ID</th>
+                        <th>Borrower</th>
+                        <th>Item</th>
+                        <th>Issue</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-penalties">
+                    @foreach (var t in Model.PenaltyRows)
+                    {
+                        var due = t.Reservation?.EstimatedReturnDate;
+                        <tr class="paged-row">
+                            <td class="fw-semibold">@HistoryPageViewModel.TxnCode(t)</td>
+                            <td>@t.Borrower.FirstName @t.Borrower.LastName</td>
+                            <td>@t.EquipmentItem.BrandModel</td>
+                            <td>
+                                @if (t.ActualReturnTime != null && t.IsOverdue)
+                                {
+                                    <span class="badge bg-warning text-dark">Late +@t.DelayDurationHours h</span>
+                                }
+                                @if (t.ActualReturnTime == null && due.HasValue && due.Value < DateTime.Now)
+                                {
+                                    <span class="badge bg-danger">Overdue - not returned</span>
+                                }
+                                @if (t.ReturnCondition == "needs_maintenance")
+                                {
+                                    <span class="badge bg-danger">Damaged</span>
+                                }
+                            </td>
+                            <td>@(string.IsNullOrWhiteSpace(t.DamageNotes) ? "-" : t.DamageNotes)</td>
+                        </tr>
+                    }
+                    @if (!Model.PenaltyRows.Any())
+                    {
+                        <tr class="empty-row"><td colspan="5" class="text-center text-muted py-4">No late returns or damaged assets.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Shared Pagination Footer (5 items per page) -->
+    <div id="paginationFooter" class="d-flex flex-wrap align-items-center justify-content-between pt-3 mt-3 border-top gap-2">
+        <span id="pageInfo" class="dash-muted small"></span>
+        <nav aria-label="Table pages">
+            <ul id="pageControls" class="pagination dash-pagination mb-0"></ul>
+        </nav>
     </div>
 </div>
 
@@ -277,12 +527,122 @@
     </div>
 
     <script>
-        document.getElementById('logModal').addEventListener('show.bs.modal', function (event) {
+        // Audit log modal binding
+        document.getElementById('logModal').addEventListener('show.bs.modal', function(event) {
             var b = event.relatedTarget;
             ['txn', 'item', 'borrower', 'handover', 'releasedby', 'due',
-             'returned', 'receivedby', 'condition', 'delay', 'notes'].forEach(function (key) {
-                document.getElementById('m-' + key).textContent = b.getAttribute('data-' + key) || '-';
-            });
+                'returned', 'receivedby', 'condition', 'delay', 'notes'].forEach(function(key) {
+                    document.getElementById('m-' + key).textContent = b.getAttribute('data-' + key) || '-';
+                });
         });
+
+        // Unified Table Switcher + 5-per-page Pagination
+        (function() {
+            const PAGE_SIZE = 5;
+            const tabState = {
+                audit: { page: 1, label: 'Transaction Audit Log' },
+                charges: { page: 1, label: 'Student Charges' },
+                penalties: { page: 1, label: 'Overdue & Damage Penalty Summary' }
+            };
+            let currentTab = 'audit';
+
+            const tabButtons = document.querySelectorAll('.history-tab-btn');
+            const panels = {
+                audit: document.getElementById('panel-audit'),
+                charges: document.getElementById('panel-charges'),
+                penalties: document.getElementById('panel-penalties')
+            };
+            const tbodies = {
+                audit: document.getElementById('tbody-audit'),
+                charges: document.getElementById('tbody-charges'),
+                penalties: document.getElementById('tbody-penalties')
+            };
+
+            const pageInfo = document.getElementById('pageInfo');
+            const pageControls = document.getElementById('pageControls');
+            const paginationFooter = document.getElementById('paginationFooter');
+            const activeTabSummary = document.getElementById('activeTabSummary');
+
+            function renderTable() {
+                // Toggle visible panel & button active state
+                tabButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === currentTab);
+                });
+                Object.keys(panels).forEach(key => {
+                    panels[key].classList.toggle('d-none', key !== currentTab);
+                });
+
+                const tbody = tbodies[currentTab];
+                const rows = Array.from(tbody.querySelectorAll('tr.paged-row'));
+                const total = rows.length;
+                const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+                if (tabState[currentTab].page > totalPages) {
+                    tabState[currentTab].page = totalPages;
+                }
+                const page = tabState[currentTab].page;
+                const startIdx = (page - 1) * PAGE_SIZE;
+                const endIdx = startIdx + PAGE_SIZE;
+
+                rows.forEach((row, idx) => {
+                    row.style.display = (idx >= startIdx && idx < endIdx) ? '' : 'none';
+                });
+
+                activeTabSummary.innerHTML = `Viewing <strong>${tabState[currentTab].label}</strong> (${total} total)`;
+
+                if (total === 0) {
+                    paginationFooter.classList.add('d-none');
+                    return;
+                }
+
+                paginationFooter.classList.remove('d-none');
+                const firstShown = startIdx + 1;
+                const lastShown = Math.min(endIdx, total);
+                pageInfo.textContent = `Showing ${firstShown}–${lastShown} of ${total}`;
+
+                // Build pagination buttons
+                pageControls.innerHTML = '';
+                if (totalPages <= 1) return;
+
+                const addPageBtn = (label, targetPage, disabled, active) => {
+                    const li = document.createElement('li');
+                    li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                    const a = document.createElement('a');
+                    a.className = 'page-link';
+                    a.href = '#';
+                    a.innerHTML = label;
+                    a.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (!disabled && !active) {
+                            tabState[currentTab].page = targetPage;
+                            renderTable();
+                        }
+                    });
+                    li.appendChild(a);
+                    pageControls.appendChild(li);
+                };
+
+                addPageBtn('&laquo;', page - 1, page === 1, false);
+
+                let winStart = Math.max(1, page - 2);
+                let winEnd = Math.min(totalPages, winStart + 4);
+                winStart = Math.max(1, winEnd - 4);
+
+                for (let p = winStart; p <= winEnd; p++) {
+                    addPageBtn(String(p), p, false, p === page);
+                }
+
+                addPageBtn('&raquo;', page + 1, page === totalPages, false);
+            }
+
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    currentTab = this.dataset.tab;
+                    renderTable();
+                });
+            });
+
+            renderTable();
+        })();
     </script>
 }
