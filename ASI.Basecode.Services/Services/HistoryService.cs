@@ -157,11 +157,42 @@ namespace ASI.Basecode.Services.Services
             var lateReturns = baseQ.Count(t =>
                 t.ActualReturnTime != null &&
                 t.IsOverdue);
+            var penaltyQ = _repo.GetPenalties().Where(p => p.Status == PenaltyRules.Unresolved);
 
+            if (!string.IsNullOrEmpty(custodianCode))
+            {
+                var ownerId = _repo.GetUserDbId(custodianCode);
+                penaltyQ = penaltyQ.Where(p => p.Transaction.EquipmentItem.CustodianId == ownerId);
+            }
+            if (borrowerUserId != null)
+            {
+                penaltyQ = penaltyQ.Where(p => p.Borrower.UserId == borrowerUserId);
+            }
+
+            var openPenalties = penaltyQ.OrderBy(p => p.DueBy).ToList();
+
+            var charges = openPenalties
+                .GroupBy(p => p.BorrowerId)
+                .Select(g => new StudentChargeRow
+                {
+                    BorrowerId = g.Key,
+                    UserCode = g.First().Borrower.UserId,
+                    Name = g.First().Borrower.LastName + ", " + g.First().Borrower.FirstName,
+                    LateTotal = g.Where(p => p.PenaltyType == PenaltyRules.Late).Sum(p => p.Amount),
+                    LateCount = g.Count(p => p.PenaltyType == PenaltyRules.Late),
+                    ReplacementCount = g.Count(p => p.PenaltyType == PenaltyRules.Damage),
+                    EarliestDeadline = g.Min(p => p.DueBy),
+                    PastDeadline = g.Any(p => p.DueBy < now),
+                    Restricted = g.First().Borrower.BorrowerStatus == PenaltyRules.Restricted
+                })
+                .OrderByDescending(c => c.LateTotal)
+                .ThenByDescending(c => c.ReplacementCount)
+                .ToList();
             return new HistoryPageViewModel
             {
                 Filter = f,
-
+                StudentCharges = charges,
+                OpenPenalties = openPenalties,
                 Categories = _repo.GetCategories()
                     .OrderBy(c => c.CategoryName)
                     .ToList(),

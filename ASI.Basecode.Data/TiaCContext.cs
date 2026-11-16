@@ -27,6 +27,7 @@ public partial class TiaCContext : DbContext
 
     public virtual DbSet<InfoChangeRequestItem> InfoChangeRequestItems { get; set; }
     public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+    public virtual DbSet<Penalty> Penalties { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -459,6 +460,38 @@ public partial class TiaCContext : DbContext
                 .HasForeignKey(d => d.RequestId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_InfoRequestFiles_Request");
+        });
+        modelBuilder.Entity<Penalty>(entity =>
+        {
+            entity.ToTable("Penalties");
+            entity.HasKey(e => e.Id).HasName("PK_Penalties");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+            entity.Property(e => e.BorrowerId).HasColumnName("borrower_id");
+            entity.Property(e => e.PenaltyType).IsRequired().HasMaxLength(20).IsUnicode(false).HasColumnName("penalty_type");
+            entity.Property(e => e.Amount).HasColumnType("decimal(10, 2)").HasColumnName("amount");
+            entity.Property(e => e.Notes).HasMaxLength(500).HasColumnName("notes");
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20).IsUnicode(false)
+                .HasDefaultValue("unresolved").HasColumnName("status");
+            entity.Property(e => e.DueBy).HasColumnName("due_by");
+            entity.Property(e => e.CreatedTime).HasDefaultValueSql("(getdate())").HasColumnName("created_time");
+            entity.Property(e => e.ResolvedTime).HasColumnName("resolved_time");
+            entity.Property(e => e.ResolvedBy).HasColumnName("resolved_by");
+
+            entity.HasOne(d => d.Transaction).WithMany(p => p.Penalties)
+                .HasForeignKey(d => d.TransactionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Penalties_Transaction");
+
+            entity.HasOne(d => d.Borrower).WithMany()
+                .HasForeignKey(d => d.BorrowerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Penalties_Borrower");
+
+            entity.HasOne(d => d.ResolvedByNavigation).WithMany()
+                .HasForeignKey(d => d.ResolvedBy)
+                .HasConstraintName("FK_Penalties_ResolvedBy");
         });
         OnModelCreatingPartial(modelBuilder);
     }

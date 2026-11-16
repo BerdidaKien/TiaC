@@ -20,7 +20,9 @@ namespace ASI.Basecode.Data.Interfaces
         // ---- Student reservation requests ----
         EquipmentItem GetEquipmentItemById(int id);
         void AddReservation(Reservation reservation);
-
+        IQueryable<Penalty> GetPenalties();
+        void AddPenalty(Penalty penalty);
+        User GetUserByDbId(int id);
         void SaveChanges();
     }
 }

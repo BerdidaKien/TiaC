@@ -5,7 +5,7 @@
 @{
     var session = HttpContextAccessor.HttpContext.Session;
 
-    var badgeName = session.GetString("UserName").ToUpperInvariant();
+    var badgeName = (session.GetString("UserName") ?? "").ToUpperInvariant();
     if (string.IsNullOrWhiteSpace(badgeName)) { badgeName = "Guest"; }
 
     var badgePhoto = session.GetString("UserPhoto");
