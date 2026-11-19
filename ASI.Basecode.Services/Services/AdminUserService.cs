@@ -22,11 +22,11 @@ namespace ASI.Basecode.Services.Services
         private const int MaxRows = 100;
         private const string PasswordChars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
 
-        private readonly IUserAdminRepository _repo;
+        private readonly IUserAdminRepository _userAdminRepository;
 
-        public AdminUserService(IUserAdminRepository repo)
+        public AdminUserService(IUserAdminRepository userAdminRepository)
         {
-            _repo = repo;
+            _userAdminRepository = userAdminRepository;
         }
 
         // The whole batch is checked first; nothing is saved unless every row is valid,
@@ -59,7 +59,7 @@ namespace ASI.Basecode.Services.Services
             var emails = rows.Select(r => Clean(r.Email)).Where(s => s.Length > 0).ToList();
 
             // Existing accounts that clash with this batch
-            var existing = _repo.GetUsers()
+            var existing = _userAdminRepository.GetUsers()
                 .Where(u => ids.Contains(u.UserId) || emails.Contains(u.Email))
                 .Select(u => new { u.UserId, u.Email })
                 .ToList();
@@ -152,8 +152,8 @@ namespace ASI.Basecode.Services.Services
 
             try
             {
-                _repo.AddUsers(pending.Select(p => p.User));
-                _repo.SaveChanges();
+                _userAdminRepository.AddUsers(pending.Select(p => p.User));
+                _userAdminRepository.SaveChanges();
                 result.Created.AddRange(pending.Select(p => p.Info));
             }
             catch (DbUpdateException)

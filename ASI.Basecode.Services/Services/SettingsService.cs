@@ -22,29 +22,29 @@ namespace ASI.Basecode.Services.Services
         private const string KeyOpen = "opening_time";
         private const string KeyClose = "closing_time";
 
-        private readonly ISettingsRepository _repo;
+        private readonly ISettingsRepository _settingsRepository;
 
-        public SettingsService(ISettingsRepository repo)
+        public SettingsService(ISettingsRepository settingsRepository)
         {
-            _repo = repo;
+            _settingsRepository = settingsRepository;
         }
 
         // Saved values, or the defaults for anything not saved yet
         public BorrowingSettings Get() => _cached ??= Load();
         public BorrowingSettings Load()
         {
-            var rows = _repo.GetAll().ToDictionary(r => r.SettingKey, r => r.SettingValue);
-            var s = new BorrowingSettings();
+            var rows = _settingsRepository.GetAll().ToDictionary(r => r.SettingKey, r => r.SettingValue);
+            var settings = new BorrowingSettings();
 
-            s.MaxActiveItems = ReadInt(rows, KeyMaxActive, s.MaxActiveItems);
-            s.DefaultDurationHours = ReadInt(rows, KeyDefaultHours, s.DefaultDurationHours);
-            s.MaxDurationDays = ReadInt(rows, KeyMaxDays, s.MaxDurationDays);
-            s.AdvanceBookingDays = ReadInt(rows, KeyAdvanceDays, s.AdvanceBookingDays);
-            s.OverdueGraceMinutes = ReadInt(rows, KeyGrace, s.OverdueGraceMinutes);
-            s.DueSoonHours = ReadInt(rows, KeyDueSoon, s.DueSoonHours);
-            s.OpeningTime = ReadTime(rows, KeyOpen, s.OpeningTime);
-            s.ClosingTime = ReadTime(rows, KeyClose, s.ClosingTime);
-            return s;
+            settings.MaxActiveItems = ReadInt(rows, KeyMaxActive, settings.MaxActiveItems);
+            settings.DefaultDurationHours = ReadInt(rows, KeyDefaultHours, settings.DefaultDurationHours);
+            settings.MaxDurationDays = ReadInt(rows, KeyMaxDays, settings.MaxDurationDays);
+            settings.AdvanceBookingDays = ReadInt(rows, KeyAdvanceDays, settings.AdvanceBookingDays);
+            settings.OverdueGraceMinutes = ReadInt(rows, KeyGrace, settings.OverdueGraceMinutes);
+            settings.DueSoonHours = ReadInt(rows, KeyDueSoon, settings.DueSoonHours);
+            settings.OpeningTime = ReadTime(rows, KeyOpen, settings.OpeningTime);
+            settings.ClosingTime = ReadTime(rows, KeyClose, settings.ClosingTime);
+            return settings;
         }
 
         public ServiceResult Save(BorrowingSettings s, string userCode)
@@ -86,7 +86,7 @@ namespace ASI.Basecode.Services.Services
 
             try
             {
-                _repo.SaveAll(values, userCode);
+                _settingsRepository.SaveAll(values, userCode);
                 _cached = null;
             }
             catch (Exception)

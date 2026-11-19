@@ -18,20 +18,20 @@ namespace ASI.Basecode.WebApp.Controllers
     {
         private const int MaxFiles = 3;
 
-        private readonly IInfoRequestService _service;
-        private readonly ProofStorage _storage;
+        private readonly IInfoRequestService _infoRequestService;
+        private readonly ProofStorage _proofStorage;
 
         public InfoRequestController(
-            IInfoRequestService service,
-            ProofStorage storage,
+            IInfoRequestService infoRequestService,
+            ProofStorage proofStorage,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
             IMapper mapper)
             : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
-            _service = service;
-            _storage = storage;
+            _infoRequestService = infoRequestService;
+            _proofStorage = proofStorage;
         }
 
         private string CurrentUserCode => _session.GetString("UserId");
@@ -39,7 +39,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpGet]
         public IActionResult Create()
         {
-            var model = _service.GetForm(CurrentUserCode);
+            var model = _infoRequestService.GetForm(CurrentUserCode);
             if (model == null) return RedirectToAction("Login", "Account");
             return View(model);
         }
@@ -48,7 +48,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Create(SubmitInfoRequest model, List<IFormFile> proofs)
         {
-            var form = _service.GetForm(CurrentUserCode);
+            var form = _infoRequestService.GetForm(CurrentUserCode);
             if (form == null) return RedirectToAction("Login", "Account");
 
             var files = (proofs ?? new List<IFormFile>()).Where(f => f != null && f.Length > 0).ToList();
@@ -63,7 +63,7 @@ namespace ASI.Basecode.WebApp.Controllers
             {
                 foreach (var f in files)
                 {
-                    if (!_storage.TrySave(f, out var stored, out var fileError))
+                    if (!_proofStorage.TrySave(f, out var stored, out var fileError))
                     {
                         error = fileError;
                         break;
@@ -75,14 +75,14 @@ namespace ASI.Basecode.WebApp.Controllers
             ServiceResult result = null;
             if (error == null)
             {
-                result = _service.Submit(CurrentUserCode, model, saved);
+                result = _infoRequestService.Submit(CurrentUserCode, model, saved);
                 if (!result.Success) error = result.Message;
             }
 
             if (error != null)
             {
                 // Nothing was saved, so drop the uploaded files and show the form again
-                foreach (var s in saved) _storage.Delete(s.StoredName);
+                foreach (var s in saved) _proofStorage.Delete(s.StoredName);
 
                 form.Posted = model;
                 ViewBag.Error = error;
@@ -97,7 +97,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Cancel(int id)
         {
-            var result = _service.Cancel(id, CurrentUserCode);
+            var result = _infoRequestService.Cancel(id, CurrentUserCode);
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
             return RedirectToAction(nameof(Create));
         }

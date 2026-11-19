@@ -15,13 +15,13 @@ namespace ASI.Basecode.Services.Services
         private const int PageSize = 10;
         private const int ExportCap = 5000;
 
-        private readonly IEquipmentRepository _equipRepo;
-        private readonly IReservationRepository _resRepo;
+        private readonly IEquipmentRepository _equipmentRepository;
+        private readonly IReservationRepository _reservationRepository;
 
-        public ItemReportService(IEquipmentRepository equipRepo, IReservationRepository resRepo)
+        public ItemReportService(IEquipmentRepository equipmentRepository, IReservationRepository reservationRepository)
         {
-            _equipRepo = equipRepo;
-            _resRepo = resRepo;
+            _equipmentRepository = equipmentRepository;
+            _reservationRepository = reservationRepository;
         }
 
         public ItemReportsPageViewModel GetPage(ItemReportFilter filter) => Build(filter, true);
@@ -34,12 +34,12 @@ namespace ASI.Basecode.Services.Services
             var now = DateTime.Now;
 
             // Loans that are out right now (a short list: at most one per item)
-            var open = _resRepo.GetTransactions().Where(t => t.ActualReturnTime == null).ToList();
+            var open = _reservationRepository.GetTransactions().Where(t => t.ActualReturnTime == null).ToList();
             var openByItem = open.GroupBy(t => t.EquipmentItemId)
                                  .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.ActualPickupTime).First());
             var openIds = openByItem.Keys.ToList();
 
-            var q = _equipRepo.GetEquipmentItems()   // not archived, includes Category
+            var q = _equipmentRepository.GetEquipmentItems()   // not archived, includes Category
                   .Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
 
             if (!string.IsNullOrWhiteSpace(f.Search))
@@ -132,7 +132,7 @@ namespace ASI.Basecode.Services.Services
                 BorrowedCount = borrowed,
                 MaintenanceCount = maintenance,
                 Rows = rows,
-                Categories = _resRepo.GetCategories().OrderBy(c => c.CategoryName).ToList(),
+                Categories = _reservationRepository.GetCategories().OrderBy(c => c.CategoryName).ToList(),
                 Page = page,
                 PageSize = pageSize,
                 TotalRows = totalRows,
@@ -142,10 +142,10 @@ namespace ASI.Basecode.Services.Services
 
         public ItemDetailsDto GetItemDetails(int id)
         {
-            var item = _equipRepo.GetEquipmentById(id);
+            var item = _equipmentRepository.GetEquipmentById(id);
             if (item == null) return null;
 
-            var all = _resRepo.GetTransactions().Where(t => t.EquipmentItemId == id);
+            var all = _reservationRepository.GetTransactions().Where(t => t.EquipmentItemId == id);
             var totalBorrows = all.Count();
             var recent = all.OrderByDescending(t => t.ActualPickupTime).Take(8).ToList();
 

@@ -13,16 +13,16 @@ namespace ASI.Basecode.Services.Services
 {
     public class CategoryService : ICategoryService
     {
-        private readonly ICategoryRepository _repo;
+        private readonly ICategoryRepository _categoryRepository;
 
-        public CategoryService(ICategoryRepository repo)
+        public CategoryService(ICategoryRepository categoryRepository)
         {
-            _repo = repo;
+            _categoryRepository = categoryRepository;
         }
 
         public CategoriesPageViewModel GetPage()
         {
-            var categories = _repo.GetCategories()
+            var categories = _categoryRepository.GetCategories()
                 .OrderBy(c => c.CategoryName)
                 .Select(c => new CategoryRow
                 {
@@ -36,7 +36,7 @@ namespace ASI.Basecode.Services.Services
                 })
                 .ToList();
 
-            var pending = _repo.GetItems()
+            var pending = _categoryRepository.GetItems()
                 .Where(i => i.Status == "pending_category")
                 .OrderBy(i => i.CreatedTime)
                 .Select(i => new PendingCategoryRequest
@@ -56,25 +56,25 @@ namespace ASI.Basecode.Services.Services
             return new CategoriesPageViewModel { Categories = categories, Pending = pending };
         }
 
-        public int PendingCount() => _repo.GetItems().Count(i => i.Status == "pending_category");
+        public int PendingCount() => _categoryRepository.GetItems().Count(i => i.Status == "pending_category");
 
         public ServiceResult Create(string name, string description, string adminCode)
         {
             if (!TryName(name, out var clean, out var error)) return ServiceResult.Fail(error);
-            if (_repo.GetCategories().Any(c => c.CategoryName == clean))
+            if (_categoryRepository.GetCategories().Any(c => c.CategoryName == clean))
                 return ServiceResult.Fail($"A category named \"{clean}\" already exists.");
 
-            _repo.AddCategory(NewCategory(clean, description, adminCode));
+            _categoryRepository.AddCategory(NewCategory(clean, description, adminCode));
             return Save($"Category \"{clean}\" created.");
         }
 
         public ServiceResult Update(int id, string name, string description, string adminCode)
         {
-            var cat = _repo.GetCategoryById(id);
+            var cat = _categoryRepository.GetCategoryById(id);
             if (cat == null) return ServiceResult.Fail("Category not found.");
 
             if (!TryName(name, out var clean, out var error)) return ServiceResult.Fail(error);
-            if (_repo.GetCategories().Any(c => c.Id != id && c.CategoryName == clean))
+            if (_categoryRepository.GetCategories().Any(c => c.Id != id && c.CategoryName == clean))
                 return ServiceResult.Fail($"Another category is already named \"{clean}\".");
 
             cat.CategoryName = clean;
@@ -86,7 +86,7 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult SetActive(int id, bool active, string adminCode)
         {
-            var cat = _repo.GetCategoryById(id);
+            var cat = _categoryRepository.GetCategoryById(id);
             if (cat == null) return ServiceResult.Fail("Category not found.");
 
             cat.IsActive = active;
@@ -99,26 +99,26 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult Delete(int id)
         {
-            var cat = _repo.GetCategoryById(id);
+            var cat = _categoryRepository.GetCategoryById(id);
             if (cat == null) return ServiceResult.Fail("Category not found.");
 
-            if (_repo.GetItems().Any(i => i.CategoryId == id))
+            if (_categoryRepository.GetItems().Any(i => i.CategoryId == id))
                 return ServiceResult.Fail("This category has items (or archived items), so it can't be deleted. Disable it instead.");
 
-            _repo.DeleteCategory(cat);
+            _categoryRepository.DeleteCategory(cat);
             return Save($"Category \"{cat.CategoryName}\" deleted.");
         }
 
         public ServiceResult ApproveRequest(int itemId, string categoryName, string adminCode)
         {
-            var item = _repo.GetItemById(itemId);
+            var item = _categoryRepository.GetItemById(itemId);
             if (item == null || item.Status != "pending_category")
                 return ServiceResult.Fail("This request was already handled.");
 
             if (!TryName(categoryName, out var clean, out var error)) return ServiceResult.Fail(error);
 
             string message;
-            var existing = _repo.GetCategories().FirstOrDefault(c => c.CategoryName == clean);
+            var existing = _categoryRepository.GetCategories().FirstOrDefault(c => c.CategoryName == clean);
             if (existing != null)
             {
                 if (!existing.IsActive)
@@ -130,7 +130,7 @@ namespace ASI.Basecode.Services.Services
             else
             {
                 var created = NewCategory(clean, null, adminCode);
-                _repo.AddCategory(created);
+                _categoryRepository.AddCategory(created);
                 item.Category = created;
                 message = $"Category \"{clean}\" created and the item is now available.";
             }
@@ -145,7 +145,7 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult RejectRequest(int itemId, string reason, string adminCode)
         {
-            var item = _repo.GetItemById(itemId);
+            var item = _categoryRepository.GetItemById(itemId);
             if (item == null || item.Status != "pending_category")
                 return ServiceResult.Fail("This request was already handled.");
 
@@ -208,7 +208,7 @@ namespace ASI.Basecode.Services.Services
 
             var code = slug;
             var n = 2;
-            while (_repo.GetCategories().Any(c => c.CategoryCode == code))
+            while (_categoryRepository.GetCategories().Any(c => c.CategoryCode == code))
             {
                 code = slug + "-" + n++;
             }
@@ -219,7 +219,7 @@ namespace ASI.Basecode.Services.Services
         {
             try
             {
-                _repo.SaveChanges();
+                _categoryRepository.SaveChanges();
             }
             catch (Exception)
             {

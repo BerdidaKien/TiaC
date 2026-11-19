@@ -27,7 +27,6 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly SignInManager _signInManager;
         private readonly TokenValidationParametersFactory _tokenValidationParametersFactory;
         private readonly TokenProviderOptionsFactory _tokenProviderOptionsFactory;
-        private readonly IConfiguration _appConfiguration;
         private readonly IUserService _userService;
 
         private readonly IPasswordResetService _passwordResetService;
@@ -43,13 +42,12 @@ namespace ASI.Basecode.WebApp.Controllers
             TokenValidationParametersFactory tokenValidationParametersFactory,
             TokenProviderOptionsFactory tokenProviderOptionsFactory) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
-            this._sessionManager = new SessionManager(this._session);
-            this._signInManager = signInManager;
-            this._tokenProviderOptionsFactory = tokenProviderOptionsFactory;
-            this._tokenValidationParametersFactory = tokenValidationParametersFactory;
-            this._appConfiguration = configuration;
-            this._userService = userService;
-            this._passwordResetService = passwordResetService;
+            _sessionManager = new SessionManager(_session);
+            _signInManager = signInManager;
+            _tokenProviderOptionsFactory = tokenProviderOptionsFactory;
+            _tokenValidationParametersFactory = tokenValidationParametersFactory;
+            _userService = userService;
+            _passwordResetService = passwordResetService;
         }
 
         [HttpGet]
@@ -58,8 +56,8 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             TempData["returnUrl"] = System.Net.WebUtility.UrlDecode(HttpContext.Request.Query["ReturnUrl"]);
 
-            this._sessionManager.Clear();
-            this._session.SetString("SessionId", System.Guid.NewGuid().ToString());
+            _sessionManager.Clear();
+            _session.SetString("SessionId", System.Guid.NewGuid().ToString());
 
             return this.View();
         }
@@ -68,7 +66,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Login(LoginViewModel model, string returnUrl)
         {
-            this._session.SetString("HasSession", "Exist");
+            _session.SetString("HasSession", "Exist");
 
             User user = null;
 
@@ -76,14 +74,14 @@ namespace ASI.Basecode.WebApp.Controllers
 
             if (loginResult == LoginResult.Success)
             {
-                await this._signInManager.SignInAsync(user);
+                await _signInManager.SignInAsync(user);
 
                 var fullName = $"{user.FirstName} {user.LastName}".Trim();
 
-                this._session.SetString("UserName", fullName);
-                this._session.SetString("UserId", user.UserId);
-                this._session.SetString("UserRole", user.Role ?? "Student");
-                this._session.SetString("UserPhoto", user.ProfileImagePath ?? "");   // shown in the sidebar
+                _session.SetString("UserName", fullName);
+                _session.SetString("UserId", user.UserId);
+                _session.SetString("UserRole", user.Role ?? "Student");
+                _session.SetString("UserPhoto", user.ProfileImagePath ?? "");   // shown in the sidebar
 
                 var role = user.Role?.ToLowerInvariant() ?? "student";
 
@@ -163,14 +161,14 @@ namespace ASI.Basecode.WebApp.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> SignOutUser()
         {
-            await this._signInManager.SignOutAsync();
+            await _signInManager.SignOutAsync();
 
             return RedirectToAction("Login", "Account");
         }
 
         // ---------- First login (accounts created by an admin) ----------
-        private string CurrentUserId =>
-            User.FindFirst("UserId")?.Value ?? this._session.GetString("UserId");
+        private string CurrentUserCode =>
+            User.FindFirst("UserId")?.Value ?? _session.GetString("UserId");
 
         private IActionResult RedirectToOwnHome()
         {
@@ -179,9 +177,9 @@ namespace ASI.Basecode.WebApp.Controllers
             return RedirectToAction("Index", "Student");
         }
 
-        private FirstLoginViewModel BuildFirstLoginModel(string userId)
+        private FirstLoginViewModel BuildFirstLoginModel(string userCode)
         {
-            var profile = _userService.GetProfile(userId);
+            var profile = _userService.GetProfile(userCode);
             if (profile == null) return null;
 
             return new FirstLoginViewModel
@@ -196,11 +194,11 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpGet]
         public IActionResult FirstLogin()
         {
-            var userId = CurrentUserId;
-            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Account");
-            if (!_userService.MustCompleteSetup(userId)) return RedirectToOwnHome();
+            var userCode = CurrentUserCode;
+            if (string.IsNullOrEmpty(userCode)) return RedirectToAction("Login", "Account");
+            if (!_userService.MustCompleteSetup(userCode)) return RedirectToOwnHome();
 
-            var model = BuildFirstLoginModel(userId);
+            var model = BuildFirstLoginModel(userCode);
             if (model == null) return RedirectToAction("Login", "Account");
             return View(model);
         }
@@ -209,15 +207,15 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult FirstLogin(FirstLoginViewModel posted)
         {
-            var userId = CurrentUserId;
-            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Account");
-            if (!_userService.MustCompleteSetup(userId)) return RedirectToOwnHome();
+            var userCode = CurrentUserCode;
+            if (string.IsNullOrEmpty(userCode)) return RedirectToAction("Login", "Account");
+            if (!_userService.MustCompleteSetup(userCode)) return RedirectToOwnHome();
 
             posted ??= new FirstLoginViewModel();
 
             ServiceResult result = posted.NewPassword != posted.ConfirmPassword
                 ? ServiceResult.Fail("New password and confirmation do not match.")
-                : _userService.CompleteFirstLogin(userId, posted.NewPassword);
+                : _userService.CompleteFirstLogin(userCode, posted.NewPassword);
 
             if (result.Success)
             {
@@ -226,7 +224,7 @@ namespace ASI.Basecode.WebApp.Controllers
             }
 
             // Passwords are never sent back; show what to fix
-            var model = BuildFirstLoginModel(userId);
+            var model = BuildFirstLoginModel(userCode);
             if (model == null) return RedirectToAction("Login", "Account");
             TempData["ErrorMessage"] = result.Message;
             return View(model);
@@ -248,14 +246,14 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToOwnProfile();
             }
 
-            var userId = this._session.GetString("UserId");
+            var userCode = _session.GetString("UserId");
 
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userCode))
             {
                 return RedirectToAction("Login", "Account");
             }
 
-            var profile = _userService.GetProfile(userId);
+            var profile = _userService.GetProfile(userCode);
 
             if (profile == null)
             {
@@ -270,9 +268,9 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Profile(string ContactNumber, string Email, IFormFile photo)
         {
-            var userId = this._session.GetString("UserId");
+            var userCode = _session.GetString("UserId");
 
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userCode))
             {
                 return RedirectToAction("Login", "Account");
             }
@@ -286,17 +284,17 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToAction(nameof(Profile));
             }
 
-            var oldPath = _userService.GetProfileImagePath(userId);
+            var oldPath = _userService.GetProfileImagePath(userCode);
             var newPath = ProfilePhotoHelper.Save(photo, webRoot);        // null when no photo was chosen
 
-            var result = _userService.UpdateProfile(userId, ContactNumber, Email, newPath);
+            var result = _userService.UpdateProfile(userCode, ContactNumber, Email, newPath);
 
             if (result.Success)
             {
                 if (newPath != null)
                 {
                     ProfilePhotoHelper.Delete(oldPath, webRoot);          // remove the replaced photo
-                    this._session.SetString("UserPhoto", newPath);        // sidebar picks it up
+                    _session.SetString("UserPhoto", newPath);        // sidebar picks it up
                 }
 
                 TempData["SuccessMessage"] = result.Message;
@@ -333,14 +331,14 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToOwnProfile();
             }
 
-            var userId = this._session.GetString("UserId");
+            var userCode = _session.GetString("UserId");
 
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userCode))
             {
                 return RedirectToAction("Login", "Account");
             }
 
-            if (_userService.ChangePassword(userId, CurrentPassword, NewPassword))
+            if (_userService.ChangePassword(userCode, CurrentPassword, NewPassword))
             {
                 TempData["SuccessMessage"] = "Your password has been updated.";
             }

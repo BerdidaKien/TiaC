@@ -14,7 +14,7 @@ namespace ASI.Basecode.Services.Interfaces
 
         HistoryPageViewModel GetStudentPage(
             HistoryFilter filter,
-            string borrowerUserId);
+            string borrowerCode);
 
         byte[] ExportCsv(HistoryFilter filter, string custodianCode = null);
     }

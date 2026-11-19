@@ -60,9 +60,9 @@ namespace ASI.Basecode.Data.Repositories
                            .FirstOrDefault();
         }
 
-        public bool IsAccountActive(int userId)
+        public bool IsAccountActive(int userDbId)
         {
-            return _context.Users.Any(u => u.Id == userId && u.IsActive && u.AccountStatus == "active");
+            return _context.Users.Any(u => u.Id == userDbId && u.IsActive && u.AccountStatus == "active");
         }
 
         public void AddTransaction(BorrowingTransaction transaction)

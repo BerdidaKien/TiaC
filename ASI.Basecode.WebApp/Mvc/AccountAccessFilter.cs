@@ -40,8 +40,8 @@ namespace ASI.Basecode.WebApp.Mvc
                 return;
             }
 
-            var userId = principal.FindFirst("UserId")?.Value ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var access = string.IsNullOrEmpty(userId) ? AccountAccess.Blocked : _userService.GetAccountAccess(userId);
+            var userCode = principal.FindFirst("UserId")?.Value ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var access = string.IsNullOrEmpty(userCode) ? AccountAccess.Blocked : _userService.GetAccountAccess(userCode);
 
             if (access == AccountAccess.Blocked)
             {
@@ -61,10 +61,10 @@ namespace ASI.Basecode.WebApp.Mvc
             // Pages read the user from the session, so refill it from the login cookie's claims.
             if (string.IsNullOrEmpty(http.Session.GetString("UserId")))
             {
-                http.Session.SetString("UserId", userId);
+                http.Session.SetString("UserId", userCode);
                 http.Session.SetString("UserName", principal.FindFirst("UserName")?.Value ?? "");
                 http.Session.SetString("UserRole", principal.FindFirst(ClaimTypes.Role)?.Value ?? "Student");
-                http.Session.SetString("UserPhoto", _userService.GetProfileImagePath(userId) ?? "");
+                http.Session.SetString("UserPhoto", _userService.GetProfileImagePath(userCode) ?? "");
             }
 
             if (access == AccountAccess.MustSetUp && !principal.IsInRole("Admin"))

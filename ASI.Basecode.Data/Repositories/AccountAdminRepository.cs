@@ -22,7 +22,7 @@ namespace ASI.Basecode.Data.Repositories
 
         public User GetUserById(int id) => _context.Users.FirstOrDefault(u => u.Id == id);
 
-        public User GetUserByCode(string code) => _context.Users.FirstOrDefault(u => u.UserId == code);
+        public User GetUserByCode(string userCode) => _context.Users.FirstOrDefault(u => u.UserId == userCode);
 
         public IQueryable<Reservation> GetReservations() =>
             _context.Reservations.Include(r => r.BorrowingTransaction);

@@ -6,26 +6,26 @@ namespace ASI.Basecode.Services.Interfaces
 {
     public interface IUserService
     {
-        LoginResult AuthenticateUser(string userId, string password, ref User user);
+        LoginResult AuthenticateUser(string userCode, string password, ref User user);
 
-        bool ChangePassword(string userId, string currentPassword, string newPassword);
+        bool ChangePassword(string userCode, string currentPassword, string newPassword);
 
         // First login of an account an admin created
-        bool MustCompleteSetup(string userId);
+        bool MustCompleteSetup(string userCode);
 
         // Checked on every request: an account that is disabled or made inactive is signed out
-        AccountAccess GetAccountAccess(string userId);
-        ServiceResult CompleteFirstLogin(string userId, string newPassword);
+        AccountAccess GetAccountAccess(string userCode);
+        ServiceResult CompleteFirstLogin(string userCode, string newPassword);
 
         // Admin User Management
         UserManagementViewModel GetUserManagementData(string search, string role, string status);
 
         // Custodian Profile Methods
-        CustodianProfileViewModel GetCustodianProfile(string userIdStr);
+        CustodianProfileViewModel GetCustodianProfile(string userCode);
 
         // Shared / Student Profile Methods
-        ProfileViewModel GetProfile(string userId);
-        string GetProfileImagePath(string userId);
-        ServiceResult UpdateProfile(string userId, string contactNumber, string email, string newImagePath);
+        ProfileViewModel GetProfile(string userCode);
+        string GetProfileImagePath(string userCode);
+        ServiceResult UpdateProfile(string userCode, string contactNumber, string email, string newImagePath);
     }
 }

@@ -15,24 +15,24 @@ namespace ASI.Basecode.Services.Services
 {
     public class UserService : IUserService
     {
-        private readonly IUserRepository _repository;
+        private readonly IUserRepository _userRepository;
         private readonly IReservationRepository _reservationRepository;
         private readonly IMapper _mapper;
 
-        public UserService(IUserRepository repository, IReservationRepository reservationRepository, IMapper mapper)
+        public UserService(IUserRepository userRepository, IReservationRepository reservationRepository, IMapper mapper)
         {
             _mapper = mapper;
-            _repository = repository;
+            _userRepository = userRepository;
             _reservationRepository = reservationRepository;
         }
 
-        public LoginResult AuthenticateUser(string userId, string password, ref User user)
+        public LoginResult AuthenticateUser(string userCode, string password, ref User user)
         {
             var passwordKey = PasswordManager.EncryptPassword(password);
 
             // Inactive and disabled accounts can't log in
-            user = _repository.GetUsers()
-                .FirstOrDefault(x => x.UserId == userId &&
+            user = _userRepository.GetUsers()
+                .FirstOrDefault(x => x.UserId == userCode &&
                                      x.PasswordHash == passwordKey &&
                                      x.IsActive &&
                                      x.AccountStatus == "active");
@@ -40,10 +40,10 @@ namespace ASI.Basecode.Services.Services
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
 
-        public bool ChangePassword(string userId, string currentPassword, string newPassword)
+        public bool ChangePassword(string userCode, string currentPassword, string newPassword)
         {
-            var user = _repository.GetUsers()
-                .FirstOrDefault(x => x.UserId == userId);
+            var user = _userRepository.GetUsers()
+                .FirstOrDefault(x => x.UserId == userCode);
 
             if (user == null)
                 return false;
@@ -55,15 +55,15 @@ namespace ASI.Basecode.Services.Services
             user.UpdatedTime = DateTime.Now;
             user.UpdatedBy = Environment.UserName;
 
-            _repository.UpdateUser(user);
+            _userRepository.UpdateUser(user);
 
             return true;
         }
 
-        public AccountAccess GetAccountAccess(string userId)
+        public AccountAccess GetAccountAccess(string userCode)
         {
-            var row = _repository.GetUsers()
-                .Where(u => u.UserId == userId)
+            var row = _userRepository.GetUsers()
+                .Where(u => u.UserId == userCode)
                 .Select(u => new { u.IsActive, u.AccountStatus, u.MustCompleteSetup })
                 .FirstOrDefault();
 
@@ -73,16 +73,16 @@ namespace ASI.Basecode.Services.Services
             return row.MustCompleteSetup ? AccountAccess.MustSetUp : AccountAccess.Allowed;
         }
 
-        public bool MustCompleteSetup(string userId)
+        public bool MustCompleteSetup(string userCode)
         {
-            return _repository.GetUsers().Any(u => u.UserId == userId && u.MustCompleteSetup);
+            return _userRepository.GetUsers().Any(u => u.UserId == userCode && u.MustCompleteSetup);
         }
 
         // Sets the user's own password, then lifts the setup requirement.
         // The rules are checked here, so they apply even if the browser checks are skipped.
-        public ServiceResult CompleteFirstLogin(string userId, string newPassword)
+        public ServiceResult CompleteFirstLogin(string userCode, string newPassword)
         {
-            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userId);
+            var user = _userRepository.GetUsers().FirstOrDefault(u => u.UserId == userCode);
             if (user == null)
                 return ServiceResult.Fail("Your account was not found. Please log in again.");
 
@@ -96,12 +96,12 @@ namespace ASI.Basecode.Services.Services
 
             user.PasswordHash = newHash;
             user.MustCompleteSetup = false;
-            user.UpdatedBy = userId;
+            user.UpdatedBy = userCode;
             user.UpdatedTime = DateTime.Now;
 
             try
             {
-                _repository.UpdateUser(user);
+                _userRepository.UpdateUser(user);
             }
             catch (Exception)
             {
@@ -113,7 +113,7 @@ namespace ASI.Basecode.Services.Services
 
         public UserManagementViewModel GetUserManagementData(string search, string role, string status)
         {
-            var query = _repository.GetUsers();
+            var query = _userRepository.GetUsers();
 
             var totalUsers = query.Count();
             var totalBorrowers = query.Count(u => u.Role == "User" || u.Role == "Student");
@@ -179,9 +179,9 @@ namespace ASI.Basecode.Services.Services
         }
 
         // ---------- Custodian profile ----------
-        public CustodianProfileViewModel GetCustodianProfile(string userIdStr)
+        public CustodianProfileViewModel GetCustodianProfile(string userCode)
         {
-            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userIdStr);
+            var user = _userRepository.GetUsers().FirstOrDefault(u => u.UserId == userCode);
             if (user == null) return null;
 
             int approvedCount = 0;
@@ -216,10 +216,10 @@ namespace ASI.Basecode.Services.Services
         }
 
         // ---------- Profile (student and custodian) ----------
-        public ProfileViewModel GetProfile(string userId)
+        public ProfileViewModel GetProfile(string userCode)
         {
-            var user = _repository.GetUsers()
-                .FirstOrDefault(u => u.UserId == userId);
+            var user = _userRepository.GetUsers()
+                .FirstOrDefault(u => u.UserId == userCode);
 
             if (user == null)
             {
@@ -243,10 +243,10 @@ namespace ASI.Basecode.Services.Services
         }
 
         // Current photo path (used to delete the old file after a new one is saved)
-        public string GetProfileImagePath(string userId)
+        public string GetProfileImagePath(string userCode)
         {
-            return _repository.GetUsers()
-                .Where(u => u.UserId == userId)
+            return _userRepository.GetUsers()
+                .Where(u => u.UserId == userCode)
                 .Select(u => u.ProfileImagePath)
                 .FirstOrDefault();
         }
@@ -254,9 +254,9 @@ namespace ASI.Basecode.Services.Services
         // Users can change only their contact number and photo here.
         // Name, ID and email go through an information change request that an admin approves.
         // (The email parameter is kept so existing callers still compile, but it is ignored.)
-        public ServiceResult UpdateProfile(string userId, string contactNumber, string email, string newImagePath)
+        public ServiceResult UpdateProfile(string userCode, string contactNumber, string email, string newImagePath)
         {
-            var user = _repository.GetUsers().FirstOrDefault(u => u.UserId == userId);
+            var user = _userRepository.GetUsers().FirstOrDefault(u => u.UserId == userCode);
             if (user == null)
                 return ServiceResult.Fail("Your account was not found. Please log in again.");
 
@@ -279,11 +279,11 @@ namespace ASI.Basecode.Services.Services
                 user.ProfileImagePath = newImagePath;
 
             user.UpdatedTime = DateTime.Now;
-            user.UpdatedBy = userId;
+            user.UpdatedBy = userCode;
 
             try
             {
-                _repository.UpdateUser(user);
+                _userRepository.UpdateUser(user);
             }
             catch (Exception)
             {

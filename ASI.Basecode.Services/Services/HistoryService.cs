@@ -11,11 +11,11 @@ namespace ASI.Basecode.Services.Services
 {
     public class HistoryService : IHistoryService
     {
-        private readonly IReservationRepository _repo;
+        private readonly IReservationRepository _reservationRepository;
 
-        public HistoryService(IReservationRepository repo)
+        public HistoryService(IReservationRepository reservationRepository)
         {
-            _repo = repo;
+            _reservationRepository = reservationRepository;
         }
 
         // Search, category, and date filters.
@@ -23,23 +23,23 @@ namespace ASI.Basecode.Services.Services
         // needs to retrieve records from all borrowers.
         private IQueryable<BorrowingTransaction> BuildBase(
             HistoryFilter f,
-            string borrowerUserId = null,
+            string borrowerCode = null,
             string custodianCode = null)
         {
-            var q = _repo.GetTransactions();
+            var q = _reservationRepository.GetTransactions();
 
             // Custodian view: only loans of equipment this custodian owns
             if (!string.IsNullOrEmpty(custodianCode))
             {
-                var ownerId = _repo.GetUserDbId(custodianCode);
-                q = q.Where(t => t.EquipmentItem.CustodianId == ownerId);
+                var ownerDbId = _reservationRepository.GetUserDbId(custodianCode);
+                q = q.Where(t => t.EquipmentItem.CustodianId == ownerDbId);
             }
 
             // Restrict records to the logged-in student.
-            if (borrowerUserId != null)
+            if (borrowerCode != null)
             {
                 q = q.Where(t =>
-                    t.Borrower.UserId == borrowerUserId);
+                    t.Borrower.UserId == borrowerCode);
             }
 
             if (!string.IsNullOrWhiteSpace(f.Search))
@@ -122,33 +122,33 @@ namespace ASI.Basecode.Services.Services
         // Retrieves only the logged-in student's transactions.
         public HistoryPageViewModel GetStudentPage(
             HistoryFilter filter,
-            string borrowerUserId)
+            string borrowerCode)
         {
             var f = filter ?? new HistoryFilter();
 
-            if (string.IsNullOrWhiteSpace(borrowerUserId))
+            if (string.IsNullOrWhiteSpace(borrowerCode))
             {
                 return new HistoryPageViewModel
                 {
                     Filter = f,
-                    Categories = _repo.GetCategories()
+                    Categories = _reservationRepository.GetCategories()
                         .OrderBy(c => c.CategoryName)
                         .ToList()
                 };
             }
 
-            return BuildPage(f, borrowerUserId);
+            return BuildPage(f, borrowerCode);
         }
 
         // Shared summary and result calculations.
         private HistoryPageViewModel BuildPage(
             HistoryFilter filter,
-            string borrowerUserId,
+            string borrowerCode,
             string custodianCode = null)
         {
             var f = filter ?? new HistoryFilter();
 
-            var baseQ = BuildBase(f, borrowerUserId, custodianCode);
+            var baseQ = BuildBase(f, borrowerCode, custodianCode);
             var now = DateTime.Now;
 
             var returned = baseQ.Count(t =>
@@ -157,16 +157,16 @@ namespace ASI.Basecode.Services.Services
             var lateReturns = baseQ.Count(t =>
                 t.ActualReturnTime != null &&
                 t.IsOverdue);
-            var penaltyQ = _repo.GetPenalties().Where(p => p.Status == PenaltyRules.Unresolved);
+            var penaltyQ = _reservationRepository.GetPenalties().Where(p => p.Status == PenaltyRules.Unresolved);
 
             if (!string.IsNullOrEmpty(custodianCode))
             {
-                var ownerId = _repo.GetUserDbId(custodianCode);
-                penaltyQ = penaltyQ.Where(p => p.Transaction.EquipmentItem.CustodianId == ownerId);
+                var ownerDbId = _reservationRepository.GetUserDbId(custodianCode);
+                penaltyQ = penaltyQ.Where(p => p.Transaction.EquipmentItem.CustodianId == ownerDbId);
             }
-            if (borrowerUserId != null)
+            if (borrowerCode != null)
             {
-                penaltyQ = penaltyQ.Where(p => p.Borrower.UserId == borrowerUserId);
+                penaltyQ = penaltyQ.Where(p => p.Borrower.UserId == borrowerCode);
             }
 
             var openPenalties = penaltyQ.OrderBy(p => p.DueBy).ToList();
@@ -193,7 +193,7 @@ namespace ASI.Basecode.Services.Services
                 Filter = f,
                 StudentCharges = charges,
                 OpenPenalties = openPenalties,
-                Categories = _repo.GetCategories()
+                Categories = _reservationRepository.GetCategories()
                     .OrderBy(c => c.CategoryName)
                     .ToList(),
 

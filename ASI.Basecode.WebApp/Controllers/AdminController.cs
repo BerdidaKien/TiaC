@@ -57,7 +57,7 @@ namespace ASI.Basecode.WebApp.Controllers
             _proofStorage = proofStorage;
         }
 
-        private string AdminCode => _session.GetString("UserId") ?? "Admin";
+        private string CurrentUserCode => _session.GetString("UserId") ?? "Admin";
 
         /// <summary>Main Admin Dashboard</summary>
         public IActionResult Index()
@@ -97,7 +97,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return View(model);
             }
 
-            var result = _adminUserService.CreateUsers(model, AdminCode);
+            var result = _adminUserService.CreateUsers(model, CurrentUserCode);
             if (!result.Success)
             {
                 // Send everything back so the admin only fixes the flagged fields
@@ -113,7 +113,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpGet]
         public IActionResult EditUser(int id)
         {
-            var model = _userStatusService.GetEditPage(id, AdminCode);
+            var model = _userStatusService.GetEditPage(id, CurrentUserCode);
             if (model == null)
             {
                 TempData["ErrorMessage"] = "User not found.";
@@ -127,7 +127,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ChangeUserStatus(int id, string status)
         {
-            var result = _userStatusService.ChangeStatus(id, status, AdminCode);
+            var result = _userStatusService.ChangeStatus(id, status, CurrentUserCode);
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
             return RedirectToAction(nameof(EditUser), new { id });
         }
@@ -137,7 +137,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult LiftRestriction(int id)
         {
-            var result = _penaltyService.LiftRestriction(id, AdminCode);
+            var result = _penaltyService.LiftRestriction(id, CurrentUserCode);
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
             return RedirectToAction(nameof(EditUser), new { id });
         }
@@ -165,7 +165,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult ApproveInfoRequest(int id, Dictionary<string, string> values, string note)
         {
-            var result = _infoRequestService.Approve(id, values, note, AdminCode);
+            var result = _infoRequestService.Approve(id, values, note, CurrentUserCode);
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
 
             if (result.Success) return RedirectToAction(nameof(InfoRequests));
@@ -176,7 +176,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult RejectInfoRequest(int id, string reason)
         {
-            var result = _infoRequestService.Reject(id, reason, AdminCode);
+            var result = _infoRequestService.Reject(id, reason, CurrentUserCode);
             TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Message;
 
             if (result.Success) return RedirectToAction(nameof(InfoRequests));
@@ -243,17 +243,17 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult CreateCategory(string name, string description)
-            => CategoryResult(_categoryService.Create(name, description, AdminCode));
+            => CategoryResult(_categoryService.Create(name, description, CurrentUserCode));
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult UpdateCategory(int id, string name, string description)
-            => CategoryResult(_categoryService.Update(id, name, description, AdminCode));
+            => CategoryResult(_categoryService.Update(id, name, description, CurrentUserCode));
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult ToggleCategory(int id, bool active)
-            => CategoryResult(_categoryService.SetActive(id, active, AdminCode));
+            => CategoryResult(_categoryService.SetActive(id, active, CurrentUserCode));
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -263,12 +263,12 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult ApproveCategoryRequest(int itemId, string categoryName)
-            => CategoryResult(_categoryService.ApproveRequest(itemId, categoryName, AdminCode));
+            => CategoryResult(_categoryService.ApproveRequest(itemId, categoryName, CurrentUserCode));
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult RejectCategoryRequest(int itemId, string reason)
-            => CategoryResult(_categoryService.RejectRequest(itemId, reason, AdminCode));
+            => CategoryResult(_categoryService.RejectRequest(itemId, reason, CurrentUserCode));
 
         private IActionResult CategoryResult(ServiceResult result)
         {
@@ -280,7 +280,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpGet]
         public IActionResult Account()
         {
-            var profile = _userService.GetProfile(AdminCode);
+            var profile = _userService.GetProfile(CurrentUserCode);
             if (profile == null)
             {
                 TempData["ErrorMessage"] = "Your account could not be found. Please log in again.";

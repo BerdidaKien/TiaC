@@ -11,13 +11,13 @@ namespace ASI.Basecode.Services.Services
 {
     public class ReportService : IReportService
     {
-        private readonly IReservationRepository _resRepo;
-        private readonly IEquipmentRepository _equipRepo;
+        private readonly IReservationRepository _reservationRepository;
+        private readonly IEquipmentRepository _equipmentRepository;
 
-        public ReportService(IReservationRepository resRepo, IEquipmentRepository equipRepo)
+        public ReportService(IReservationRepository reservationRepository, IEquipmentRepository equipmentRepository)
         {
-            _resRepo = resRepo;
-            _equipRepo = equipRepo;
+            _reservationRepository = reservationRepository;
+            _equipmentRepository = equipmentRepository;
         }
 
         public ReportsPageViewModel GetPage(DateTime? from, DateTime? to, string custodianCode = null)
@@ -28,16 +28,16 @@ namespace ASI.Basecode.Services.Services
             var endExclusive = end.AddDays(1);
             var now = DateTime.Now;
 
-            int? ownerId = string.IsNullOrEmpty(custodianCode) ? (int?)null : _resRepo.GetUserDbId(custodianCode);
+            int? ownerDbId = string.IsNullOrEmpty(custodianCode) ? (int?)null : _reservationRepository.GetUserDbId(custodianCode);
 
-            var items = _equipRepo.GetEquipmentItems().Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
-            if (ownerId.HasValue) items = items.Where(i => i.CustodianId == ownerId.Value);
+            var items = _equipmentRepository.GetEquipmentItems().Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
+            if (ownerDbId.HasValue) items = items.Where(i => i.CustodianId == ownerDbId.Value);
             var totalItems = items.Count();
 
             // Borrowings that started in the selected range
-            var tx = _resRepo.GetTransactions()
+            var tx = _reservationRepository.GetTransactions()
                              .Where(t => t.ActualPickupTime >= start && t.ActualPickupTime < endExclusive);
-            if (ownerId.HasValue) tx = tx.Where(t => t.EquipmentItem.CustodianId == ownerId.Value);
+            if (ownerDbId.HasValue) tx = tx.Where(t => t.EquipmentItem.CustodianId == ownerDbId.Value);
 
             var totalTx = tx.Count();
             var distinctItems = tx.Select(t => t.EquipmentItemId).Distinct().Count();
@@ -55,7 +55,7 @@ namespace ASI.Basecode.Services.Services
                 // Utilization = share of equipment items borrowed at least once in the range
                 UtilizationRate = totalItems == 0 ? 0 : (int)Math.Round(distinctItems * 100.0 / totalItems),
 
-                Categories = _resRepo.GetCategories().OrderBy(c => c.CategoryName).ToList(),
+                Categories = _reservationRepository.GetCategories().OrderBy(c => c.CategoryName).ToList(),
                 ItemOptions = items.OrderBy(i => i.ItemCode)
                                    .Select(i => new CalendarItemOption
                                    {
@@ -67,9 +67,9 @@ namespace ASI.Basecode.Services.Services
             };
 
             // Top requested equipment (all requests whose pickup date is in the range)
-            var topQ = _resRepo.GetReservations()
+            var topQ = _reservationRepository.GetReservations()
                 .Where(r => r.RequestedPickupDate >= start && r.RequestedPickupDate < endExclusive);
-            if (ownerId.HasValue) topQ = topQ.Where(r => r.EquipmentItem.CustodianId == ownerId.Value);
+            if (ownerDbId.HasValue) topQ = topQ.Where(r => r.EquipmentItem.CustodianId == ownerDbId.Value);
 
             var topIds = topQ
                 .GroupBy(r => r.EquipmentItemId)
@@ -79,7 +79,7 @@ namespace ASI.Basecode.Services.Services
                 .ToList();
 
             var ids = topIds.Select(x => x.ItemId).ToList();
-            var itemMap = _equipRepo.GetEquipmentItems().Where(i => ids.Contains(i.Id)).ToList();
+            var itemMap = _equipmentRepository.GetEquipmentItems().Where(i => ids.Contains(i.Id)).ToList();
 
             foreach (var row in topIds)
             {
@@ -116,20 +116,20 @@ namespace ASI.Basecode.Services.Services
             var now = DateTime.Now;
 
             // Items that can be booked (maintenance items are left out of the "free" count)
-            var items = _equipRepo.GetEquipmentItems()
+            var items = _equipmentRepository.GetEquipmentItems()
                 .Where(i => i.Status != "maintenance" && !ItemStatuses.AwaitingCategory.Contains(i.Status));
             if (categoryId.HasValue) items = items.Where(i => i.CategoryId == categoryId.Value);
             if (itemId.HasValue) items = items.Where(i => i.Id == itemId.Value);
 
             // Requests not yet handed over (pending or approved)
-            var reservations = _resRepo.GetReservations()
+            var reservations = _reservationRepository.GetReservations()
                 .Where(r => (r.Status == "pending" || r.Status == "approved")
                          && r.BorrowingTransaction == null
                          && r.RequestedPickupDate < end
                          && r.EstimatedReturnDate >= start);
 
             // Handed-over loans: active ones always count, returned ones only if they ended inside the window
-            var transactions = _resRepo.GetTransactions()
+            var transactions = _reservationRepository.GetTransactions()
                 .Where(t => t.ActualPickupTime < end
                          && (t.ActualReturnTime == null || t.ActualReturnTime >= start));
 
@@ -146,10 +146,10 @@ namespace ASI.Basecode.Services.Services
 
             if (!string.IsNullOrEmpty(custodianCode))
             {
-                var ownerId = _resRepo.GetUserDbId(custodianCode);
-                items = items.Where(i => i.CustodianId == ownerId);
-                reservations = reservations.Where(r => r.EquipmentItem.CustodianId == ownerId);
-                transactions = transactions.Where(t => t.EquipmentItem.CustodianId == ownerId);
+                var ownerDbId = _reservationRepository.GetUserDbId(custodianCode);
+                items = items.Where(i => i.CustodianId == ownerDbId);
+                reservations = reservations.Where(r => r.EquipmentItem.CustodianId == ownerDbId);
+                transactions = transactions.Where(t => t.EquipmentItem.CustodianId == ownerDbId);
             }
 
             var result = new CalendarDataDto { TotalItems = items.Count() };

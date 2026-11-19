@@ -17,31 +17,31 @@ namespace ASI.Basecode.Services.Services
     {
         private const int ExpiryMinutes = 30;
 
-        private readonly IUserRepository _users;
-        private readonly IPasswordResetRepository _tokens;
-        private readonly IEmailService _email;
+        private readonly IUserRepository _userRepository;
+        private readonly IPasswordResetRepository _passwordResetRepository;
+        private readonly IEmailService _emailService;
 
-        public PasswordResetService(IUserRepository users, IPasswordResetRepository tokens, IEmailService email)
+        public PasswordResetService(IUserRepository userRepository, IPasswordResetRepository passwordResetRepository, IEmailService emailService)
         {
-            _users = users;
-            _tokens = tokens;
-            _email = email;
+            _userRepository = userRepository;
+            _passwordResetRepository = passwordResetRepository;
+            _emailService = emailService;
         }
 
-        public void RequestReset(string userId, Func<string, string> buildLink)
+        public void RequestReset(string userCode, Func<string, string> buildLink)
         {
-            if (string.IsNullOrWhiteSpace(userId)) return;
+            if (string.IsNullOrWhiteSpace(userCode)) return;
 
-            var user = _users.GetUsers().FirstOrDefault(u => u.UserId == userId.Trim());
+            var user = _userRepository.GetUsers().FirstOrDefault(u => u.UserId == userCode.Trim());
             if (user == null || string.IsNullOrWhiteSpace(user.Email)) return;
 
             // Cancel any older unused links for this user
             var now = DateTime.Now;
-            var old = _tokens.GetTokens().Where(t => t.UserId == user.UserId && t.UsedAt == null).ToList();
+            var old = _passwordResetRepository.GetTokens().Where(t => t.UserId == user.UserId && t.UsedAt == null).ToList();
             foreach (var t in old)
             {
                 t.UsedAt = now;
-                _tokens.UpdateToken(t);
+                _passwordResetRepository.UpdateToken(t);
             }
 
             // Random token; only its hash is stored
@@ -49,7 +49,7 @@ namespace ASI.Basecode.Services.Services
             var token = Convert.ToBase64String(tokenBytes)
                 .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
-            _tokens.AddToken(new PasswordResetToken
+            _passwordResetRepository.AddToken(new PasswordResetToken
             {
                 UserId = user.UserId,
                 TokenHash = Hash(token),
@@ -66,7 +66,7 @@ namespace ASI.Basecode.Services.Services
                 <p><a href=""{link}"">Click here to set a new password</a></p>
                 <p>This link expires in {ExpiryMinutes} minutes. If you didn't ask for this, you can ignore this email.</p>";
 
-            _email.Send(user.Email, "Reset your TiaC password", body);
+            _emailService.Send(user.Email, "Reset your TiaC password", body);
         }
 
         public bool ResetPassword(string token, string newPassword)
@@ -76,21 +76,21 @@ namespace ASI.Basecode.Services.Services
             var hash = Hash(token);
             var now = DateTime.Now;
 
-            var record = _tokens.GetTokens()
+            var record = _passwordResetRepository.GetTokens()
                 .FirstOrDefault(t => t.TokenHash == hash && t.UsedAt == null && t.ExpiresAt > now);
             if (record == null) return false;
 
-            var user = _users.GetUsers().FirstOrDefault(u => u.UserId == record.UserId);
+            var user = _userRepository.GetUsers().FirstOrDefault(u => u.UserId == record.UserId);
             if (user == null) return false;
 
             user.PasswordHash = PasswordManager.EncryptPassword(newPassword);
             user.MustCompleteSetup = false;   // they chose their own password, so first-login setup is done
             user.UpdatedTime = now;
             user.UpdatedBy = user.UserId;
-            _users.UpdateUser(user);
+            _userRepository.UpdateUser(user);
 
             record.UsedAt = now;
-            _tokens.UpdateToken(record);
+            _passwordResetRepository.UpdateToken(record);
 
             return true;
         }

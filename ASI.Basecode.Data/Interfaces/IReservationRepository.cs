@@ -15,7 +15,7 @@ namespace ASI.Basecode.Data.Interfaces
         Reservation GetReservationById(int id);
         BorrowingTransaction GetTransactionById(int id);
         int GetUserDbId(string userCode);
-        bool IsAccountActive(int userId);
+        bool IsAccountActive(int userDbId);
         void AddTransaction(BorrowingTransaction transaction);
 
         // ---- Student reservation requests ----
