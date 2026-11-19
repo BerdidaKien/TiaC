@@ -27,7 +27,7 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IHistoryService _historyService;
         private readonly IReportService _reportService;
         private readonly IUserService _userService; // Added field
-        private readonly IWebHostEnvironment _env;
+        private readonly IWebHostEnvironment _environment;
         private readonly ISettingsService _settingsService;
         private readonly IPenaltyService _penaltyService;
         public CustodianController(
@@ -38,7 +38,7 @@ namespace ASI.Basecode.WebApp.Controllers
             ISettingsService settingsService,
             IPenaltyService penaltyService,
             IUserService userService, // Injected dependency
-            IWebHostEnvironment env,
+            IWebHostEnvironment environment,
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
@@ -51,7 +51,7 @@ namespace ASI.Basecode.WebApp.Controllers
             _reportService = reportService;
             _userService = userService;
             _settingsService = settingsService;// Assigned field
-            _env = env;
+            _environment = environment;
             _penaltyService = penaltyService;
         }
 
@@ -211,7 +211,7 @@ namespace ASI.Basecode.WebApp.Controllers
             if (photo == null || photo.Length == 0) return null;
 
             var ext = Path.GetExtension(photo.FileName).ToLowerInvariant();
-            var folder = Path.Combine(_env.WebRootPath, "uploads", "equipment");
+            var folder = Path.Combine(_environment.WebRootPath, "uploads", "equipment");
             Directory.CreateDirectory(folder);
 
             var fileName = $"{Guid.NewGuid():N}{ext}";
@@ -229,7 +229,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 !imagePath.StartsWith("/uploads/equipment/", StringComparison.OrdinalIgnoreCase))
                 return;
 
-            var fullPath = Path.Combine(_env.WebRootPath, "uploads", "equipment", Path.GetFileName(imagePath));
+            var fullPath = Path.Combine(_environment.WebRootPath, "uploads", "equipment", Path.GetFileName(imagePath));
             try
             {
                 if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
@@ -271,6 +271,11 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult DeclineRequest(int id, string declineReason)
             => HandleResult(_reservationService.Decline(id, declineReason, CurrentUserCode));
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult CancelApprovedReservation(int id, string cancelReason)
+            => HandleResult(_reservationService.CancelApproved(id, cancelReason, CurrentUserCode));
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -336,16 +341,16 @@ namespace ASI.Basecode.WebApp.Controllers
         public IActionResult Profile()
         {
             // Try session first, then fallback to authentication claims
-            var userIdStr = HttpContext.Session.GetString("UserId")
+            var userCode = HttpContext.Session.GetString("UserId")
                          ?? User.Identity?.Name
                          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (string.IsNullOrEmpty(userIdStr))
+            if (string.IsNullOrEmpty(userCode))
             {
                 return RedirectToAction("Login", "Account");
             }
 
-            var model = _userService.GetCustodianProfile(userIdStr);
+            var model = _userService.GetCustodianProfile(userCode);
             if (model == null)
             {
                 // Debug fallback: If lookup by string user_id fails, try getting the first Custodian user
@@ -369,8 +374,8 @@ namespace ASI.Basecode.WebApp.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Profile(string ContactNumber, string Email, IFormFile photo)
         {
-            var userId = CurrentUserCode;
-            if (string.IsNullOrEmpty(userId))
+            var userCode = CurrentUserCode;
+            if (string.IsNullOrEmpty(userCode))
             {
                 return RedirectToAction("Login", "Account");
             }
@@ -382,11 +387,11 @@ namespace ASI.Basecode.WebApp.Controllers
                 return RedirectToAction(nameof(Profile));
             }
 
-            var webRoot = _env.WebRootPath;
-            var oldPath = _userService.GetProfileImagePath(userId);
+            var webRoot = _environment.WebRootPath;
+            var oldPath = _userService.GetProfileImagePath(userCode);
             var newPath = ProfilePhotoHelper.Save(photo, webRoot);          // null when no photo was chosen
 
-            var result = _userService.UpdateProfile(userId, ContactNumber, Email, newPath);
+            var result = _userService.UpdateProfile(userCode, ContactNumber, Email, newPath);
 
             if (result.Success)
             {

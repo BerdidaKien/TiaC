@@ -12,44 +12,46 @@ namespace ASI.Basecode.Services.Services
 {
     public class ReservationService : IReservationService
     {
-        private readonly IReservationRepository _repo;
-        private readonly ISettingsService _settings;
+        private readonly IReservationRepository _reservationRepository;
+        private readonly ISettingsService _settingsService;
         // Restricts a borrower with an unresolved penalty past its deadline, or an item
         // still out more than 3 days past its due date. Never lifts a restriction (admin only).
-        private void RefreshRestriction(int borrowerId)
+        private void RefreshRestriction(int borrowerDbId)
         {
-            var user = _repo.GetUserByDbId(borrowerId);
+            var user = _reservationRepository.GetUserByDbId(borrowerDbId);
             if (user == null || user.BorrowerStatus == PenaltyRules.Restricted) return;
 
             var now = DateTime.Now;
             var cutoff = now.AddDays(-PenaltyRules.SettleLateWithinDays);
 
-            var pastDeadline = _repo.GetPenalties().Any(p =>
-                p.BorrowerId == borrowerId && p.Status == PenaltyRules.Unresolved && p.DueBy < now);
+            var pastDeadline = _reservationRepository.GetPenalties().Any(p =>
+                p.BorrowerId == borrowerDbId && p.Status == PenaltyRules.Unresolved && p.DueBy < now);
 
-            var notReturned = _repo.GetTransactions().Any(t =>
-                t.BorrowerId == borrowerId && t.ActualReturnTime == null &&
+            var notReturned = _reservationRepository.GetTransactions().Any(t =>
+                t.BorrowerId == borrowerDbId && t.ActualReturnTime == null &&
                 t.Reservation.EstimatedReturnDate < cutoff);
 
             if (pastDeadline || notReturned)
             {
                 user.BorrowerStatus = PenaltyRules.Restricted;
                 user.UpdatedTime = now;
-                _repo.SaveChanges();
+                _reservationRepository.SaveChanges();
             }
         }
-        public ReservationService(IReservationRepository repo, ISettingsService settings)
+        public ReservationService(IReservationRepository reservationRepository, ISettingsService settingsService)
         {
-            _repo = repo;
-            _settings = settings;
+            _reservationRepository = reservationRepository;
+            _settingsService = settingsService;
         }
 
         public ReservationsPageViewModel GetPage(string search, int? categoryId, string custodianCode = null)
         {
+            ExpireMissedPickups();
+
             var term = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
 
-            var reservations = _repo.GetReservations();
-            var transactions = _repo.GetTransactions().Where(t => t.ActualReturnTime == null);
+            var reservations = _reservationRepository.GetReservations();
+            var transactions = _reservationRepository.GetTransactions().Where(t => t.ActualReturnTime == null);
 
             if (term != null)
             {
@@ -77,12 +79,12 @@ namespace ASI.Basecode.Services.Services
             // A custodian only sees requests and loans for their own equipment
             if (!string.IsNullOrEmpty(custodianCode))
             {
-                var ownerId = _repo.GetUserDbId(custodianCode);
-                reservations = reservations.Where(r => r.EquipmentItem.CustodianId == ownerId);
-                transactions = transactions.Where(t => t.EquipmentItem.CustodianId == ownerId);
+                var ownerDbId = _reservationRepository.GetUserDbId(custodianCode);
+                reservations = reservations.Where(r => r.EquipmentItem.CustodianId == ownerDbId);
+                transactions = transactions.Where(t => t.EquipmentItem.CustodianId == ownerDbId);
             }
 
-            var s = _settings.Get();
+            var settings = _settingsService.Get();
 
 
             return new ReservationsPageViewModel
@@ -92,11 +94,11 @@ namespace ASI.Basecode.Services.Services
                 Approved = reservations.Where(r => r.Status == "approved" && r.BorrowingTransaction == null)
                                        .OrderBy(r => r.RequestedPickupDate).ToList(),
                 Active = transactions.OrderBy(t => t.ActualPickupTime).ToList(),
-                Categories = _repo.GetCategories().OrderBy(c => c.CategoryName).ToList(),
+                Categories = _reservationRepository.GetCategories().OrderBy(c => c.CategoryName).ToList(),
                 Search = search,
                 CategoryId = categoryId,
-                GraceMinutes = s.OverdueGraceMinutes,
-                DueSoonHours = s.DueSoonHours
+                GraceMinutes = settings.OverdueGraceMinutes,
+                DueSoonHours = settings.DueSoonHours
             };
 
         }
@@ -106,9 +108,12 @@ namespace ASI.Basecode.Services.Services
         // All reservations of one borrower (userCode = Borrower.UserId, i.e. the session "UserId"), newest first
         public List<Reservation> GetForUser(string userCode)
         {
-            var borrowerDbId = _repo.GetUserDbId(userCode);
+            ExpireMissedPickups();
+
+            var borrowerDbId = _reservationRepository.GetUserDbId(userCode);
             if (borrowerDbId != 0) RefreshRestriction(borrowerDbId);
-            return _repo.GetReservations()
+
+            return _reservationRepository.GetReservations()
                 .Where(r => r.Borrower.UserId == userCode)
                 .OrderByDescending(r => r.CreatedTime)
                 .ToList();
@@ -117,7 +122,7 @@ namespace ASI.Basecode.Services.Services
         // Items the student has picked up and not yet returned
         public int CountActiveForUser(string userCode)
         {
-            return _repo.GetReservations().Count(r =>
+            return _reservationRepository.GetReservations().Count(r =>
                 r.Borrower.UserId == userCode &&
                 r.BorrowingTransaction != null &&
                 r.BorrowingTransaction.ActualReturnTime == null);
@@ -126,35 +131,41 @@ namespace ASI.Basecode.Services.Services
         // Requests still waiting for the custodian's decision
         public int CountPendingForUser(string userCode)
         {
-            return _repo.GetReservations().Count(r =>
+            return _reservationRepository.GetReservations().Count(r =>
                 r.Borrower.UserId == userCode &&
                 r.Status == "pending");
         }
         public ServiceResult CreateReservation(string borrowerCode, int equipmentItemId, DateTime pickup, DateTime returnDate)
         {
-            var borrowerId = _repo.GetUserDbId(borrowerCode);
-            if (borrowerId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
-            RefreshRestriction(borrowerId);
-            if (_repo.GetUserByDbId(borrowerId)?.BorrowerStatus == PenaltyRules.Restricted)
+            var borrowerDbId = _reservationRepository.GetUserDbId(borrowerCode);
+            if (borrowerDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+
+            ExpireMissedPickups();
+
+            RefreshRestriction(borrowerDbId);
+            if (_reservationRepository.GetUserByDbId(borrowerDbId)?.BorrowerStatus == PenaltyRules.Restricted)
                 return ServiceResult.Fail("Your borrowing is restricted because of an unresolved penalty (overdue or damaged equipment). Settle it with the custodian, then ask an administrator to reactivate your account.");
-            var item = _repo.GetEquipmentItemById(equipmentItemId);
+
+            var item = _reservationRepository.GetEquipmentItemById(equipmentItemId);
             if (item == null || item.Status == "archived")
                 return ServiceResult.Fail("This equipment item was not found.");
             if (item.Status != "available")
+                return ServiceResult.Fail("This item is not available for reservation right now.");
+            if (item.CustodianId.HasValue && !_reservationRepository.IsAccountActive(item.CustodianId.Value))
                 return ServiceResult.Fail("This item is not available for reservation right now.");
 
             if (pickup == default || returnDate == default)
                 return ServiceResult.Fail("Please choose both a pickup and a return date and time.");
 
             // The custodian's rules: duration, how far ahead, operating hours
-            var rules = _settings.Get();
+            var rules = _settingsService.Get();
             var scheduleError = BorrowingRules.CheckSchedule(rules, pickup, returnDate, DateTime.Now);
             if (scheduleError != null)
                 return ServiceResult.Fail(scheduleError);
 
             // Item limit: pending requests, approved reservations and items not yet returned all count
-            var holding = _repo.GetReservations().Count(x =>
-                x.BorrowerId == borrowerId &&
+            var holding = _reservationRepository.GetReservations().Count(x =>
+                x.BorrowerId == borrowerDbId &&
                 (x.Status == "pending" ||
                  (x.Status == "approved" &&
                   (x.BorrowingTransaction == null || x.BorrowingTransaction.ActualReturnTime == null))));
@@ -164,15 +175,15 @@ namespace ASI.Basecode.Services.Services
                     "Wait for a decision, cancel a request, or return an item first.");
 
             // One open request per student per item
-            var alreadyRequested = _repo.GetReservations().Any(x =>
-                x.BorrowerId == borrowerId &&
+            var alreadyRequested = _reservationRepository.GetReservations().Any(x =>
+                x.BorrowerId == borrowerDbId &&
                 x.EquipmentItemId == equipmentItemId &&
                 x.Status == "pending");
             if (alreadyRequested)
                 return ServiceResult.Fail("You already have a pending request for this item.");
 
             // Not allowed to overlap a reservation the custodian already approved (and that isn't returned yet)
-            var overlapsApproved = _repo.GetReservations().Any(x =>
+            var overlapsApproved = _reservationRepository.GetReservations().Any(x =>
                 x.EquipmentItemId == equipmentItemId &&
                 x.Status == "approved" &&
                 (x.BorrowingTransaction == null || x.BorrowingTransaction.ActualReturnTime == null) &&
@@ -182,9 +193,9 @@ namespace ASI.Basecode.Services.Services
                 return ServiceResult.Fail("This item is already reserved for part of that time. Please choose different dates.");
 
             var now = DateTime.Now;
-            _repo.AddReservation(new Reservation
+            _reservationRepository.AddReservation(new Reservation
             {
-                BorrowerId = borrowerId,
+                BorrowerId = borrowerDbId,
                 EquipmentItemId = equipmentItemId,
                 RequestedPickupDate = pickup,
                 EstimatedReturnDate = returnDate,
@@ -192,32 +203,33 @@ namespace ASI.Basecode.Services.Services
                 CreatedTime = now,
                 UpdatedTime = now
             });
-            _repo.SaveChanges();
+            _reservationRepository.SaveChanges();
 
             return ServiceResult.Ok("Request sent! The custodian will review it and you will see the result here.");
         }
 
         public ServiceResult CancelReservation(int reservationId, string borrowerCode)
         {
-            var borrowerId = _repo.GetUserDbId(borrowerCode);
-            if (borrowerId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            var borrowerDbId = _reservationRepository.GetUserDbId(borrowerCode);
+            if (borrowerDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var r = _repo.GetReservationById(reservationId);
-            if (r == null || r.BorrowerId != borrowerId)
+            var reservation = _reservationRepository.GetReservationById(reservationId);
+            if (reservation == null || reservation.BorrowerId != borrowerDbId)
                 return ServiceResult.Fail("Reservation not found.");
 
             // Once the item has been handed over it can no longer be cancelled
-            var canCancel = r.BorrowingTransaction == null &&
-                            (r.Status == "pending" || r.Status == "approved");
+            var canCancel = reservation.BorrowingTransaction == null &&
+                            (reservation.Status == "pending" || reservation.Status == "approved");
             if (!canCancel)
                 return ServiceResult.Fail("This reservation can no longer be cancelled.");
 
-            r.Status = "cancelled";
-            r.UpdatedTime = DateTime.Now;
+            reservation.Status = "cancelled";
+            reservation.ReviewNotes = null;   // a cancelled request that has a note was cancelled by someone else
+            reservation.UpdatedTime = DateTime.Now;
 
             try
             {
-                _repo.SaveChanges();
+                _reservationRepository.SaveChanges();
             }
             catch (Exception)
             {
@@ -231,83 +243,146 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult Approve(int reservationId, string notes, string custodianCode)
         {
-            var custodianId = _repo.GetUserDbId(custodianCode);
-            if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            var custodianDbId = _reservationRepository.GetUserDbId(custodianCode);
+            if (custodianDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var r = _repo.GetReservationById(reservationId);
-            if (r == null) return ServiceResult.Fail("Reservation not found.");
-            if (r.EquipmentItem.CustodianId != custodianId)
+            ExpireMissedPickups();
+
+            var reservation = _reservationRepository.GetReservationById(reservationId);
+            if (reservation == null) return ServiceResult.Fail("Reservation not found.");
+            if (reservation.EquipmentItem.CustodianId != custodianDbId)
                 return ServiceResult.Fail("This request belongs to another custodian.");
-            if (r.Status != "pending") return ServiceResult.Fail("This request was already processed.");
-            if (r.Borrower?.BorrowerStatus == PenaltyRules.Restricted)
+            if (reservation.Status != "pending") return ServiceResult.Fail("This request was already processed.");
+            if (reservation.Borrower?.BorrowerStatus == PenaltyRules.Restricted)
                 return ServiceResult.Fail("This borrower is restricted because of an unresolved penalty.");
-            if (r.EquipmentItem.Status != "available")
+            if (reservation.EquipmentItem.Status != "available")
                 return ServiceResult.Fail("This item is not available right now.");
 
-            var alreadyReserved = _repo.GetReservations().Any(x =>
-                x.Id != r.Id && x.EquipmentItemId == r.EquipmentItemId &&
-                x.Status == "approved" && x.BorrowingTransaction == null);
-            if (alreadyReserved)
-                return ServiceResult.Fail("Another approved request is already waiting to pick up this item.");
-            var limit = _settings.Get().MaxActiveItems;
-            var holding = _repo.GetReservations().Count(x =>
-                x.Id != r.Id &&
-                x.BorrowerId == r.BorrowerId &&
+            // Only an approved reservation that covers part of the same time blocks this one
+            // (the same rule students are held to when they request)
+            var overlapsApproved = _reservationRepository.GetReservations().Any(x =>
+                x.Id != reservation.Id && x.EquipmentItemId == reservation.EquipmentItemId &&
+                x.Status == "approved" && x.BorrowingTransaction == null &&
+                x.RequestedPickupDate < reservation.EstimatedReturnDate &&
+                x.EstimatedReturnDate > reservation.RequestedPickupDate);
+            if (overlapsApproved)
+                return ServiceResult.Fail("Another approved reservation already covers part of this time for the item. Cancel that one first, or decline this request.");
+            var limit = _settingsService.Get().MaxActiveItems;
+            var holding = _reservationRepository.GetReservations().Count(x =>
+                x.Id != reservation.Id &&
+                x.BorrowerId == reservation.BorrowerId &&
                 x.Status == "approved" &&
                 (x.BorrowingTransaction == null || x.BorrowingTransaction.ActualReturnTime == null));
             if (holding >= limit)
                 return ServiceResult.Fail($"This borrower already has {holding} approved or borrowed item(s). The limit is {limit}. Decline this request, or approve it after an item is returned.");
-            r.Status = "approved";
-            r.ReviewedBy = custodianId;
-            r.ReviewedAt = DateTime.Now;
-            r.ReviewNotes = notes;
-            r.UpdatedTime = DateTime.Now;
-            _repo.SaveChanges();
+            reservation.Status = "approved";
+            reservation.ReviewedBy = custodianDbId;
+            reservation.ReviewedAt = DateTime.Now;
+            reservation.ReviewNotes = notes;
+            reservation.UpdatedTime = DateTime.Now;
+            _reservationRepository.SaveChanges();
 
             return ServiceResult.Ok("Request approved. Release the item when the borrower arrives.");
         }
 
         public ServiceResult Decline(int reservationId, string reason, string custodianCode)
         {
-            var custodianId = _repo.GetUserDbId(custodianCode);
-            if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            var custodianDbId = _reservationRepository.GetUserDbId(custodianCode);
+            if (custodianDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var r = _repo.GetReservationById(reservationId);
-            if (r == null) return ServiceResult.Fail("Reservation not found.");
-            if (r.EquipmentItem.CustodianId != custodianId)
+            var reservation = _reservationRepository.GetReservationById(reservationId);
+            if (reservation == null) return ServiceResult.Fail("Reservation not found.");
+            if (reservation.EquipmentItem.CustodianId != custodianDbId)
                 return ServiceResult.Fail("This request belongs to another custodian.");
-            if (r.Status != "pending") return ServiceResult.Fail("This request was already processed.");
+            if (reservation.Status != "pending") return ServiceResult.Fail("This request was already processed.");
 
-            r.Status = "declined";
-            r.ReviewedBy = custodianId;
-            r.ReviewedAt = DateTime.Now;
-            r.ReviewNotes = reason;
-            r.UpdatedTime = DateTime.Now;
-            _repo.SaveChanges();
+            reservation.Status = "declined";
+            reservation.ReviewedBy = custodianDbId;
+            reservation.ReviewedAt = DateTime.Now;
+            reservation.ReviewNotes = reason;
+            reservation.UpdatedTime = DateTime.Now;
+            _reservationRepository.SaveChanges();
 
             return ServiceResult.Ok("Request declined.");
         }
 
+        // The custodian cancels an approved reservation that hasn't been picked up (no-show, maintenance, ...)
+        public ServiceResult CancelApproved(int reservationId, string reason, string custodianCode)
+        {
+            var custodianDbId = _reservationRepository.GetUserDbId(custodianCode);
+            if (custodianDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+
+            var reservation = _reservationRepository.GetReservationById(reservationId);
+            if (reservation == null) return ServiceResult.Fail("Reservation not found.");
+            if (reservation.EquipmentItem.CustodianId != custodianDbId)
+                return ServiceResult.Fail("This reservation belongs to another custodian.");
+            if (reservation.Status != "approved" || reservation.BorrowingTransaction != null)
+                return ServiceResult.Fail("Only an approved reservation that hasn't been picked up can be cancelled.");
+
+            reason = (reason ?? "").Trim();
+            if (reason.Length < 3 || reason.Length > 255)
+                return ServiceResult.Fail("Please give a reason (3 to 255 characters).");
+
+            var now = DateTime.Now;
+            reservation.Status = "cancelled";
+            reservation.ReviewNotes = reason;
+            reservation.ReviewedBy = custodianDbId;
+            reservation.ReviewedAt = now;
+            reservation.UpdatedTime = now;
+
+            try
+            {
+                _reservationRepository.SaveChanges();
+            }
+            catch (Exception)
+            {
+                return ServiceResult.Fail("Could not cancel the reservation. Please try again.");
+            }
+
+            return ServiceResult.Ok("Reservation cancelled. The borrower will see your reason.");
+        }
+
+        // An approved reservation that was never picked up expires once its return time has passed,
+        // so a no-show can't keep blocking the item. Runs whenever reservations are read or changed.
+        private void ExpireMissedPickups()
+        {
+            var now = DateTime.Now;
+            var missed = _reservationRepository.GetReservations()
+                .Where(r => r.Status == "approved" && r.BorrowingTransaction == null && r.EstimatedReturnDate < now)
+                .ToList();
+            if (missed.Count == 0) return;
+
+            foreach (var r in missed)
+            {
+                r.Status = "cancelled";
+                r.ReviewNotes = "Expired: the item was not picked up before the return time.";
+                r.UpdatedTime = now;
+            }
+            _reservationRepository.SaveChanges();
+        }
+
         public ServiceResult Release(int reservationId, string custodianCode)
         {
-            var custodianId = _repo.GetUserDbId(custodianCode);
-            if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            var custodianDbId = _reservationRepository.GetUserDbId(custodianCode);
+            if (custodianDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var r = _repo.GetReservationById(reservationId);
-            if (r == null) return ServiceResult.Fail("Reservation not found.");
-            if (r.EquipmentItem.CustodianId != custodianId)
+            ExpireMissedPickups();
+
+            var reservation = _reservationRepository.GetReservationById(reservationId);
+            if (reservation == null) return ServiceResult.Fail("Reservation not found.");
+            if (reservation.EquipmentItem.CustodianId != custodianDbId)
                 return ServiceResult.Fail("This request belongs to another custodian.");
-            if (r.Status != "approved" || r.BorrowingTransaction != null)
-                return ServiceResult.Fail("This reservation can't be released.");
-            if (r.EquipmentItem.Status != "available")
+            if (reservation.Status != "approved" || reservation.BorrowingTransaction != null)
+                return ServiceResult.Fail("This reservation can't be released. It may have expired or been cancelled.");
+            if (reservation.EquipmentItem.Status != "available")
                 return ServiceResult.Fail("This item is not available right now.");
 
-            _repo.AddTransaction(new BorrowingTransaction
+            _reservationRepository.AddTransaction(new BorrowingTransaction
             {
-                ReservationId = r.Id,
-                EquipmentItemId = r.EquipmentItemId,
-                BorrowerId = r.BorrowerId,
-                ReleasedBy = custodianId,
+                ReservationId = reservation.Id,
+                EquipmentItemId = reservation.EquipmentItemId,
+                BorrowerId = reservation.BorrowerId,
+                ReleasedBy = custodianDbId,
                 ActualPickupTime = DateTime.Now,
                 IsOverdue = false,
                 DelayDurationHours = 0,
@@ -315,49 +390,49 @@ namespace ASI.Basecode.Services.Services
                 UpdatedTime = DateTime.Now
             });
 
-            r.EquipmentItem.Status = "borrowed";
-            r.EquipmentItem.UpdatedTime = DateTime.Now;
-            _repo.SaveChanges();
+            reservation.EquipmentItem.Status = "borrowed";
+            reservation.EquipmentItem.UpdatedTime = DateTime.Now;
+            _reservationRepository.SaveChanges();
 
             return ServiceResult.Ok("Item released to the borrower.");
         }
 
         public ServiceResult Return(int transactionId, string condition, string notes, string custodianCode)
         {
-            var custodianId = _repo.GetUserDbId(custodianCode);
-            if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            var custodianDbId = _reservationRepository.GetUserDbId(custodianCode);
+            if (custodianDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var t = _repo.GetTransactionById(transactionId);
-            if (t == null) return ServiceResult.Fail("Transaction not found.");
-            if (t.EquipmentItem.CustodianId != custodianId)
+            var transaction = _reservationRepository.GetTransactionById(transactionId);
+            if (transaction == null) return ServiceResult.Fail("Transaction not found.");
+            if (transaction.EquipmentItem.CustodianId != custodianDbId)
                 return ServiceResult.Fail("This loan belongs to another custodian.");
-            if (t.ActualReturnTime != null) return ServiceResult.Fail("This item was already returned.");
+            if (transaction.ActualReturnTime != null) return ServiceResult.Fail("This item was already returned.");
 
             var now = DateTime.Now;
-            t.ActualReturnTime = now;
-            t.ReturnedTo = custodianId;
-            t.ReturnCondition = condition;
-            t.DamageNotes = notes;
-            t.UpdatedTime = now;
+            transaction.ActualReturnTime = now;
+            transaction.ReturnedTo = custodianDbId;
+            transaction.ReturnCondition = condition;
+            transaction.DamageNotes = notes;
+            transaction.UpdatedTime = now;
 
-            var due = t.Reservation?.EstimatedReturnDate;
+            var due = transaction.Reservation?.EstimatedReturnDate;
             if (due.HasValue)
             {
                 var lateBy = now - due.Value;
-                if (lateBy.TotalMinutes > _settings.Get().OverdueGraceMinutes)
+                if (lateBy.TotalMinutes > _settingsService.Get().OverdueGraceMinutes)
                 {
-                    t.IsOverdue = true;
-                    t.DelayDurationHours = (int)Math.Ceiling(lateBy.TotalHours);
+                    transaction.IsOverdue = true;
+                    transaction.DelayDurationHours = (int)Math.Ceiling(lateBy.TotalHours);
                 }
             }
             // ---- Penalties ----
-            if (t.IsOverdue && due.HasValue)
+            if (transaction.IsOverdue && due.HasValue)
             {
                 var days = PenaltyRules.LateDays(due.Value, now);
-                _repo.AddPenalty(new Penalty
+                _reservationRepository.AddPenalty(new Penalty
                 {
-                    TransactionId = t.Id,
-                    BorrowerId = t.BorrowerId,
+                    TransactionId = transaction.Id,
+                    BorrowerId = transaction.BorrowerId,
                     PenaltyType = PenaltyRules.Late,
                     Amount = days * PenaltyRules.LateFeePerDay,
                     Notes = $"{days} day(s) late",
@@ -369,10 +444,10 @@ namespace ASI.Basecode.Services.Services
 
             if (PenaltyRules.IsDamage(condition))
             {
-                _repo.AddPenalty(new Penalty
+                _reservationRepository.AddPenalty(new Penalty
                 {
-                    TransactionId = t.Id,
-                    BorrowerId = t.BorrowerId,
+                    TransactionId = transaction.Id,
+                    BorrowerId = transaction.BorrowerId,
                     PenaltyType = PenaltyRules.Damage,
                     Amount = 0,
                     Notes = notes,
@@ -382,10 +457,10 @@ namespace ASI.Basecode.Services.Services
                 });
             }
 
-            t.EquipmentItem.ConditionRating = condition;
-            t.EquipmentItem.Status = condition == "needs_maintenance" ? "maintenance" : "available";
-            t.EquipmentItem.UpdatedTime = now;
-            _repo.SaveChanges();
+            transaction.EquipmentItem.ConditionRating = condition;
+            transaction.EquipmentItem.Status = condition == "needs_maintenance" ? "maintenance" : "available";
+            transaction.EquipmentItem.UpdatedTime = now;
+            _reservationRepository.SaveChanges();
 
             return ServiceResult.Ok("Item marked as returned.");
         }

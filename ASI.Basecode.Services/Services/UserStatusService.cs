@@ -12,42 +12,42 @@ namespace ASI.Basecode.Services.Services
 {
     public class UserStatusService : IUserStatusService
     {
-        private readonly IAccountAdminRepository _repo;
+        private readonly IAccountAdminRepository _accountAdminRepository;
 
-        public UserStatusService(IAccountAdminRepository repo)
+        public UserStatusService(IAccountAdminRepository accountAdminRepository)
         {
-            _repo = repo;
+            _accountAdminRepository = accountAdminRepository;
         }
 
         public UserEditViewModel GetEditPage(int id, string adminCode)
         {
-            var u = _repo.GetUserById(id);
-            if (u == null) return null;
+            var user = _accountAdminRepository.GetUserById(id);
+            if (user == null) return null;
 
-            var requests = _repo.GetRequests()
+            var requests = _accountAdminRepository.GetRequests()
                 .Where(r => r.UserId == id)
                 .OrderByDescending(r => r.CreatedTime)
                 .Take(20)
                 .ToList();
 
-            var isLastAdmin = u.Role == "Admin" &&
-                              u.AccountStatus == AccountStatuses.Active &&
-                              !_repo.GetUsers().Any(o => o.Id != u.Id && o.Role == "Admin" &&
+            var isLastAdmin = user.Role == "Admin" &&
+                              user.AccountStatus == AccountStatuses.Active &&
+                              !_accountAdminRepository.GetUsers().Any(o => o.Id != user.Id && o.Role == "Admin" &&
                                                          o.IsActive && o.AccountStatus == "active");
 
             return new UserEditViewModel
             {
-                Id = u.Id,
-                UserCode = u.UserId,
-                FullName = InfoRequestMapper.FullName(u),
-                Email = u.Email,
-                ContactNumber = u.ContactNumber,
-                Role = u.Role,
-                Status = u.AccountStatus,
-                CreatedTime = u.CreatedTime,
-                ItemsOut = _repo.GetTransactions().Count(t => t.BorrowerId == id && t.ActualReturnTime == null),
-                OpenRequests = OpenReservations(id).Count(),
-                IsSelf = u.UserId == adminCode,
+                Id = user.Id,
+                UserCode = user.UserId,
+                FullName = InfoRequestMapper.FullName(user),
+                Email = user.Email,
+                ContactNumber = user.ContactNumber,
+                Role = user.Role,
+                Status = user.AccountStatus,
+                CreatedTime = user.CreatedTime,
+                ItemsOut = OpenLoans(user).Count(),
+                OpenRequests = OpenReservations(user).Count(),
+                IsSelf = user.UserId == adminCode,
                 IsLastActiveAdmin = isLastAdmin,
                 Requests = requests.Select(InfoRequestMapper.ToRow).ToList()
             };
@@ -59,7 +59,7 @@ namespace ASI.Basecode.Services.Services
             if (!AccountStatuses.All.Contains(newStatus))
                 return ServiceResult.Fail("Please choose a valid status.");
 
-            var user = _repo.GetUserById(id);
+            var user = _accountAdminRepository.GetUserById(id);
             if (user == null) return ServiceResult.Fail("User not found.");
 
             var name = InfoRequestMapper.FullName(user);
@@ -77,21 +77,29 @@ namespace ASI.Basecode.Services.Services
                     return ServiceResult.Fail("You can't deactivate or disable your own account.");
 
                 if (user.Role == "Admin" && user.AccountStatus == AccountStatuses.Active &&
-                    !_repo.GetUsers().Any(o => o.Id != user.Id && o.Role == "Admin" &&
+                    !_accountAdminRepository.GetUsers().Any(o => o.Id != user.Id && o.Role == "Admin" &&
                                                o.IsActive && o.AccountStatus == "active"))
                     return ServiceResult.Fail("This is the only active administrator. Create or activate another admin first.");
 
-                var itemsOut = _repo.GetTransactions().Count(t => t.BorrowerId == id && t.ActualReturnTime == null);
-                if (itemsOut > 0)
-                    return ServiceResult.Fail($"{name} still has {itemsOut} item(s) that haven't been returned. Process the return first.");
+                var isCustodian = user.Role == "Custodian";
 
-                // Requests that can no longer be picked up are cancelled
-                var open = OpenReservations(id).ToList();
+                // A borrower can't leave with items out; a custodian can't leave while their equipment is on loan,
+                // because only the owning custodian can receive the return
+                var itemsOut = OpenLoans(user).Count();
+                if (itemsOut > 0)
+                    return ServiceResult.Fail(isCustodian
+                        ? $"{name} still has {itemsOut} item(s) out on loan. Process the return first."
+                        : $"{name} still has {itemsOut} item(s) that haven't been returned. Process the return first.");
+
+                // Requests that can no longer be picked up (or approved) are cancelled
+                var open = OpenReservations(user).ToList();
                 foreach (var r in open)
                 {
                     r.Status = "cancelled";
                     r.UpdatedTime = now;
-                    if (string.IsNullOrWhiteSpace(r.ReviewNotes))
+                    if (isCustodian)
+                        r.ReviewNotes = "Cancelled because the equipment's custodian account was " + newStatus + ".";
+                    else if (string.IsNullOrWhiteSpace(r.ReviewNotes))
                         r.ReviewNotes = "Cancelled because the borrower's account was " + newStatus + ".";
                 }
                 cancelled = open.Count;
@@ -104,7 +112,7 @@ namespace ASI.Basecode.Services.Services
 
             try
             {
-                _repo.SaveChanges();
+                _accountAdminRepository.SaveChanges();
             }
             catch (DbUpdateException)
             {
@@ -129,12 +137,26 @@ namespace ASI.Basecode.Services.Services
             return ServiceResult.Ok(message);
         }
 
-        // Pending requests, plus approved ones that haven't been picked up yet
-        private IQueryable<Data.Models.Reservation> OpenReservations(int userId)
+        // Pending requests, plus approved ones that haven't been picked up yet.
+        // For a custodian these are the requests for the equipment they own; for everyone else, their own requests.
+        private IQueryable<Data.Models.Reservation> OpenReservations(Data.Models.User user)
         {
-            return _repo.GetReservations().Where(r =>
-                r.BorrowerId == userId &&
-                (r.Status == "pending" || (r.Status == "approved" && r.BorrowingTransaction == null)));
+            var open = _accountAdminRepository.GetReservations().Where(r =>
+                r.Status == "pending" || (r.Status == "approved" && r.BorrowingTransaction == null));
+
+            return user.Role == "Custodian"
+                ? open.Where(r => r.EquipmentItem.CustodianId == user.Id)
+                : open.Where(r => r.BorrowerId == user.Id);
+        }
+
+        // Loans not returned yet: items the user holds, or (for a custodian) their equipment that is out on loan
+        private IQueryable<Data.Models.BorrowingTransaction> OpenLoans(Data.Models.User user)
+        {
+            var loans = _accountAdminRepository.GetTransactions().Where(t => t.ActualReturnTime == null);
+
+            return user.Role == "Custodian"
+                ? loans.Where(t => t.EquipmentItem.CustodianId == user.Id)
+                : loans.Where(t => t.BorrowerId == user.Id);
         }
     }
 }

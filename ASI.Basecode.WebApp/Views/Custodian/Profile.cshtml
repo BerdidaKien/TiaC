@@ -152,12 +152,14 @@
                             <div class="profile-field position-relative">
                                 <i class="fa-solid fa-phone profile-field-icon"></i>
                                 <input type="text" id="ContactNumber" name="ContactNumber"
-                                       value="@Model.ContactNumber" placeholder="09XX XXX XXXX"
+                                       value="@Model.ContactNumber" placeholder="09171234567"
+                                       maxlength="13" inputmode="tel" autocomplete="tel"
                                        class="form-control profile-input" data-editable="true" readonly />
                             </div>
+                            <small class="dash-muted">11 digits starting with 09, or +639 followed by 9 digits.</small>
                         </div>
 
-                        @* Email (editable) *@
+                        @* Email (read-only: changed through an information change request) *@
                         <div class="col-md-6 mb-3">
                             <label class="profile-label" for="Email">Email Address</label>
                             <div class="profile-field position-relative">
@@ -165,6 +167,7 @@
                                 <input type="email" id="Email" value="@Model.Email"
                                     class="form-control profile-input" readonly />
                             </div>
+                            <small class="dash-muted">To change your email, <a asp-controller="InfoRequest" asp-action="Create" class="dash-link">send an information change request</a>.</small>
                         </div>
 
                         @* Role *@
@@ -375,7 +378,7 @@
             var editBtn = document.getElementById('editBtn');
             var saveBtn = document.getElementById('saveBtn');
 
-            // Only the contact number and email can be edited
+            // Only the contact number can be edited here
             var inputs = document.querySelectorAll('.profile-input[data-editable="true"]');
 
             var editing = false;
@@ -434,6 +437,66 @@
                 });
             }
 
+        })();
+    </script>
+
+    <script>
+        // Contact number: same rule as Add Users (09XXXXXXXXX or +639XXXXXXXXX)
+        (function () {
+            var form = document.getElementById('profileForm');
+            var input = document.getElementById('ContactNumber');
+            if (!form || !input) return;
+
+            var original = input.value;
+            var error = document.createElement('div');
+            error.className = 'text-danger small mt-1 d-none';
+            error.setAttribute('role', 'alert');
+            input.closest('.profile-field').insertAdjacentElement('afterend', error);
+
+            // Spaces, dashes and dots are dropped; spreadsheet-style numbers missing the 0 are fixed
+            function clean(v) {
+                v = (v || '').replace(/[\s\-().]/g, '');
+                if (/^9\d{9}$/.test(v)) v = '0' + v;
+                if (/^639\d{9}$/.test(v)) v = '+' + v;
+                return v;
+            }
+
+            // Only a number the user actually changed is checked, so saving a new photo never fails on an old value
+            function problem() {
+                var value = clean(input.value);
+                if (value === clean(original)) return '';
+                if (!value) return "Contact number can't be removed. Enter a new one to replace it.";
+                if (!/^(09\d{9}|\+639\d{9})$/.test(value)) return 'Use 11 digits starting with 09 (e.g. 09171234567) or +639 followed by 9 digits.';
+                return '';
+            }
+
+            function show(msg) {
+                error.textContent = msg;
+                error.classList.toggle('d-none', !msg);
+                input.classList.toggle('is-invalid', !!msg);
+            }
+
+            input.addEventListener('input', function () {
+                // Digits only, with an optional leading +
+                var cleaned = input.value.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+                if (cleaned !== input.value) input.value = cleaned;
+                if (!error.classList.contains('d-none')) show(problem());
+            });
+
+            input.addEventListener('blur', function () {
+                if (!input.readOnly) show(problem());
+            });
+
+            form.addEventListener('submit', function (e) {
+                var msg = problem();
+                show(msg);
+                if (msg) {
+                    e.preventDefault();
+                    input.focus();
+                } else if (clean(input.value) !== clean(original)) {
+                    input.value = clean(input.value);
+                }
+            });
         })();
     </script>
 

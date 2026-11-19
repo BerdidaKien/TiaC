@@ -8,45 +8,45 @@ namespace ASI.Basecode.Services.Services
 {
     public class PenaltyService : IPenaltyService
     {
-        private readonly IReservationRepository _repo;
+        private readonly IReservationRepository _reservationRepository;
 
-        public PenaltyService(IReservationRepository repo)
+        public PenaltyService(IReservationRepository reservationRepository)
         {
-            _repo = repo;
+            _reservationRepository = reservationRepository;
         }
 
         public ServiceResult Resolve(int penaltyId, string custodianCode)
         {
-            var custodianId = _repo.GetUserDbId(custodianCode);
-            if (custodianId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            var custodianDbId = _reservationRepository.GetUserDbId(custodianCode);
+            if (custodianDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var p = _repo.GetPenalties().FirstOrDefault(x => x.Id == penaltyId);
-            if (p == null) return ServiceResult.Fail("Penalty not found.");
-            if (p.Transaction?.EquipmentItem?.CustodianId != custodianId)
+            var penalty = _reservationRepository.GetPenalties().FirstOrDefault(x => x.Id == penaltyId);
+            if (penalty == null) return ServiceResult.Fail("Penalty not found.");
+            if (penalty.Transaction?.EquipmentItem?.CustodianId != custodianDbId)
                 return ServiceResult.Fail("This penalty belongs to another custodian's equipment.");
-            if (p.Status != PenaltyRules.Unresolved)
+            if (penalty.Status != PenaltyRules.Unresolved)
                 return ServiceResult.Fail("This penalty is already settled.");
 
-            p.Status = PenaltyRules.Resolved;
-            p.ResolvedTime = DateTime.Now;
-            p.ResolvedBy = custodianId;
-            _repo.SaveChanges();
+            penalty.Status = PenaltyRules.Resolved;
+            penalty.ResolvedTime = DateTime.Now;
+            penalty.ResolvedBy = custodianDbId;
+            _reservationRepository.SaveChanges();
 
-            return ServiceResult.Ok(p.PenaltyType == PenaltyRules.Late
+            return ServiceResult.Ok(penalty.PenaltyType == PenaltyRules.Late
                 ? "Late fee marked as paid."
                 : "Replacement confirmed.");
         }
 
         public BorrowerPenaltySummary GetSummary(int userDbId)
         {
-            var user = _repo.GetUserByDbId(userDbId);
+            var user = _reservationRepository.GetUserByDbId(userDbId);
 
-            var open = _repo.GetPenalties()
+            var open = _reservationRepository.GetPenalties()
                 .Where(p => p.BorrowerId == userDbId && p.Status == PenaltyRules.Unresolved)
                 .ToList();
 
             var cutoff = DateTime.Now.AddDays(-PenaltyRules.SettleLateWithinDays);
-            var unreturned = _repo.GetTransactions().Count(t =>
+            var unreturned = _reservationRepository.GetTransactions().Count(t =>
                 t.BorrowerId == userDbId && t.ActualReturnTime == null &&
                 t.Reservation.EstimatedReturnDate < cutoff);
 
@@ -62,21 +62,21 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult LiftRestriction(int userDbId, string adminCode)
         {
-            var user = _repo.GetUserByDbId(userDbId);
+            var user = _reservationRepository.GetUserByDbId(userDbId);
             if (user == null) return ServiceResult.Fail("User not found.");
             if (user.BorrowerStatus != PenaltyRules.Restricted)
                 return ServiceResult.Fail("This account is not restricted.");
 
-            var s = GetSummary(userDbId);
-            if (s.UnresolvedCount > 0)
-                return ServiceResult.Fail($"This student still has {s.UnresolvedCount} unresolved penalty(ies). The custodian must mark them paid or replaced first.");
-            if (s.UnreturnedOverdue > 0)
+            var summary = GetSummary(userDbId);
+            if (summary.UnresolvedCount > 0)
+                return ServiceResult.Fail($"This student still has {summary.UnresolvedCount} unresolved penalty(ies). The custodian must mark them paid or replaced first.");
+            if (summary.UnreturnedOverdue > 0)
                 return ServiceResult.Fail("This student still has equipment out more than 3 days past its due date.");
 
             user.BorrowerStatus = PenaltyRules.Eligible;
             user.UpdatedTime = DateTime.Now;
             user.UpdatedBy = adminCode;
-            _repo.SaveChanges();
+            _reservationRepository.SaveChanges();
 
             return ServiceResult.Ok("Borrowing restored. The student can reserve equipment again.");
         }

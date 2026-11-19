@@ -1,10 +1,58 @@
 ﻿@model ASI.Basecode.Services.ServiceModels.ReservationsPageViewModel
 @{
     ViewData["Title"] = "Manage Borrow Requests & Active Loans";
+
+    // Equipment photo shown on each request / loan card (an icon when the item has none)
+    void Thumb(ASI.Basecode.Data.Models.EquipmentItem item)
+    {
+        <div class="res-thumb flex-shrink-0">
+            @if (!string.IsNullOrEmpty(item?.ImagePath))
+            {
+                <img src="@item.ImagePath" alt="@item.BrandModel" loading="lazy" />
+            }
+            else
+            {
+                <i class="bi bi-box-seam"></i>
+            }
+        </div>
+    }
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        /* Same look as the fields on the Change Info Request form */
+        .res-card {
+            background-color: #f6e6da;
+            border: 1.5px solid var(--d-red);
+            border-radius: 8px;
+        }
+
+            .res-card.is-approved { border-color: var(--bs-primary); }
+            .res-card.is-active { border-color: var(--bs-success); }
+            .res-card.is-warning { border-color: var(--bs-warning); }
+            .res-card.is-overdue { border-color: var(--bs-danger); border-width: 2px; }
+
+        .res-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f1d3c0;
+            border: 1px solid rgba(90, 0, 0, .2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--d-maroon);
+            font-size: 1.6rem;
+        }
+
+            .res-thumb img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+    </style>
 }
 
 <div class="dash-header mb-4 d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -62,9 +110,10 @@
             <div class="d-flex flex-column gap-3 mb-4">
                 @foreach (var r in Model.Pending)
                 {
-                    <div class="p-3 bg-white rounded border">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
+                    <div class="p-3 res-card">
+                        <div class="d-flex justify-content-between align-items-start mb-2 gap-3">
+                            @{ Thumb(r.EquipmentItem); }
+                            <div class="flex-grow-1">
                                 <h5 class="fw-bold mb-0">@r.EquipmentItem.BrandModel</h5>
                                 <span class="text-muted small">Code: @r.EquipmentItem.ItemCode</span>
                             </div>
@@ -91,15 +140,16 @@
 
             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <h4 class="dash fs-5 fw-bold m-0"><i class="bi bi-bag-check text-primary me-1"></i> Approved - Awaiting Pickup</h4>
-                <span class="badge bg-primary rounded-pill">@Model.Approved.Count</span>
+                <span class="badge bg-primary rounded-pill">@Model.Approved.Count Approved</span>
             </div>
 
             <div class="d-flex flex-column gap-3">
                 @foreach (var r in Model.Approved)
                 {
-                    <div class="p-3 bg-white rounded border border-primary">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
+                    <div class="p-3 res-card is-approved">
+                        <div class="d-flex justify-content-between align-items-start mb-2 gap-3">
+                            @{ Thumb(r.EquipmentItem); }
+                            <div class="flex-grow-1">
                                 <h5 class="fw-bold mb-0">@r.EquipmentItem.BrandModel</h5>
                                 <span class="text-muted small">Code: @r.EquipmentItem.ItemCode</span>
                             </div>
@@ -114,6 +164,9 @@
                                 <i class="bi bi-box-arrow-right me-1"></i> Release Item to Borrower
                             </button>
                         </form>
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-2" data-bs-toggle="modal" data-bs-target="#cancelApprovedModal" data-id="@r.Id">
+                            <i class="bi bi-x-circle me-1"></i> Cancel Reservation
+                        </button>
                     </div>
                 }
                 @if (!Model.Approved.Any())
@@ -139,9 +192,10 @@
                     var pastDue = due.HasValue && due.Value < now;
                     var overdue = pastDue && due.Value.AddMinutes(Model.GraceMinutes) < now;
                     var dueSoon = due.HasValue && !pastDue && due.Value <= now.AddHours(Model.DueSoonHours);
-                    <div class="p-3 bg-white rounded border @(overdue ? "border-danger" : (pastDue || dueSoon) ? "border-warning" : "border-success")">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
+                    <div class="p-3 res-card @(overdue ? "is-overdue" : (pastDue || dueSoon) ? "is-warning" : "is-active")">
+                        <div class="d-flex justify-content-between align-items-start mb-2 gap-3">
+                            @{ Thumb(t.EquipmentItem); }
+                            <div class="flex-grow-1">
                                 <h5 class="fw-bold mb-0">@t.EquipmentItem.BrandModel</h5>
                                 <span class="text-muted small">Code: @t.EquipmentItem.ItemCode</span>
                             </div>
@@ -197,6 +251,29 @@
                     <div class="modal-footer border-top border-secondary">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-danger fw-bold">Confirm Decline</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="cancelApprovedModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color: var(--d-bg);">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title dash fw-bold text-danger">Cancel Approved Reservation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" asp-controller="Custodian" asp-action="CancelApprovedReservation">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" class="modal-id" />
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">The borrower will see this reason. Use it for no-shows or when the item can't be released (3 to 255 characters):</p>
+                        <textarea name="cancelReason" class="form-control dash-search-input" rows="3" minlength="3" maxlength="255" placeholder="e.g. Borrower did not pick up the item..." required></textarea>
+                    </div>
+                    <div class="modal-footer border-top border-secondary">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep Reservation</button>
+                        <button type="submit" class="btn btn-danger fw-bold">Confirm Cancel</button>
                     </div>
                 </form>
             </div>

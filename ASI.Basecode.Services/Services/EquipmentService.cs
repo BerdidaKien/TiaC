@@ -21,15 +21,25 @@ namespace ASI.Basecode.Services.Services
         }
 
         // null code = no filter (students, admin). An unknown code resolves to 0 and matches nothing.
-        private int? OwnerId(string custodianCode) =>
+        private int? OwnerDbId(string custodianCode) =>
             string.IsNullOrEmpty(custodianCode) ? (int?)null : _equipmentRepository.GetUserDbId(custodianCode);
 
         public IEnumerable<EquipmentItem> GetAllEquipment(string custodianCode = null)
         {
             var q = _equipmentRepository.GetEquipmentItems();
-            var owner = OwnerId(custodianCode);
-            if (owner.HasValue) q = q.Where(e => e.CustodianId == owner.Value);
+            var ownerDbId = OwnerDbId(custodianCode);
+            if (ownerDbId.HasValue) q = q.Where(e => e.CustodianId == ownerDbId.Value);
+            else q = HideInactiveCustodians(q);
             return q.ToList();
+        }
+
+        // Students and the catalog never show equipment whose custodian is inactive or disabled,
+        // because nobody could approve a request for it
+        private IQueryable<EquipmentItem> HideInactiveCustodians(IQueryable<EquipmentItem> items)
+        {
+            var inactive = _equipmentRepository.GetInactiveCustodianIds().ToList();
+            if (inactive.Count == 0) return items;
+            return items.Where(e => e.CustodianId == null || !inactive.Contains(e.CustodianId.Value));
         }
 
         public IEnumerable<EquipmentCategory> GetCategories()
@@ -54,9 +64,9 @@ namespace ASI.Basecode.Services.Services
             item.Id = 0;
 
             // The owner always comes from the logged-in custodian, never from the posted form
-            var owner = OwnerId(custodianCode);
-            if (owner == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
-            item.CustodianId = owner;
+            var ownerDbId = OwnerDbId(custodianCode);
+            if (ownerDbId == 0) return ServiceResult.Fail("Your session expired. Please log in again.");
+            item.CustodianId = ownerDbId;
             item.ItemCode = item.ItemCode?.Trim();
             item.BrandModel = item.BrandModel?.Trim();
 
@@ -128,8 +138,8 @@ namespace ASI.Basecode.Services.Services
             if (existing == null || existing.Status == "archived")
                 return ServiceResult.Fail("Equipment item not found.");
 
-            var owner = OwnerId(custodianCode);
-            if (owner.HasValue && existing.CustodianId != owner)
+            var ownerDbId = OwnerDbId(custodianCode);
+            if (ownerDbId.HasValue && existing.CustodianId != ownerDbId)
                 return ServiceResult.Fail("Equipment item not found.");
 
             var code = edited.ItemCode?.Trim();
@@ -220,8 +230,8 @@ namespace ASI.Basecode.Services.Services
             if (existing == null || existing.Status == "archived")
                 return ServiceResult.Fail("Equipment item not found.");
 
-            var owner = OwnerId(custodianCode);
-            if (owner.HasValue && existing.CustodianId != owner)
+            var ownerDbId = OwnerDbId(custodianCode);
+            if (ownerDbId.HasValue && existing.CustodianId != ownerDbId)
                 return ServiceResult.Fail("Equipment item not found.");
 
             var isOut = existing.Status == "borrowed" ||
@@ -256,7 +266,7 @@ namespace ASI.Basecode.Services.Services
         public DashboardViewModel GetDashboardSummary(string search, int? categoryId, string status, string custodianCode = null)
         {
             // Items still waiting for a category are not part of the inventory yet
-            var owner = OwnerId(custodianCode);
+            var ownerDbId = OwnerDbId(custodianCode);
 
             var items = _equipmentRepository.GetEquipmentItems()   // non-archived, includes Category
                 .Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status));
@@ -265,11 +275,15 @@ namespace ASI.Basecode.Services.Services
             var pending = _equipmentRepository.GetReservations()
                 .Where(r => r.Status == "pending");
 
-            if (owner.HasValue)
+            if (ownerDbId.HasValue)
             {
-                items = items.Where(i => i.CustodianId == owner.Value);
-                openLoans = openLoans.Where(t => t.EquipmentItem.CustodianId == owner.Value);
-                pending = pending.Where(r => r.EquipmentItem.CustodianId == owner.Value);
+                items = items.Where(i => i.CustodianId == ownerDbId.Value);
+                openLoans = openLoans.Where(t => t.EquipmentItem.CustodianId == ownerDbId.Value);
+                pending = pending.Where(r => r.EquipmentItem.CustodianId == ownerDbId.Value);
+            }
+            else
+            {
+                items = HideInactiveCustodians(items);
             }
 
             var borrowedIds = openLoans

@@ -72,6 +72,13 @@ namespace ASI.Basecode.Data.Repositories
             return _context.BorrowingTransactions;
         }
 
+        public IQueryable<int> GetInactiveCustodianIds()
+        {
+            return _context.Users
+                           .Where(u => u.Role == "Custodian" && (!u.IsActive || u.AccountStatus != "active"))
+                           .Select(u => u.Id);
+        }
+
         public int GetUserDbId(string userCode)
         {
             return _context.Users

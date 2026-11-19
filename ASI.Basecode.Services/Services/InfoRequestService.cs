@@ -17,21 +17,21 @@ namespace ASI.Basecode.Services.Services
         private const int PageSize = 10;
         private const int MaxFiles = 3;
 
-        private readonly IAccountAdminRepository _repo;
+        private readonly IAccountAdminRepository _accountAdminRepository;
 
-        public InfoRequestService(IAccountAdminRepository repo)
+        public InfoRequestService(IAccountAdminRepository accountAdminRepository)
         {
-            _repo = repo;
+            _accountAdminRepository = accountAdminRepository;
         }
 
         // ---------- Student / custodian side ----------
         public InfoRequestFormViewModel GetForm(string userCode)
         {
-            var u = _repo.GetUserByCode(userCode);
-            if (u == null) return null;
+            var user = _accountAdminRepository.GetUserByCode(userCode);
+            if (user == null) return null;
 
-            var rows = _repo.GetRequests()
-                .Where(r => r.UserId == u.Id)
+            var rows = _accountAdminRepository.GetRequests()
+                .Where(r => r.UserId == user.Id)
                 .OrderByDescending(r => r.CreatedTime)
                 .Take(10)
                 .ToList()
@@ -40,13 +40,13 @@ namespace ASI.Basecode.Services.Services
 
             return new InfoRequestFormViewModel
             {
-                UserCode = u.UserId,
-                Role = u.Role,
-                IdLabel = (u.Role == "Custodian" || u.Role == "Admin") ? "Employee ID" : "Student ID",
-                FirstName = u.FirstName,
-                MiddleName = u.MiddleName ?? "",
-                LastName = u.LastName,
-                Email = u.Email,
+                UserCode = user.UserId,
+                Role = user.Role,
+                IdLabel = (user.Role == "Custodian" || user.Role == "Admin") ? "Employee ID" : "Student ID",
+                FirstName = user.FirstName,
+                MiddleName = user.MiddleName ?? "",
+                LastName = user.LastName,
+                Email = user.Email,
                 Pending = rows.FirstOrDefault(r => r.Status == "pending"),
                 History = rows
             };
@@ -54,13 +54,13 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult Submit(string userCode, SubmitInfoRequest model, IList<StoredProof> proofs)
         {
-            var u = _repo.GetUserByCode(userCode);
-            if (u == null) return ServiceResult.Fail("Your session expired. Please log in again.");
-            if (!u.IsActive || u.AccountStatus != AccountStatuses.Active)
+            var user = _accountAdminRepository.GetUserByCode(userCode);
+            if (user == null) return ServiceResult.Fail("Your session expired. Please log in again.");
+            if (!user.IsActive || user.AccountStatus != AccountStatuses.Active)
                 return ServiceResult.Fail("Your account can't send requests right now.");
             if (model == null) return ServiceResult.Fail("Please fill in the form.");
 
-            if (_repo.GetRequests().Any(r => r.UserId == u.Id && r.Status == "pending"))
+            if (_accountAdminRepository.GetRequests().Any(r => r.UserId == user.Id && r.Status == "pending"))
                 return ServiceResult.Fail("You already have a request waiting for review. Cancel it first if you want to send a new one.");
 
             var submitted = new Dictionary<string, string>
@@ -76,7 +76,7 @@ namespace ASI.Basecode.Services.Services
             var items = new List<InfoChangeRequestItem>();
             foreach (var f in InfoFields.All)
             {
-                var oldValue = InfoFields.Read(u, f.Key) ?? "";
+                var oldValue = InfoFields.Read(user, f.Key) ?? "";
                 var newValue = submitted[f.Key];
                 if (string.Equals(oldValue, newValue, StringComparison.Ordinal)) continue;
 
@@ -99,17 +99,17 @@ namespace ASI.Basecode.Services.Services
                 return ServiceResult.Fail($"You can attach up to {MaxFiles} photos.");
 
             var newCode = items.FirstOrDefault(i => i.FieldKey == "user_code")?.NewValue;
-            if (newCode != null && _repo.GetUsers().Any(x => x.Id != u.Id && x.UserId == newCode))
+            if (newCode != null && _accountAdminRepository.GetUsers().Any(x => x.Id != user.Id && x.UserId == newCode))
                 return ServiceResult.Fail("That ID is not available.");
 
             var newEmail = items.FirstOrDefault(i => i.FieldKey == "email")?.NewValue;
-            if (newEmail != null && _repo.GetUsers().Any(x => x.Id != u.Id && x.Email == newEmail))
+            if (newEmail != null && _accountAdminRepository.GetUsers().Any(x => x.Id != user.Id && x.Email == newEmail))
                 return ServiceResult.Fail("That email address is not available.");
 
             var now = DateTime.Now;
             var request = new InfoChangeRequest
             {
-                UserId = u.Id,
+                UserId = user.Id,
                 Reason = reason,
                 Status = "pending",
                 CreatedTime = now,
@@ -129,11 +129,11 @@ namespace ASI.Basecode.Services.Services
                 });
             }
 
-            _repo.AddRequest(request);
+            _accountAdminRepository.AddRequest(request);
 
             try
             {
-                _repo.SaveChanges();
+                _accountAdminRepository.SaveChanges();
             }
             catch (DbUpdateException)
             {
@@ -145,19 +145,19 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult Cancel(int requestId, string userCode)
         {
-            var u = _repo.GetUserByCode(userCode);
-            if (u == null) return ServiceResult.Fail("Your session expired. Please log in again.");
+            var user = _accountAdminRepository.GetUserByCode(userCode);
+            if (user == null) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var r = _repo.GetRequestById(requestId);
-            if (r == null || r.UserId != u.Id) return ServiceResult.Fail("Request not found.");
-            if (r.Status != "pending") return ServiceResult.Fail("Only a request that is waiting for review can be cancelled.");
+            var request = _accountAdminRepository.GetRequestById(requestId);
+            if (request == null || request.UserId != user.Id) return ServiceResult.Fail("Request not found.");
+            if (request.Status != "pending") return ServiceResult.Fail("Only a request that is waiting for review can be cancelled.");
 
-            r.Status = "cancelled";
-            r.UpdatedTime = DateTime.Now;
+            request.Status = "cancelled";
+            request.UpdatedTime = DateTime.Now;
 
             try
             {
-                _repo.SaveChanges();
+                _accountAdminRepository.SaveChanges();
             }
             catch (DbUpdateException)
             {
@@ -170,7 +170,7 @@ namespace ASI.Basecode.Services.Services
         // ---------- Admin side ----------
         public AdminInfoRequestsViewModel GetAdminPage(string status, string search, int page)
         {
-            var all = _repo.GetRequests();
+            var all = _accountAdminRepository.GetRequests();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -224,27 +224,27 @@ namespace ASI.Basecode.Services.Services
 
         public InfoRequestRow GetRequestRow(int id)
         {
-            var r = _repo.GetRequestById(id);
-            return r == null ? null : InfoRequestMapper.ToRow(r);
+            var request = _accountAdminRepository.GetRequestById(id);
+            return request == null ? null : InfoRequestMapper.ToRow(request);
         }
 
         public ServiceResult Approve(int requestId, IDictionary<string, string> values, string note, string adminCode)
         {
-            var admin = _repo.GetUserByCode(adminCode);
+            var admin = _accountAdminRepository.GetUserByCode(adminCode);
             if (admin == null) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var r = _repo.GetRequestById(requestId);
-            if (r == null) return ServiceResult.Fail("Request not found.");
-            if (r.Status != "pending") return ServiceResult.Fail("This request was already handled.");
+            var request = _accountAdminRepository.GetRequestById(requestId);
+            if (request == null) return ServiceResult.Fail("Request not found.");
+            if (request.Status != "pending") return ServiceResult.Fail("This request was already handled.");
 
             note = (note ?? "").Trim();
             if (note.Length > 255) return ServiceResult.Fail("The note must be 255 characters or fewer.");
 
-            var user = r.User;
+            var user = request.User;
 
             // The admin may correct the requested values before approving
             var finals = new Dictionary<string, string>();
-            foreach (var item in r.Items)
+            foreach (var item in request.Items)
             {
                 var raw = (values != null && values.TryGetValue(item.FieldKey, out var typed)) ? typed : item.NewValue;
                 var final = InfoFields.Normalize(item.FieldKey, raw);
@@ -256,15 +256,15 @@ namespace ASI.Basecode.Services.Services
             }
 
             if (finals.TryGetValue("user_code", out var code) &&
-                _repo.GetUsers().Any(x => x.Id != user.Id && x.UserId == code))
+                _accountAdminRepository.GetUsers().Any(x => x.Id != user.Id && x.UserId == code))
                 return ServiceResult.Fail($"The ID \"{code}\" is already used by another account.");
 
             if (finals.TryGetValue("email", out var email) &&
-                _repo.GetUsers().Any(x => x.Id != user.Id && x.Email == email))
+                _accountAdminRepository.GetUsers().Any(x => x.Id != user.Id && x.Email == email))
                 return ServiceResult.Fail($"The email \"{email}\" is already used by another account.");
 
             var now = DateTime.Now;
-            foreach (var item in r.Items)
+            foreach (var item in request.Items)
             {
                 InfoFields.Apply(user, item.FieldKey, finals[item.FieldKey]);
                 item.ApprovedValue = finals[item.FieldKey];
@@ -273,15 +273,15 @@ namespace ASI.Basecode.Services.Services
             user.UpdatedBy = adminCode;
             user.UpdatedTime = now;
 
-            r.Status = "approved";
-            r.ReviewedBy = admin.Id;
-            r.ReviewedAt = now;
-            r.ReviewNote = note.Length == 0 ? null : note;
-            r.UpdatedTime = now;
+            request.Status = "approved";
+            request.ReviewedBy = admin.Id;
+            request.ReviewedAt = now;
+            request.ReviewNote = note.Length == 0 ? null : note;
+            request.UpdatedTime = now;
 
             try
             {
-                _repo.SaveChanges();
+                _accountAdminRepository.SaveChanges();
             }
             catch (DbUpdateException)
             {
@@ -293,27 +293,27 @@ namespace ASI.Basecode.Services.Services
 
         public ServiceResult Reject(int requestId, string reason, string adminCode)
         {
-            var admin = _repo.GetUserByCode(adminCode);
+            var admin = _accountAdminRepository.GetUserByCode(adminCode);
             if (admin == null) return ServiceResult.Fail("Your session expired. Please log in again.");
 
-            var r = _repo.GetRequestById(requestId);
-            if (r == null) return ServiceResult.Fail("Request not found.");
-            if (r.Status != "pending") return ServiceResult.Fail("This request was already handled.");
+            var request = _accountAdminRepository.GetRequestById(requestId);
+            if (request == null) return ServiceResult.Fail("Request not found.");
+            if (request.Status != "pending") return ServiceResult.Fail("This request was already handled.");
 
             reason = (reason ?? "").Trim();
             if (reason.Length < 3 || reason.Length > 255)
                 return ServiceResult.Fail("Please give a reason (3 to 255 characters).");
 
             var now = DateTime.Now;
-            r.Status = "rejected";
-            r.ReviewedBy = admin.Id;
-            r.ReviewedAt = now;
-            r.ReviewNote = reason;
-            r.UpdatedTime = now;
+            request.Status = "rejected";
+            request.ReviewedBy = admin.Id;
+            request.ReviewedAt = now;
+            request.ReviewNote = reason;
+            request.UpdatedTime = now;
 
             try
             {
-                _repo.SaveChanges();
+                _accountAdminRepository.SaveChanges();
             }
             catch (DbUpdateException)
             {
@@ -323,9 +323,9 @@ namespace ASI.Basecode.Services.Services
             return ServiceResult.Ok("Request rejected. The user can see your reason and send a new request.");
         }
 
-        public InfoChangeRequestFile GetFile(int fileId) => _repo.GetFileById(fileId);
+        public InfoChangeRequestFile GetFile(int fileId) => _accountAdminRepository.GetFileById(fileId);
 
-        public int PendingCount() => _repo.GetRequests().Count(r => r.Status == "pending");
+        public int PendingCount() => _accountAdminRepository.GetRequests().Count(r => r.Status == "pending");
 
         private static int ParseCode(string term)
         {

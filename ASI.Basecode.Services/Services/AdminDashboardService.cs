@@ -11,34 +11,34 @@ namespace ASI.Basecode.Services.Services
 {
     public class AdminDashboardService : IAdminDashboardService
     {
-        private readonly IUserAdminRepository _userRepo;
-        private readonly IEquipmentRepository _equipRepo;
-        private readonly IReservationRepository _resRepo;
-        private readonly IAdminReservationService _reservations;
-        private readonly IItemReportService _items;
+        private readonly IUserAdminRepository _userAdminRepository;
+        private readonly IEquipmentRepository _equipmentRepository;
+        private readonly IReservationRepository _reservationRepository;
+        private readonly IAdminReservationService _adminReservationService;
+        private readonly IItemReportService _itemReportService;
 
         public AdminDashboardService(
-            IUserAdminRepository userRepo,
-            IEquipmentRepository equipRepo,
-            IReservationRepository resRepo,
-            IAdminReservationService reservations,
-            IItemReportService items)
+            IUserAdminRepository userAdminRepository,
+            IEquipmentRepository equipmentRepository,
+            IReservationRepository reservationRepository,
+            IAdminReservationService adminReservationService,
+            IItemReportService itemReportService)
         {
-            _userRepo = userRepo;
-            _equipRepo = equipRepo;
-            _resRepo = resRepo;
-            _reservations = reservations;
-            _items = items;
+            _userAdminRepository = userAdminRepository;
+            _equipmentRepository = equipmentRepository;
+            _reservationRepository = reservationRepository;
+            _adminReservationService = adminReservationService;
+            _itemReportService = itemReportService;
         }
 
         public AdminDashboardViewModel GetDashboard()
         {
             // Reuse the Reservations and Item Reports logic so every page shows the same numbers.
             // The first page of reservations is already the 5 newest.
-            var res = _reservations.GetPage(new AdminReservationFilter());
-            var items = _items.GetPage(new ItemReportFilter());
+            var res = _adminReservationService.GetPage(new AdminReservationFilter());
+            var items = _itemReportService.GetPage(new ItemReportFilter());
 
-            var users = _userRepo.GetUsers();
+            var users = _userAdminRepository.GetUsers();
 
             var recentUsers = users
                 .OrderByDescending(u => u.CreatedTime).ThenByDescending(u => u.Id)
@@ -52,14 +52,14 @@ namespace ASI.Basecode.Services.Services
                 })
                 .ToList();
 
-            var newestItems = _equipRepo.GetEquipmentItems()   // not archived, includes Category
+            var newestItems = _equipmentRepository.GetEquipmentItems()   // not archived, includes Category
                 .Where(i => !ItemStatuses.AwaitingCategory.Contains(i.Status))
                 .OrderByDescending(i => i.CreatedTime).ThenByDescending(i => i.Id)
                 .Take(5)
                 .ToList();
 
             var ids = newestItems.Select(i => i.Id).ToList();
-            var openIds = _resRepo.GetTransactions()
+            var openIds = _reservationRepository.GetTransactions()
                 .Where(t => t.ActualReturnTime == null && ids.Contains(t.EquipmentItemId))
                 .Select(t => t.EquipmentItemId)
                 .Distinct()

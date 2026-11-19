@@ -11,7 +11,7 @@ namespace ASI.Basecode.Data.Interfaces
     {
         IQueryable<User> GetUsers();
         User GetUserById(int id);
-        User GetUserByCode(string code);
+        User GetUserByCode(string userCode);
         IQueryable<Reservation> GetReservations();
         IQueryable<BorrowingTransaction> GetTransactions();
         IQueryable<InfoChangeRequest> GetRequests();

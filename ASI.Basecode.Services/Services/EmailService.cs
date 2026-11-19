@@ -11,18 +11,18 @@ namespace ASI.Basecode.Services.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly IConfiguration _config;
+        private readonly IConfiguration _configuration;
 
-        public EmailService(IConfiguration config)
+        public EmailService(IConfiguration configuration)
         {
-            _config = config;
+            _configuration = configuration;
         }
 
         public void Send(string to, string subject, string htmlBody)
         {
-            var host = _config["Smtp:Host"];
-            var port = int.Parse(_config["Smtp:Port"]);
-            var from = _config["Smtp:From"];
+            var host = _configuration["Smtp:Host"];
+            var port = int.Parse(_configuration["Smtp:Port"]);
+            var from = _configuration["Smtp:From"];
 
             using var client = new SmtpClient(host, port) { EnableSsl = false };
             using var message = new MailMessage(from, to, subject, htmlBody) { IsBodyHtml = true };

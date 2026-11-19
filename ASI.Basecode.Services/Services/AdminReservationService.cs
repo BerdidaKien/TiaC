@@ -14,11 +14,11 @@ namespace ASI.Basecode.Services.Services
     public class AdminReservationService : IAdminReservationService
     {
         private const int PageSize = 5;
-        private readonly IReservationRepository _repo;
+        private readonly IReservationRepository _reservationRepository;
 
-        public AdminReservationService(IReservationRepository repo)
+        public AdminReservationService(IReservationRepository reservationRepository)
         {
-            _repo = repo;
+            _reservationRepository = reservationRepository;
         }
 
         public AdminReservationsPageViewModel GetPage(AdminReservationFilter filter)
@@ -27,7 +27,7 @@ namespace ASI.Basecode.Services.Services
             var now = DateTime.Now;
 
             // Search, category and date filters (these also drive the four cards)
-            var baseQ = _repo.GetReservations();
+            var baseQ = _reservationRepository.GetReservations();
 
             if (!string.IsNullOrWhiteSpace(f.Search))
             {
@@ -132,7 +132,7 @@ namespace ASI.Basecode.Services.Services
                 ApprovedCount = CountOf("approved"),
                 RejectedCount = CountOf("declined"),
                 Rows = rows,
-                Categories = _repo.GetCategories().OrderBy(c => c.CategoryName).ToList(),
+                Categories = _reservationRepository.GetCategories().OrderBy(c => c.CategoryName).ToList(),
                 Page = page,
                 PageSize = PageSize,
                 TotalRows = totalRows,

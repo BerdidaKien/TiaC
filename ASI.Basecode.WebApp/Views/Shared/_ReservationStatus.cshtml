@@ -73,7 +73,9 @@
             case "cancelled":
                 label = "Cancelled";
                 css = "is-completed";
-                caption = "You cancelled this request";
+                caption = string.IsNullOrWhiteSpace(Model.ReviewNotes)
+                    ? "You cancelled this request"
+                    : "Cancelled · see the notes";
                 break;
             default:
                 label = Model.Status;
